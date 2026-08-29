@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>@ViewData["Title"] - EduGes</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/eduges.css" asp-append-version="true" />
+
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+
+<body>
+
+    <div class="eduges-app">
+
+        <!-- ================================================= -->
+        <!-- SIDEBAR -->
+        <!-- ================================================= -->
+
+        <aside class="sidebar">
+
+            <div class="sidebar-header">
+                <a asp-controller="Home"
+                   asp-action="Index"
+                   class="logo">
+                    Edu<span>Ges</span>
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+
+                <div class="nav-section">
+                    <span class="nav-section-title">
+                        PRINCIPAL
+                    </span>
+
+                    <a asp-controller="Home"
+                       asp-action="Index"
+                       class="nav-link-custom">
+                        <span class="nav-icon">⌂</span>
+                        <span>Inicio</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+
+                    <span class="nav-section-title">
+                        GESTIÓN
+                    </span>
+
+                    <a asp-controller="Pacientes"
+                       asp-action="Index"
+                       class="nav-link-custom">
+                        <span class="nav-icon">👥</span>
+                        <span>Pacientes</span>
+                    </a>
+
+                    <a asp-controller="Profesionales"
+                       asp-action="Index"
+                       class="nav-link-custom">
+                        <span class="nav-icon">👨‍⚕</span>
+                        <span>Profesionales</span>
+                    </a>
+
+                    <a asp-controller="Turnos"
+                       asp-action="Index"
+                       class="nav-link-custom">
+                        <span class="nav-icon">📅</span>
+                        <span>Turnos</span>
+                    </a>
+
+                    <a asp-controller="HistoriasClinicas"
+                       asp-action="Index"
+                       class="nav-link-custom">
+                        <span class="nav-icon">📋</span>
+                        <span>Historias clínicas</span>
+                    </a>
+
+                </div>
+
+                <div class="nav-section">
+
+                    <span class="nav-section-title">
+                        ADMINISTRACIÓN
+                    </span>
+
+                    <a href="#" class="nav-link-custom">
+                        <span class="nav-icon">⚙</span>
+                        <span>Configuración</span>
+                    </a>
+
+                </div>
+
+            </nav>
+
+        </aside>
+
+
+        <!-- ================================================= -->
+        <!-- CONTENIDO PRINCIPAL -->
+        <!-- ================================================= -->
+
+        <div class="main-wrapper">
+
+            <!-- HEADER -->
+
+            <header class="topbar">
+
+                <div class="topbar-title">
+                    @ViewData["Title"]
+                </div>
+
+                <div class="topbar-user">
+
+                    <div class="user-info">
+                        <span class="user-name">
+                            Usuario
+                        </span>
+
+                        <span class="user-role">
+                            Administrador
+                        </span>
+                    </div>
+
+                    <div class="user-avatar">
+                        U
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <!-- PAGE -->
+
+            <main class="main-content">
+
+                @RenderBody()
+
+            </main>
+
+
+            <!-- FOOTER -->
+
+            <footer class="footer">
+
+                <span>
+                    © @DateTime.Now.Year EduGes
+                </span>
+
+                <span>
+                    Sistema de Gestión
+                </span>
+
+            </footer>
+
+        </div>
+
+    </div>
+
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+
+</body>
+</html>
