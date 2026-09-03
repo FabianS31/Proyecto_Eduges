@@ -1,0 +1,23 @@
+FRONTEND
+	- HTML/CSS/JS
+	- Django Templates
+
+	│
+    HTTP/HTTPS
+	│
+        ▼
+
+BACKEND
+	DJANGO
+		- Autenticación/Seguridad
+		- Vistas/URLS
+		- Lógica de Negocio
+		- Django ORM
+
+	│
+       SQL
+	│
+        ▼
+
+	POSTGRES
+		- EduGes DB

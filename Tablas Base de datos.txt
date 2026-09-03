@@ -1,0 +1,115 @@
+TURNOS
+ID_Turnos (PK)
+Fecha
+Hora
+ID_EstadoTurno (FK)
+ID_RegistroSesion (FK)
+ID_Profesional (FK)
+ID_Paciente (FK)
+
+ESTADOS_TURNOS
+ID_EstadoTurno PK
+Estado
+
+REGISTRO_DE_SESIONES
+ID_RegistroSesion PK
+NotaClinica
+
+
+PACIENTES
+ID_Paciente (PK)
+Nombre
+Apellido
+DNI
+FechaNacimiento
+Dirección
+Consentimiento (bool)
+CUD_Vencimiento (date)
+ID_ObraSocial FK
+NumeroAfiliado
+ID_EstadoPaciente FK
+
+PACIENTES_TUTORES
+ID_PacienteTutor PK
+ID_Paciente FK
+ID_Tutor FK
+ID_Parentesco FK
+Responsable Primario BOOL
+
+ESTADOS_PACIENTES
+ID_EstadoPaciente PK
+Estado
+
+TUTORES
+ID_Tutor PK
+Nombre
+Apellido
+Teléfono
+Móvil
+Mail
+
+PARENTESCOS
+ID_Parentesco PK
+Descripción
+
+OBRAS_SOCIALES
+ID_ObraSocial PK
+Nombre
+Contacto
+Mail
+Web
+ID_EstadoObraSocial FK
+ID_TipoOS FK
+
+ESTADOS_OBRAS_SOCIALES
+ID_EstadoObraSocial PK
+Descripción
+
+TIPOS_OBRAS_SOCIALES
+ID_TipoOS PK
+Descripción
+
+PROFESIONALES
+ID_Profesional PK
+Nombre
+Apellido
+DNI
+Matricula
+Mail
+Contacto
+ID_Especialidad FK
+ID_Rol FK
+ID_Usuario FK
+
+ESPECIALIDADES
+ID_Especialidad PK
+Especialidad
+
+ASIGNACION_PROFESIONALES
+ID_AsignacionProfesional  PK
+ID_Paciente FK
+ID_Profesional FK
+FechaInicio
+FechaFin
+
+ROLES
+ID_Rol PK
+Rol
+ID_RolPermiso FK
+
+PERMISOS
+ID_RolPermiso PK
+Permiso
+Descripción
+
+USUARIOS
+ID_Usuario PK
+Usuario
+ID_Rol FK
+Password
+
+
+1.En PROFESIONALES, ID_Usuario → UNIQUE                                                                  
+2 En PROFESIONALES, ID_Usuario posiblemente `NULL`                              3 En ASIGNACION_PROFESIONALES → impedir dos asignaciones vigentes por paciente 4 En PACIENTES_TUTORES → `UNIQUE(ID_Paciente, ID_Tutor)`                       
+5 En PACIENTES_TUTORES` → máximo un `ResponsablePrincipal` por paciente         
+6 En ROLES_PERMISOS` → `UNIQUE(ID_Rol, ID_Permiso)`                             
