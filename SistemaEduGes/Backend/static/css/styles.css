@@ -1,0 +1,227 @@
+:root {
+    /* Paleta Institucional EduGes */
+    --eduges-primary: #0B4379;
+    --eduges-primary-hover: #08325C;
+    --eduges-primary-light: #E8F0FE;
+
+    /* Estructura y descanso visual */
+    --eduges-bg: #F4F6F9;
+    --eduges-surface: #FFFFFF;
+    --eduges-border: #E2E8F0;
+
+    /* Tipografía */
+    --eduges-text-main: #243142;
+    --eduges-text-muted: #64748B;
+}
+
+body {
+    background-color: var(--eduges-bg);
+    color: var(--eduges-text-main);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Tarjeta centrada con borde suave en vez de sombra agresiva */
+.card-login {
+    background-color: var(--eduges-surface);
+    border: 1px solid var(--eduges-border);
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(11, 67, 121, 0.05);
+}
+
+/* Contenedor redondeado para el logo */
+.login-logo {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    border-radius: 12px;
+}
+
+/* Inputs de formulario con trazos suaves */
+.form-control-eduges {
+    border: 1px solid var(--eduges-border);
+    border-radius: 8px;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.95rem;
+    color: var(--eduges-text-main);
+    background-color: #FAFCFE;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-control-eduges:focus {
+    background-color: #FFFFFF;
+    border-color: var(--eduges-primary);
+    box-shadow: 0 0 0 3px rgba(11, 67, 121, 0.12);
+    color: var(--eduges-text-main);
+}
+
+/* Botón principal */
+.btn-eduges {
+    background-color: var(--eduges-primary);
+    border: 1px solid var(--eduges-primary);
+    color: #FFFFFF;
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    font-weight: 500;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.btn-eduges:hover {
+    background-color: var(--eduges-primary-hover);
+    border-color: var(--eduges-primary-hover);
+    color: #FFFFFF;
+}
+
+.link-eduges {
+    color: var(--eduges-primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.link-eduges:hover {
+    color: var(--eduges-primary-hover);
+    text-decoration: underline;
+}
+
+/* ============================================
+   Login con panel dividido (split layout)
+   ============================================ */
+
+.card-login-split {
+    background-color: var(--eduges-surface);
+    border: none;
+    border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(11, 67, 121, 0.12);
+}
+
+/* Panel izquierdo con degradé sobre el color institucional */
+.login-side-panel {
+    background: linear-gradient(160deg, var(--eduges-primary) 0%, var(--eduges-primary-hover) 100%);
+    min-height: 100%;
+}
+
+.login-logo-side {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.15);
+    padding: 4px;
+}
+
+.login-illustration {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+}
+
+/* En pantallas chicas, el panel izquierdo se acorta y prioriza el formulario */
+@media (max-width: 767.98px) {
+    .login-side-panel {
+        padding-bottom: 1.5rem !important;
+    }
+    .login-illustration {
+        max-width: 160px;
+    }
+}
+
+/* --- ESTILOS DEL DASHBOARD --- */
+
+/* Barra de navegación */
+.navbar-eduges {
+    background-color: var(--eduges-primary);
+    box-shadow: 0 2px 10px rgba(11, 67, 121, 0.1);
+}
+
+.navbar-eduges .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.92rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.navbar-eduges .nav-link:hover,
+.navbar-eduges .nav-link.active {
+    color: #FFFFFF;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Tarjetas de métricas */
+.card-metric {
+    background: #FFFFFF;
+    border: 1px solid var(--eduges-border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-metric:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+}
+
+.metric-icon-box {
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Tablas y contenedores */
+.card-table {
+    background: #FFFFFF;
+    border: 1px solid var(--eduges-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.table > :not(caption) > * > * {
+    padding: 0.85rem 1rem;
+    border-bottom-color: #EEF2F6;
+}
+
+/* Badges del semáforo CUD */
+.badge-cud-ok {
+    background-color: #E6F4EA;
+    color: #137333;
+    border: 1px solid #CEEAD6;
+    font-weight: 500;
+}
+
+.badge-cud-alerta {
+    background-color: #FEF7E0;
+    color: #B06000;
+    border: 1px solid #FEEFC3;
+    font-weight: 500;
+}
+
+.badge-cud-vencido {
+    background-color: #FCE8E6;
+    color: #C5221F;
+    border: 1px solid #FAD2CF;
+    font-weight: 500;
+}
+
+/* Estados de Turnos (Acordes al SQL) */
+.badge-turno-pendiente {
+    background-color: #FFF3CD;
+    color: #856404;
+}
+
+.badge-turno-confirmado {
+    background-color: #CCE5FF;
+    color: #004085;
+}
+
+.badge-turno-realizado {
+    background-color: #D4EDDA;
+    color: #155724;
+}
+
+.badge-turno-cancelado {
+    background-color: #F8D7DA;
+    color: #721C24;
+}
