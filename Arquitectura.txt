@@ -1,23 +1,65 @@
-FRONTEND
-	- HTML/CSS/JS
-	- Django Templates
-
-	│
-    HTTP/HTTPS
-	│
-        ▼
-
-BACKEND
-	DJANGO
-		- Autenticación/Seguridad
-		- Vistas/URLS
-		- Lógica de Negocio
-		- Django ORM
-
-	│
-       SQL
-	│
-        ▼
-
-	POSTGRES
-		- EduGes DB
+┌────────────────────────────────────────────┐
+│                        FRONTEND                           │
+│                                                           │
+│              HTML / CSS / JavaScript                      │
+│                                                           │
+│     Interfaz de usuario · Formularios · Dashboard         │
+│                                                           │
+└──────────────┬─────────────────────────────┘
+                             │
+                             │ HTTP / HTTPS
+                             │
+                             │ REST API
+                             │ JSON
+                             ▼
+┌────────────────────────────────────────────┐
+│                         BACKEND                           │
+│                         DJANGO                            │
+│                                                           │
+│  ┌───────────────────────────────────────┐  │
+│  │                 API REST / DRF                      │  │
+│  │                                                     │  │
+│  │              CONTROLLERS / VIEWS                    │  │
+│  │                                                     │  │
+│  │      Reciben requests y devuelven responses         │  │
+│  └────────────────────────────────────────┘  │
+│                           │                               │
+│                           ▼                               │
+│  ┌────────────────────────────────────────┐  │
+│  │                    DTOs / SERIALIZERS               │  │
+│  │                                                     │  │
+│  │       Validación y transferencia de datos           │  │
+│  └────────────────────────┬───────────────┘  │
+│                           │                               │
+│                           ▼                               │
+│  ┌────────────────────────────────────────┐  │
+│  │                    SERVICES                         │  │
+│  │                                                     │  │
+│  │              Lógica de negocio                      │  │
+│  │                                                     │  │
+│  │ Pacientes · Turnos · Asignaciones · Sesiones        │  │
+│  └────────────────────────┬────────── ────┘  │
+│                           │                               │
+│                           ▼                               │
+│  ┌────────────────────────────────────────┐  │
+│  │              ENTIDADES / MODELOS                    │  │
+│  │                                                     │  │
+│  │                 Django Models                       │  │
+│  └────────────────────────┬───────────────┘  │
+│                           │                               │
+│                           ▼                               │
+│  ┌────────────────────────────────────────┐  │
+│  │                   DJANGO ORM                        │  │
+│  │                                                     │  │
+│  │       Mapeo Objetos Python ↔ Base de Datos          │  │
+│  └────────────────────────┬─────────────┘  │
+│                           │                                │
+│                          SQL                               │
+└───────────────────────────┼─────────────────┘
+                            │
+                            ▼
+                 ┌────────────────┐
+                 │      POSTGRESQL      │
+                 │                      │
+                 │       EduGes         │
+                 └────────────────┘

@@ -1,115 +1,123 @@
+Los nombres de las tablas, en la base de datos, están en minúscula. Aca se ponen en mayuscula para distinguir los nombres de las tablas de las columnas.
+
 TURNOS
-ID_Turnos (PK)
-Fecha
-Hora
-ID_EstadoTurno (FK)
-ID_RegistroSesion (FK)
-ID_Profesional (FK)
-ID_Paciente (FK)
+ID_Turnos (PK/int4)
+Fecha (date)
+Hora (time)
+ID_EstadoTurno (FK/int4)
+ID_RegistroSesion (FK/int4)
+ID_Profesional (FK/int4)
+ID_Paciente (FK/int4)
 
 ESTADOS_TURNOS
-ID_EstadoTurno PK
-Estado
+ID_EstadoTurno (PK/int4)
+Estado (varchar50)
 
 REGISTRO_DE_SESIONES
-ID_RegistroSesion PK
-NotaClinica
+ID_RegistroSesion (PK/int4)
+NotaClinica (varchar5000)
 
 
 PACIENTES
 ID_Paciente (PK)
-Nombre
-Apellido
-DNI
-FechaNacimiento
-Dirección
-Consentimiento (bool)
+Nombre (varchar100)
+Apellido (varchar100)
+DNI (varchar20)
+FechaNacimiento (date)
+Dirección (varchar255)
+Consentimiento (_bool)
 CUD_Vencimiento (date)
-ID_ObraSocial FK
-NumeroAfiliado
-ID_EstadoPaciente FK
+ID_ObraSocial FK/int4
+NumeroAfiliado (varchar20)
+ID_EstadoPaciente (FK/int4)
 
 PACIENTES_TUTORES
-ID_PacienteTutor PK
-ID_Paciente FK
-ID_Tutor FK
-ID_Parentesco FK
-Responsable Primario BOOL
+ID_PacienteTutor (PK/int4)
+ID_Tutor (FK/int4)
+ID_Paciente (FK/int4)
+ID_Parentesco (FK/int4)
+ResponsablePrincipal (bool)
 
 ESTADOS_PACIENTES
-ID_EstadoPaciente PK
-Estado
+ID_EstadoPaciente (PK/int4)
+Estado (varchar50)
 
 TUTORES
-ID_Tutor PK
-Nombre
-Apellido
-Teléfono
-Móvil
-Mail
+ID_Tutor (PK/int4)
+Nombre (varchar100)
+Apellido (varchar100)
+TelefonoFijo (varchar30)
+TelefonoMovil (varchar30)
+Mail (varchar150)
 
 PARENTESCOS
-ID_Parentesco PK
-Descripción
+ID_Parentesco (PK/int4)
+Descripción (varchar100)
 
 OBRAS_SOCIALES
-ID_ObraSocial PK
-Nombre
-Contacto
-Mail
-Web
-ID_EstadoObraSocial FK
-ID_TipoOS FK
+ID_ObraSocial (PK/int4)
+Nombre (varchar150)
+Contacto (varchar150)
+Mail (varchar150)
+Web (varchar255)
+ID_EstadoObraSocial (FK/int4)
+ID_TipoOS (FK/int4)
 
 ESTADOS_OBRAS_SOCIALES
-ID_EstadoObraSocial PK
-Descripción
+ID_EstadoObraSocial (PK/int4)
+Descripción (varchar100)
 
 TIPOS_OBRAS_SOCIALES
-ID_TipoOS PK
-Descripción
+ID_TipoOS (PK/int4)
+Tipo (varchar100)
 
 PROFESIONALES
-ID_Profesional PK
-Nombre
-Apellido
-DNI
-Matricula
-Mail
-Contacto
-ID_Especialidad FK
-ID_Rol FK
-ID_Usuario FK
+ID_Profesionales (PK/int4)
+Nombre (varchar100)
+Apellido (varchar100)
+DNI (varchar20)
+Matricula (varchar50)
+ID_Especialidad (FK/int4)
+ID_Rol (FK/int4)
+Contacto (varchar50)
+Mail (varchar50)
+ID_Usuario (FK/int4)
 
 ESPECIALIDADES
-ID_Especialidad PK
-Especialidad
+ID_Especialidad (PK/int4)
+Especialidad (varchar100)
 
 ASIGNACION_PROFESIONALES
-ID_AsignacionProfesional  PK
-ID_Paciente FK
-ID_Profesional FK
-FechaInicio
-FechaFin
+ID_AsignacionProfesional (PK/int4)
+ID_Paciente (FK/int4)
+ID_Profesional (FK/int4)
+FechaInicio (date)
+FechaFin (date)
 
 ROLES
-ID_Rol PK
-Rol
-ID_RolPermiso FK
+ID_Rol (pK/int4)
+Rol (varchar50)
 
 PERMISOS
-ID_RolPermiso PK
-Permiso
-Descripción
+ID_Permiso (PK/int4)
+Permiso (varchar20)
+Descripción (varchar250)
 
 USUARIOS
-ID_Usuario PK
-Usuario
-ID_Rol FK
-Password
+ID_Usuario (PK/int4)
+Usuario (varchar100)
+ID_Rol (FK/int4)
+Password (varchar250)
+
+ROLES_PERMISOS
+ID_RolPermiso (PK/int4)
+ID_Rol (FK/int4)
+ID_Permiso (FK/int4)
 
 
 1.En PROFESIONALES, ID_Usuario → UNIQUE                                                                  
-2 En PROFESIONALES, ID_Usuario posiblemente `NULL`                              3 En ASIGNACION_PROFESIONALES → impedir dos asignaciones vigentes por paciente 4 En PACIENTES_TUTORES → `UNIQUE(ID_Paciente, ID_Tutor)`                       
+2 En PROFESIONALES, ID_Usuario posiblemente `NULL`                              
+3 En ASIGNACION_PROFESIONALES → impedir dos asignaciones vigentes por paciente 
+4 En PACIENTES_TUTORES → `UNIQUE(ID_Paciente, ID_Tutor)`                       
 5 En PACIENTES_TUTORES` → máximo un `ResponsablePrincipal` por paciente         
 6 En ROLES_PERMISOS` → `UNIQUE(ID_Rol, ID_Permiso)`                             
