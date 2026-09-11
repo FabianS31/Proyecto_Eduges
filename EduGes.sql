@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict 6AAs5SQUdnbl2kwxeqWzyq816CkogkyV9edPevsVDesSM3YbUYQEOMsVW66PwOZ
+\restrict Oh7mZY3Dle1DrhdRKooctAjdBGc2uxhOcmKxxl8w8blFYDngeenFdeVObILjOOJ
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
 
--- Started on 2026-09-04 17:29:17
+-- Started on 2026-09-07 17:16:37
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -55,7 +55,7 @@ CREATE SEQUENCE public.asignaciones_profesionales_id_asignacionprofesional_seq
 
 
 --
--- TOC entry 5320 (class 0 OID 0)
+-- TOC entry 5337 (class 0 OID 0)
 -- Dependencies: 243
 -- Name: asignaciones_profesionales_id_asignacionprofesional_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -359,7 +359,7 @@ CREATE SEQUENCE public.especialidades_id_especialidad_seq
 
 
 --
--- TOC entry 5321 (class 0 OID 0)
+-- TOC entry 5338 (class 0 OID 0)
 -- Dependencies: 227
 -- Name: especialidades_id_especialidad_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -373,8 +373,8 @@ ALTER SEQUENCE public.especialidades_id_especialidad_seq OWNED BY public.especia
 --
 
 CREATE TABLE public.estados_obras_sociales (
-    "ID_EstadoObraSocial" integer,
-    "Descripcion" character varying(100)
+    "ID_EstadoObraSocial" integer NOT NULL,
+    "Descripcion" character varying(100) NOT NULL
 );
 
 
@@ -404,7 +404,7 @@ CREATE SEQUENCE public.estados_pacientes_id_estadopaciente_seq
 
 
 --
--- TOC entry 5322 (class 0 OID 0)
+-- TOC entry 5339 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: estados_pacientes_id_estadopaciente_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -438,7 +438,7 @@ CREATE SEQUENCE public.estados_turnos_id_estadoturno_seq
 
 
 --
--- TOC entry 5323 (class 0 OID 0)
+-- TOC entry 5340 (class 0 OID 0)
 -- Dependencies: 225
 -- Name: estados_turnos_id_estadoturno_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -458,7 +458,7 @@ CREATE TABLE public.obras_sociales (
     "Mail" character varying(150),
     "Web" character varying(255),
     "ID_TipoOS" integer CONSTRAINT obras_sociales_id_tipoos_not_null NOT NULL,
-    "ID_EstadoObraSocial" integer
+    "ID_EstadoObraSocial" integer NOT NULL
 );
 
 
@@ -477,7 +477,7 @@ CREATE SEQUENCE public.obras_sociales_id_obrasocial_seq
 
 
 --
--- TOC entry 5324 (class 0 OID 0)
+-- TOC entry 5341 (class 0 OID 0)
 -- Dependencies: 231
 -- Name: obras_sociales_id_obrasocial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -496,12 +496,12 @@ CREATE TABLE public.pacientes (
     "Apellido" character varying(100) CONSTRAINT pacientes_apellido_not_null NOT NULL,
     "DNI" character varying(20) CONSTRAINT pacientes_dni_not_null NOT NULL,
     "FechaNacimiento" date CONSTRAINT pacientes_fechanacimiento_not_null NOT NULL,
-    "Direccion" character varying(255),
+    "Direccion" character varying(255) NOT NULL,
     "CUD_Vencimiento" date CONSTRAINT pacientes_cud_vencimiento_not_null NOT NULL,
     "ID_ObraSocial" integer CONSTRAINT pacientes_id_obrasocial_not_null NOT NULL,
     "ID_EstadoPaciente" integer CONSTRAINT pacientes_id_estadopaciente_not_null NOT NULL,
-    "Consentimiento" boolean[],
-    "NumeroAfiliado" character varying(20)
+    "Consentimiento" boolean NOT NULL,
+    "NumeroAfiliado" character varying(20) NOT NULL
 );
 
 
@@ -520,7 +520,7 @@ CREATE SEQUENCE public.pacientes_id_paciente_seq
 
 
 --
--- TOC entry 5325 (class 0 OID 0)
+-- TOC entry 5342 (class 0 OID 0)
 -- Dependencies: 237
 -- Name: pacientes_id_paciente_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -557,7 +557,7 @@ CREATE SEQUENCE public.pacientes_tutores_id_pacientetutor_seq
 
 
 --
--- TOC entry 5326 (class 0 OID 0)
+-- TOC entry 5343 (class 0 OID 0)
 -- Dependencies: 239
 -- Name: pacientes_tutores_id_pacientetutor_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -591,7 +591,7 @@ CREATE SEQUENCE public.parentescos_id_parentesco_seq
 
 
 --
--- TOC entry 5327 (class 0 OID 0)
+-- TOC entry 5344 (class 0 OID 0)
 -- Dependencies: 219
 -- Name: parentescos_id_parentesco_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -605,9 +605,9 @@ ALTER SEQUENCE public.parentescos_id_parentesco_seq OWNED BY public.parentescos.
 --
 
 CREATE TABLE public.permisos (
-    "ID_RolPermiso" integer,
-    "Permiso" character varying,
-    "Descripcion" character varying
+    "ID_Permiso" integer NOT NULL,
+    "Permiso" character varying(20) NOT NULL,
+    "Descripcion" character varying(250) NOT NULL
 );
 
 
@@ -623,10 +623,9 @@ CREATE TABLE public.profesionales (
     "DNI" character varying(20) CONSTRAINT profesionales_dni_not_null NOT NULL,
     "Matricula" character varying(50) CONSTRAINT profesionales_matricula_not_null NOT NULL,
     "ID_Especialidad" integer CONSTRAINT profesionales_id_especialidad_not_null NOT NULL,
-    "ID_Rol" integer CONSTRAINT profesionales_id_rol_not_null NOT NULL,
-    "Contacto" character varying,
-    "Mail" character varying,
-    "ID_Usuario" integer
+    "Contacto" character varying(50),
+    "Mail" character varying(50),
+    "ID_Usuario" integer NOT NULL
 );
 
 
@@ -645,7 +644,7 @@ CREATE SEQUENCE public.profesionales_id_profesional_seq
 
 
 --
--- TOC entry 5328 (class 0 OID 0)
+-- TOC entry 5345 (class 0 OID 0)
 -- Dependencies: 235
 -- Name: profesionales_id_profesional_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -660,7 +659,7 @@ ALTER SEQUENCE public.profesionales_id_profesional_seq OWNED BY public.profesion
 
 CREATE TABLE public.registros_de_sesiones (
     "ID_RegistroSesion" integer CONSTRAINT registros_de_sesiones_id_registrosesion_not_null NOT NULL,
-    "NotaClinica" character varying(5000)
+    "NotaClinica" character varying(5000) NOT NULL
 );
 
 
@@ -679,7 +678,7 @@ CREATE SEQUENCE public.registros_de_sesiones_id_registrosesion_seq
 
 
 --
--- TOC entry 5329 (class 0 OID 0)
+-- TOC entry 5346 (class 0 OID 0)
 -- Dependencies: 241
 -- Name: registros_de_sesiones_id_registrosesion_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -694,8 +693,7 @@ ALTER SEQUENCE public.registros_de_sesiones_id_registrosesion_seq OWNED BY publi
 
 CREATE TABLE public.roles (
     "ID_Rol" integer CONSTRAINT roles_id_rol_not_null NOT NULL,
-    "Rol" character varying(50) CONSTRAINT roles_rol_not_null NOT NULL,
-    "ID_RolPermiso" integer
+    "Rol" character varying(50) CONSTRAINT roles_rol_not_null NOT NULL
 );
 
 
@@ -714,12 +712,24 @@ CREATE SEQUENCE public.roles_id_rol_seq
 
 
 --
--- TOC entry 5330 (class 0 OID 0)
+-- TOC entry 5347 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: roles_id_rol_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.roles_id_rol_seq OWNED BY public.roles."ID_Rol";
+
+
+--
+-- TOC entry 269 (class 1259 OID 17346)
+-- Name: roles_permisos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.roles_permisos (
+    "ID_RolPermiso" integer NOT NULL,
+    "ID_Rol" integer NOT NULL,
+    "ID_Permiso" integer NOT NULL
+);
 
 
 --
@@ -748,7 +758,7 @@ CREATE SEQUENCE public.tipos_obras_sociales_id_tipoos_seq
 
 
 --
--- TOC entry 5331 (class 0 OID 0)
+-- TOC entry 5348 (class 0 OID 0)
 -- Dependencies: 221
 -- Name: tipos_obras_sociales_id_tipoos_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -787,7 +797,7 @@ CREATE SEQUENCE public.turnos_id_turno_seq
 
 
 --
--- TOC entry 5332 (class 0 OID 0)
+-- TOC entry 5349 (class 0 OID 0)
 -- Dependencies: 245
 -- Name: turnos_id_turno_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -825,7 +835,7 @@ CREATE SEQUENCE public.tutores_id_tutor_seq
 
 
 --
--- TOC entry 5333 (class 0 OID 0)
+-- TOC entry 5350 (class 0 OID 0)
 -- Dependencies: 233
 -- Name: tutores_id_tutor_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -839,15 +849,15 @@ ALTER SEQUENCE public.tutores_id_tutor_seq OWNED BY public.tutores."ID_Tutor";
 --
 
 CREATE TABLE public.usuarios (
-    "ID_Usuario" integer,
-    "Usuario" character varying,
+    "ID_Usuario" integer NOT NULL,
+    "Usuario" character varying NOT NULL,
     "ID_Rol" integer,
-    "Password" character varying
+    "Password" character varying NOT NULL
 );
 
 
 --
--- TOC entry 4995 (class 2604 OID 16963)
+-- TOC entry 4999 (class 2604 OID 16963)
 -- Name: asignaciones_profesionales ID_AsignacionProfesional; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -855,7 +865,7 @@ ALTER TABLE ONLY public.asignaciones_profesionales ALTER COLUMN "ID_AsignacionPr
 
 
 --
--- TOC entry 4986 (class 2604 OID 16816)
+-- TOC entry 4990 (class 2604 OID 16816)
 -- Name: especialidades ID_Especialidad; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -863,7 +873,7 @@ ALTER TABLE ONLY public.especialidades ALTER COLUMN "ID_Especialidad" SET DEFAUL
 
 
 --
--- TOC entry 4984 (class 2604 OID 16794)
+-- TOC entry 4988 (class 2604 OID 16794)
 -- Name: estados_pacientes ID_EstadoPaciente; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -871,7 +881,7 @@ ALTER TABLE ONLY public.estados_pacientes ALTER COLUMN "ID_EstadoPaciente" SET D
 
 
 --
--- TOC entry 4985 (class 2604 OID 16805)
+-- TOC entry 4989 (class 2604 OID 16805)
 -- Name: estados_turnos ID_EstadoTurno; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -879,7 +889,7 @@ ALTER TABLE ONLY public.estados_turnos ALTER COLUMN "ID_EstadoTurno" SET DEFAULT
 
 
 --
--- TOC entry 4988 (class 2604 OID 16838)
+-- TOC entry 4992 (class 2604 OID 16838)
 -- Name: obras_sociales ID_ObraSocial; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -887,7 +897,7 @@ ALTER TABLE ONLY public.obras_sociales ALTER COLUMN "ID_ObraSocial" SET DEFAULT 
 
 
 --
--- TOC entry 4991 (class 2604 OID 16893)
+-- TOC entry 4995 (class 2604 OID 16893)
 -- Name: pacientes ID_Paciente; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -895,7 +905,7 @@ ALTER TABLE ONLY public.pacientes ALTER COLUMN "ID_Paciente" SET DEFAULT nextval
 
 
 --
--- TOC entry 4992 (class 2604 OID 16922)
+-- TOC entry 4996 (class 2604 OID 16922)
 -- Name: pacientes_tutores ID_PacienteTutor; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -903,7 +913,7 @@ ALTER TABLE ONLY public.pacientes_tutores ALTER COLUMN "ID_PacienteTutor" SET DE
 
 
 --
--- TOC entry 4982 (class 2604 OID 16772)
+-- TOC entry 4986 (class 2604 OID 16772)
 -- Name: parentescos ID_Parentesco; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -911,7 +921,7 @@ ALTER TABLE ONLY public.parentescos ALTER COLUMN "ID_Parentesco" SET DEFAULT nex
 
 
 --
--- TOC entry 4990 (class 2604 OID 16865)
+-- TOC entry 4994 (class 2604 OID 16865)
 -- Name: profesionales ID_Profesionales; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -919,7 +929,7 @@ ALTER TABLE ONLY public.profesionales ALTER COLUMN "ID_Profesionales" SET DEFAUL
 
 
 --
--- TOC entry 4994 (class 2604 OID 16953)
+-- TOC entry 4998 (class 2604 OID 16953)
 -- Name: registros_de_sesiones ID_RegistroSesion; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -927,7 +937,7 @@ ALTER TABLE ONLY public.registros_de_sesiones ALTER COLUMN "ID_RegistroSesion" S
 
 
 --
--- TOC entry 4987 (class 2604 OID 16827)
+-- TOC entry 4991 (class 2604 OID 16827)
 -- Name: roles ID_Rol; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -935,7 +945,7 @@ ALTER TABLE ONLY public.roles ALTER COLUMN "ID_Rol" SET DEFAULT nextval('public.
 
 
 --
--- TOC entry 4983 (class 2604 OID 16783)
+-- TOC entry 4987 (class 2604 OID 16783)
 -- Name: tipos_obras_sociales ID_TipoOS; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -943,7 +953,7 @@ ALTER TABLE ONLY public.tipos_obras_sociales ALTER COLUMN "ID_TipoOS" SET DEFAUL
 
 
 --
--- TOC entry 4996 (class 2604 OID 17044)
+-- TOC entry 5000 (class 2604 OID 17044)
 -- Name: turnos ID_Turnos; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -951,7 +961,7 @@ ALTER TABLE ONLY public.turnos ALTER COLUMN "ID_Turnos" SET DEFAULT nextval('pub
 
 
 --
--- TOC entry 4989 (class 2604 OID 16855)
+-- TOC entry 4993 (class 2604 OID 16855)
 -- Name: tutores ID_Tutor; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -959,7 +969,7 @@ ALTER TABLE ONLY public.tutores ALTER COLUMN "ID_Tutor" SET DEFAULT nextval('pub
 
 
 --
--- TOC entry 5290 (class 0 OID 16960)
+-- TOC entry 5306 (class 0 OID 16960)
 -- Dependencies: 244
 -- Data for Name: asignaciones_profesionales; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -969,7 +979,7 @@ COPY public.asignaciones_profesionales ("ID_AsignacionProfesional", "ID_Paciente
 
 
 --
--- TOC entry 5303 (class 0 OID 17153)
+-- TOC entry 5319 (class 0 OID 17153)
 -- Dependencies: 257
 -- Data for Name: auth_group; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -979,7 +989,7 @@ COPY public.auth_group (id, name) FROM stdin;
 
 
 --
--- TOC entry 5305 (class 0 OID 17163)
+-- TOC entry 5321 (class 0 OID 17163)
 -- Dependencies: 259
 -- Data for Name: auth_group_permissions; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -989,7 +999,7 @@ COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
 
 
 --
--- TOC entry 5301 (class 0 OID 17143)
+-- TOC entry 5317 (class 0 OID 17143)
 -- Dependencies: 255
 -- Data for Name: auth_permission; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1019,11 +1029,83 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 22	Can change session	6	change_session
 23	Can delete session	6	delete_session
 24	Can view session	6	view_session
+25	Can add estado obra social	7	add_estadoobrasocial
+26	Can change estado obra social	7	change_estadoobrasocial
+27	Can delete estado obra social	7	delete_estadoobrasocial
+28	Can view estado obra social	7	view_estadoobrasocial
+29	Can add estado paciente	8	add_estadopaciente
+30	Can change estado paciente	8	change_estadopaciente
+31	Can delete estado paciente	8	delete_estadopaciente
+32	Can view estado paciente	8	view_estadopaciente
+33	Can add obra social	9	add_obrasocial
+34	Can change obra social	9	change_obrasocial
+35	Can delete obra social	9	delete_obrasocial
+36	Can view obra social	9	view_obrasocial
+37	Can add paciente	10	add_paciente
+38	Can change paciente	10	change_paciente
+39	Can delete paciente	10	delete_paciente
+40	Can view paciente	10	view_paciente
+41	Can add paciente tutor	11	add_pacientetutor
+42	Can change paciente tutor	11	change_pacientetutor
+43	Can delete paciente tutor	11	delete_pacientetutor
+44	Can view paciente tutor	11	view_pacientetutor
+45	Can add parentesco	12	add_parentesco
+46	Can change parentesco	12	change_parentesco
+47	Can delete parentesco	12	delete_parentesco
+48	Can view parentesco	12	view_parentesco
+49	Can add tipo obra social	13	add_tipoobrasocial
+50	Can change tipo obra social	13	change_tipoobrasocial
+51	Can delete tipo obra social	13	delete_tipoobrasocial
+52	Can view tipo obra social	13	view_tipoobrasocial
+53	Can add tutor	14	add_tutor
+54	Can change tutor	14	change_tutor
+55	Can delete tutor	14	delete_tutor
+56	Can view tutor	14	view_tutor
+57	Can add permiso	15	add_permiso
+58	Can change permiso	15	change_permiso
+59	Can delete permiso	15	delete_permiso
+60	Can view permiso	15	view_permiso
+61	Can add rol	16	add_rol
+62	Can change rol	16	change_rol
+63	Can delete rol	16	delete_rol
+64	Can view rol	16	view_rol
+65	Can add rol permiso	17	add_rolpermiso
+66	Can change rol permiso	17	change_rolpermiso
+67	Can delete rol permiso	17	delete_rolpermiso
+68	Can view rol permiso	17	view_rolpermiso
+69	Can add usuario	18	add_usuario
+70	Can change usuario	18	change_usuario
+71	Can delete usuario	18	delete_usuario
+72	Can view usuario	18	view_usuario
+73	Can add asignacion profesional	19	add_asignacionprofesional
+74	Can change asignacion profesional	19	change_asignacionprofesional
+75	Can delete asignacion profesional	19	delete_asignacionprofesional
+76	Can view asignacion profesional	19	view_asignacionprofesional
+77	Can add especialidad	20	add_especialidad
+78	Can change especialidad	20	change_especialidad
+79	Can delete especialidad	20	delete_especialidad
+80	Can view especialidad	20	view_especialidad
+81	Can add profesional	21	add_profesional
+82	Can change profesional	21	change_profesional
+83	Can delete profesional	21	delete_profesional
+84	Can view profesional	21	view_profesional
+85	Can add estado turno	22	add_estadoturno
+86	Can change estado turno	22	change_estadoturno
+87	Can delete estado turno	22	delete_estadoturno
+88	Can view estado turno	22	view_estadoturno
+89	Can add registro sesion	23	add_registrosesion
+90	Can change registro sesion	23	change_registrosesion
+91	Can delete registro sesion	23	delete_registrosesion
+92	Can view registro sesion	23	view_registrosesion
+93	Can add turno	24	add_turno
+94	Can change turno	24	change_turno
+95	Can delete turno	24	delete_turno
+96	Can view turno	24	view_turno
 \.
 
 
 --
--- TOC entry 5307 (class 0 OID 17172)
+-- TOC entry 5323 (class 0 OID 17172)
 -- Dependencies: 261
 -- Data for Name: auth_user; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1033,7 +1115,7 @@ COPY public.auth_user (id, password, last_login, is_superuser, username, first_n
 
 
 --
--- TOC entry 5309 (class 0 OID 17191)
+-- TOC entry 5325 (class 0 OID 17191)
 -- Dependencies: 263
 -- Data for Name: auth_user_groups; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1043,7 +1125,7 @@ COPY public.auth_user_groups (id, user_id, group_id) FROM stdin;
 
 
 --
--- TOC entry 5311 (class 0 OID 17200)
+-- TOC entry 5327 (class 0 OID 17200)
 -- Dependencies: 265
 -- Data for Name: auth_user_user_permissions; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1053,7 +1135,7 @@ COPY public.auth_user_user_permissions (id, user_id, permission_id) FROM stdin;
 
 
 --
--- TOC entry 5313 (class 0 OID 17261)
+-- TOC entry 5329 (class 0 OID 17261)
 -- Dependencies: 267
 -- Data for Name: django_admin_log; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1063,7 +1145,7 @@ COPY public.django_admin_log (id, action_time, object_id, object_repr, action_fl
 
 
 --
--- TOC entry 5299 (class 0 OID 17131)
+-- TOC entry 5315 (class 0 OID 17131)
 -- Dependencies: 253
 -- Data for Name: django_content_type; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1075,11 +1157,29 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 4	auth	user
 5	contenttypes	contenttype
 6	sessions	session
+7	pacientes	estadoobrasocial
+8	pacientes	estadopaciente
+9	pacientes	obrasocial
+10	pacientes	paciente
+11	pacientes	pacientetutor
+12	pacientes	parentesco
+13	pacientes	tipoobrasocial
+14	pacientes	tutor
+15	usuarios	permiso
+16	usuarios	rol
+17	usuarios	rolpermiso
+18	usuarios	usuario
+19	profesionales	asignacionprofesional
+20	profesionales	especialidad
+21	profesionales	profesional
+22	turnos	estadoturno
+23	turnos	registrosesion
+24	turnos	turno
 \.
 
 
 --
--- TOC entry 5297 (class 0 OID 17119)
+-- TOC entry 5313 (class 0 OID 17119)
 -- Dependencies: 251
 -- Data for Name: django_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1103,11 +1203,15 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 16	auth	0011_update_proxy_permissions	2026-09-04 16:17:01.775928-03
 17	auth	0012_alter_user_first_name_max_length	2026-09-04 16:17:01.787677-03
 18	sessions	0001_initial	2026-09-04 16:17:01.808238-03
+19	pacientes	0001_initial	2026-09-07 17:13:45.120824-03
+20	profesionales	0001_initial	2026-09-07 17:13:45.124764-03
+21	turnos	0001_initial	2026-09-07 17:13:45.126818-03
+22	usuarios	0001_initial	2026-09-07 17:13:45.129718-03
 \.
 
 
 --
--- TOC entry 5314 (class 0 OID 17301)
+-- TOC entry 5330 (class 0 OID 17301)
 -- Dependencies: 268
 -- Data for Name: django_session; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1117,7 +1221,7 @@ COPY public.django_session (session_key, session_data, expire_date) FROM stdin;
 
 
 --
--- TOC entry 5274 (class 0 OID 16813)
+-- TOC entry 5290 (class 0 OID 16813)
 -- Dependencies: 228
 -- Data for Name: especialidades; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1127,7 +1231,7 @@ COPY public.especialidades ("ID_Especialidad", "Especialidad") FROM stdin;
 
 
 --
--- TOC entry 5293 (class 0 OID 17074)
+-- TOC entry 5309 (class 0 OID 17074)
 -- Dependencies: 247
 -- Data for Name: estados_obras_sociales; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1137,7 +1241,7 @@ COPY public.estados_obras_sociales ("ID_EstadoObraSocial", "Descripcion") FROM s
 
 
 --
--- TOC entry 5270 (class 0 OID 16791)
+-- TOC entry 5286 (class 0 OID 16791)
 -- Dependencies: 224
 -- Data for Name: estados_pacientes; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1149,7 +1253,7 @@ COPY public.estados_pacientes ("ID_EstadoPaciente", "Estado") FROM stdin;
 
 
 --
--- TOC entry 5272 (class 0 OID 16802)
+-- TOC entry 5288 (class 0 OID 16802)
 -- Dependencies: 226
 -- Data for Name: estados_turnos; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1163,7 +1267,7 @@ COPY public.estados_turnos ("ID_EstadoTurno", "Estado") FROM stdin;
 
 
 --
--- TOC entry 5278 (class 0 OID 16835)
+-- TOC entry 5294 (class 0 OID 16835)
 -- Dependencies: 232
 -- Data for Name: obras_sociales; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1173,7 +1277,7 @@ COPY public.obras_sociales ("ID_ObraSocial", "Nombre", "Contacto", "Mail", "Web"
 
 
 --
--- TOC entry 5284 (class 0 OID 16890)
+-- TOC entry 5300 (class 0 OID 16890)
 -- Dependencies: 238
 -- Data for Name: pacientes; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1183,7 +1287,7 @@ COPY public.pacientes ("ID_Paciente", "Nombre", "Apellido", "DNI", "FechaNacimie
 
 
 --
--- TOC entry 5286 (class 0 OID 16919)
+-- TOC entry 5302 (class 0 OID 16919)
 -- Dependencies: 240
 -- Data for Name: pacientes_tutores; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1193,7 +1297,7 @@ COPY public.pacientes_tutores ("ID_PacienteTutor", "ID_Tutor", "ID_Paciente", "I
 
 
 --
--- TOC entry 5266 (class 0 OID 16769)
+-- TOC entry 5282 (class 0 OID 16769)
 -- Dependencies: 220
 -- Data for Name: parentescos; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1203,27 +1307,27 @@ COPY public.parentescos ("ID_Parentesco", "Descripcion") FROM stdin;
 
 
 --
--- TOC entry 5294 (class 0 OID 17089)
+-- TOC entry 5310 (class 0 OID 17089)
 -- Dependencies: 248
 -- Data for Name: permisos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.permisos ("ID_RolPermiso", "Permiso", "Descripcion") FROM stdin;
+COPY public.permisos ("ID_Permiso", "Permiso", "Descripcion") FROM stdin;
 \.
 
 
 --
--- TOC entry 5282 (class 0 OID 16862)
+-- TOC entry 5298 (class 0 OID 16862)
 -- Dependencies: 236
 -- Data for Name: profesionales; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.profesionales ("ID_Profesionales", "Nombre", "Apellido", "DNI", "Matricula", "ID_Especialidad", "ID_Rol", "Contacto", "Mail", "ID_Usuario") FROM stdin;
+COPY public.profesionales ("ID_Profesionales", "Nombre", "Apellido", "DNI", "Matricula", "ID_Especialidad", "Contacto", "Mail", "ID_Usuario") FROM stdin;
 \.
 
 
 --
--- TOC entry 5288 (class 0 OID 16950)
+-- TOC entry 5304 (class 0 OID 16950)
 -- Dependencies: 242
 -- Data for Name: registros_de_sesiones; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1233,19 +1337,29 @@ COPY public.registros_de_sesiones ("ID_RegistroSesion", "NotaClinica") FROM stdi
 
 
 --
--- TOC entry 5276 (class 0 OID 16824)
+-- TOC entry 5292 (class 0 OID 16824)
 -- Dependencies: 230
 -- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.roles ("ID_Rol", "Rol", "ID_RolPermiso") FROM stdin;
-1	Administrador	\N
-2	Profesional	\N
+COPY public.roles ("ID_Rol", "Rol") FROM stdin;
+1	Administrador
+2	Profesional
 \.
 
 
 --
--- TOC entry 5268 (class 0 OID 16780)
+-- TOC entry 5331 (class 0 OID 17346)
+-- Dependencies: 269
+-- Data for Name: roles_permisos; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.roles_permisos ("ID_RolPermiso", "ID_Rol", "ID_Permiso") FROM stdin;
+\.
+
+
+--
+-- TOC entry 5284 (class 0 OID 16780)
 -- Dependencies: 222
 -- Data for Name: tipos_obras_sociales; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1255,7 +1369,7 @@ COPY public.tipos_obras_sociales ("ID_TipoOS", "Tipo") FROM stdin;
 
 
 --
--- TOC entry 5292 (class 0 OID 17041)
+-- TOC entry 5308 (class 0 OID 17041)
 -- Dependencies: 246
 -- Data for Name: turnos; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1265,7 +1379,7 @@ COPY public.turnos ("ID_Turnos", "Fecha", "Hora", "ID_EstadoTurno", "ID_Registro
 
 
 --
--- TOC entry 5280 (class 0 OID 16852)
+-- TOC entry 5296 (class 0 OID 16852)
 -- Dependencies: 234
 -- Data for Name: tutores; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1275,7 +1389,7 @@ COPY public.tutores ("ID_Tutor", "Nombre", "Apellido", "TelefonoFijo", "Telefono
 
 
 --
--- TOC entry 5295 (class 0 OID 17099)
+-- TOC entry 5311 (class 0 OID 17099)
 -- Dependencies: 249
 -- Data for Name: usuarios; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -1285,7 +1399,7 @@ COPY public.usuarios ("ID_Usuario", "Usuario", "ID_Rol", "Password") FROM stdin;
 
 
 --
--- TOC entry 5334 (class 0 OID 0)
+-- TOC entry 5351 (class 0 OID 0)
 -- Dependencies: 243
 -- Name: asignaciones_profesionales_id_asignacionprofesional_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1294,7 +1408,7 @@ SELECT pg_catalog.setval('public.asignaciones_profesionales_id_asignacionprofesi
 
 
 --
--- TOC entry 5335 (class 0 OID 0)
+-- TOC entry 5352 (class 0 OID 0)
 -- Dependencies: 256
 -- Name: auth_group_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1303,7 +1417,7 @@ SELECT pg_catalog.setval('public.auth_group_id_seq', 1, false);
 
 
 --
--- TOC entry 5336 (class 0 OID 0)
+-- TOC entry 5353 (class 0 OID 0)
 -- Dependencies: 258
 -- Name: auth_group_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1312,16 +1426,16 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 
 
 --
--- TOC entry 5337 (class 0 OID 0)
+-- TOC entry 5354 (class 0 OID 0)
 -- Dependencies: 254
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 24, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 96, true);
 
 
 --
--- TOC entry 5338 (class 0 OID 0)
+-- TOC entry 5355 (class 0 OID 0)
 -- Dependencies: 262
 -- Name: auth_user_groups_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1330,7 +1444,7 @@ SELECT pg_catalog.setval('public.auth_user_groups_id_seq', 1, false);
 
 
 --
--- TOC entry 5339 (class 0 OID 0)
+-- TOC entry 5356 (class 0 OID 0)
 -- Dependencies: 260
 -- Name: auth_user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1339,7 +1453,7 @@ SELECT pg_catalog.setval('public.auth_user_id_seq', 1, false);
 
 
 --
--- TOC entry 5340 (class 0 OID 0)
+-- TOC entry 5357 (class 0 OID 0)
 -- Dependencies: 264
 -- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1348,7 +1462,7 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 
 
 --
--- TOC entry 5341 (class 0 OID 0)
+-- TOC entry 5358 (class 0 OID 0)
 -- Dependencies: 266
 -- Name: django_admin_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1357,25 +1471,25 @@ SELECT pg_catalog.setval('public.django_admin_log_id_seq', 1, false);
 
 
 --
--- TOC entry 5342 (class 0 OID 0)
+-- TOC entry 5359 (class 0 OID 0)
 -- Dependencies: 252
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 6, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 24, true);
 
 
 --
--- TOC entry 5343 (class 0 OID 0)
+-- TOC entry 5360 (class 0 OID 0)
 -- Dependencies: 250
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 18, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 22, true);
 
 
 --
--- TOC entry 5344 (class 0 OID 0)
+-- TOC entry 5361 (class 0 OID 0)
 -- Dependencies: 227
 -- Name: especialidades_id_especialidad_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1384,7 +1498,7 @@ SELECT pg_catalog.setval('public.especialidades_id_especialidad_seq', 1, false);
 
 
 --
--- TOC entry 5345 (class 0 OID 0)
+-- TOC entry 5362 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: estados_pacientes_id_estadopaciente_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1393,7 +1507,7 @@ SELECT pg_catalog.setval('public.estados_pacientes_id_estadopaciente_seq', 2, tr
 
 
 --
--- TOC entry 5346 (class 0 OID 0)
+-- TOC entry 5363 (class 0 OID 0)
 -- Dependencies: 225
 -- Name: estados_turnos_id_estadoturno_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1402,7 +1516,7 @@ SELECT pg_catalog.setval('public.estados_turnos_id_estadoturno_seq', 4, true);
 
 
 --
--- TOC entry 5347 (class 0 OID 0)
+-- TOC entry 5364 (class 0 OID 0)
 -- Dependencies: 231
 -- Name: obras_sociales_id_obrasocial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1411,7 +1525,7 @@ SELECT pg_catalog.setval('public.obras_sociales_id_obrasocial_seq', 1, false);
 
 
 --
--- TOC entry 5348 (class 0 OID 0)
+-- TOC entry 5365 (class 0 OID 0)
 -- Dependencies: 237
 -- Name: pacientes_id_paciente_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1420,7 +1534,7 @@ SELECT pg_catalog.setval('public.pacientes_id_paciente_seq', 1, false);
 
 
 --
--- TOC entry 5349 (class 0 OID 0)
+-- TOC entry 5366 (class 0 OID 0)
 -- Dependencies: 239
 -- Name: pacientes_tutores_id_pacientetutor_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1429,7 +1543,7 @@ SELECT pg_catalog.setval('public.pacientes_tutores_id_pacientetutor_seq', 1, fal
 
 
 --
--- TOC entry 5350 (class 0 OID 0)
+-- TOC entry 5367 (class 0 OID 0)
 -- Dependencies: 219
 -- Name: parentescos_id_parentesco_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1438,7 +1552,7 @@ SELECT pg_catalog.setval('public.parentescos_id_parentesco_seq', 1, false);
 
 
 --
--- TOC entry 5351 (class 0 OID 0)
+-- TOC entry 5368 (class 0 OID 0)
 -- Dependencies: 235
 -- Name: profesionales_id_profesional_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1447,7 +1561,7 @@ SELECT pg_catalog.setval('public.profesionales_id_profesional_seq', 1, false);
 
 
 --
--- TOC entry 5352 (class 0 OID 0)
+-- TOC entry 5369 (class 0 OID 0)
 -- Dependencies: 241
 -- Name: registros_de_sesiones_id_registrosesion_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1456,7 +1570,7 @@ SELECT pg_catalog.setval('public.registros_de_sesiones_id_registrosesion_seq', 1
 
 
 --
--- TOC entry 5353 (class 0 OID 0)
+-- TOC entry 5370 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: roles_id_rol_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1465,7 +1579,7 @@ SELECT pg_catalog.setval('public.roles_id_rol_seq', 2, true);
 
 
 --
--- TOC entry 5354 (class 0 OID 0)
+-- TOC entry 5371 (class 0 OID 0)
 -- Dependencies: 221
 -- Name: tipos_obras_sociales_id_tipoos_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1474,7 +1588,7 @@ SELECT pg_catalog.setval('public.tipos_obras_sociales_id_tipoos_seq', 1, false);
 
 
 --
--- TOC entry 5355 (class 0 OID 0)
+-- TOC entry 5372 (class 0 OID 0)
 -- Dependencies: 245
 -- Name: turnos_id_turno_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1483,7 +1597,7 @@ SELECT pg_catalog.setval('public.turnos_id_turno_seq', 1, false);
 
 
 --
--- TOC entry 5356 (class 0 OID 0)
+-- TOC entry 5373 (class 0 OID 0)
 -- Dependencies: 233
 -- Name: tutores_id_tutor_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -1492,7 +1606,25 @@ SELECT pg_catalog.setval('public.tutores_id_tutor_seq', 1, false);
 
 
 --
--- TOC entry 5045 (class 2606 OID 16970)
+-- TOC entry 5032 (class 2606 OID 17367)
+-- Name: profesionales UQ_Profesionales_ID_Usuario; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.profesionales
+    ADD CONSTRAINT "UQ_Profesionales_ID_Usuario" UNIQUE ("ID_Usuario");
+
+
+--
+-- TOC entry 5109 (class 2606 OID 17361)
+-- Name: roles_permisos UQ_RolesPermisos_Rol_Permiso; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.roles_permisos
+    ADD CONSTRAINT "UQ_RolesPermisos_Rol_Permiso" UNIQUE ("ID_Rol", "ID_Permiso");
+
+
+--
+-- TOC entry 5052 (class 2606 OID 16970)
 -- Name: asignaciones_profesionales asignaciones_profesionales_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1501,7 +1633,7 @@ ALTER TABLE ONLY public.asignaciones_profesionales
 
 
 --
--- TOC entry 5061 (class 2606 OID 17297)
+-- TOC entry 5074 (class 2606 OID 17297)
 -- Name: auth_group auth_group_name_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1510,7 +1642,7 @@ ALTER TABLE ONLY public.auth_group
 
 
 --
--- TOC entry 5066 (class 2606 OID 17218)
+-- TOC entry 5079 (class 2606 OID 17218)
 -- Name: auth_group_permissions auth_group_permissions_group_id_permission_id_0cd325b0_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1519,7 +1651,7 @@ ALTER TABLE ONLY public.auth_group_permissions
 
 
 --
--- TOC entry 5069 (class 2606 OID 17170)
+-- TOC entry 5082 (class 2606 OID 17170)
 -- Name: auth_group_permissions auth_group_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1528,7 +1660,7 @@ ALTER TABLE ONLY public.auth_group_permissions
 
 
 --
--- TOC entry 5063 (class 2606 OID 17159)
+-- TOC entry 5076 (class 2606 OID 17159)
 -- Name: auth_group auth_group_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1537,7 +1669,7 @@ ALTER TABLE ONLY public.auth_group
 
 
 --
--- TOC entry 5056 (class 2606 OID 17209)
+-- TOC entry 5069 (class 2606 OID 17209)
 -- Name: auth_permission auth_permission_content_type_id_codename_01ab375a_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1546,7 +1678,7 @@ ALTER TABLE ONLY public.auth_permission
 
 
 --
--- TOC entry 5058 (class 2606 OID 17151)
+-- TOC entry 5071 (class 2606 OID 17151)
 -- Name: auth_permission auth_permission_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1555,7 +1687,7 @@ ALTER TABLE ONLY public.auth_permission
 
 
 --
--- TOC entry 5077 (class 2606 OID 17198)
+-- TOC entry 5090 (class 2606 OID 17198)
 -- Name: auth_user_groups auth_user_groups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1564,7 +1696,7 @@ ALTER TABLE ONLY public.auth_user_groups
 
 
 --
--- TOC entry 5080 (class 2606 OID 17233)
+-- TOC entry 5093 (class 2606 OID 17233)
 -- Name: auth_user_groups auth_user_groups_user_id_group_id_94350c0c_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1573,7 +1705,7 @@ ALTER TABLE ONLY public.auth_user_groups
 
 
 --
--- TOC entry 5071 (class 2606 OID 17187)
+-- TOC entry 5084 (class 2606 OID 17187)
 -- Name: auth_user auth_user_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1582,7 +1714,7 @@ ALTER TABLE ONLY public.auth_user
 
 
 --
--- TOC entry 5083 (class 2606 OID 17207)
+-- TOC entry 5096 (class 2606 OID 17207)
 -- Name: auth_user_user_permissions auth_user_user_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1591,7 +1723,7 @@ ALTER TABLE ONLY public.auth_user_user_permissions
 
 
 --
--- TOC entry 5086 (class 2606 OID 17247)
+-- TOC entry 5099 (class 2606 OID 17247)
 -- Name: auth_user_user_permissions auth_user_user_permissions_user_id_permission_id_14a6b632_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1600,7 +1732,7 @@ ALTER TABLE ONLY public.auth_user_user_permissions
 
 
 --
--- TOC entry 5074 (class 2606 OID 17290)
+-- TOC entry 5087 (class 2606 OID 17290)
 -- Name: auth_user auth_user_username_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1609,7 +1741,7 @@ ALTER TABLE ONLY public.auth_user
 
 
 --
--- TOC entry 5089 (class 2606 OID 17274)
+-- TOC entry 5102 (class 2606 OID 17274)
 -- Name: django_admin_log django_admin_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1618,7 +1750,7 @@ ALTER TABLE ONLY public.django_admin_log
 
 
 --
--- TOC entry 5051 (class 2606 OID 17141)
+-- TOC entry 5064 (class 2606 OID 17141)
 -- Name: django_content_type django_content_type_app_label_model_76bd3d3b_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1627,7 +1759,7 @@ ALTER TABLE ONLY public.django_content_type
 
 
 --
--- TOC entry 5053 (class 2606 OID 17139)
+-- TOC entry 5066 (class 2606 OID 17139)
 -- Name: django_content_type django_content_type_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1636,7 +1768,7 @@ ALTER TABLE ONLY public.django_content_type
 
 
 --
--- TOC entry 5049 (class 2606 OID 17129)
+-- TOC entry 5062 (class 2606 OID 17129)
 -- Name: django_migrations django_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1645,7 +1777,7 @@ ALTER TABLE ONLY public.django_migrations
 
 
 --
--- TOC entry 5093 (class 2606 OID 17310)
+-- TOC entry 5106 (class 2606 OID 17310)
 -- Name: django_session django_session_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1654,7 +1786,7 @@ ALTER TABLE ONLY public.django_session
 
 
 --
--- TOC entry 5016 (class 2606 OID 16822)
+-- TOC entry 5020 (class 2606 OID 16822)
 -- Name: especialidades especialidades_especialidad_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1663,7 +1795,7 @@ ALTER TABLE ONLY public.especialidades
 
 
 --
--- TOC entry 5018 (class 2606 OID 16820)
+-- TOC entry 5022 (class 2606 OID 16820)
 -- Name: especialidades especialidades_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1672,7 +1804,7 @@ ALTER TABLE ONLY public.especialidades
 
 
 --
--- TOC entry 5008 (class 2606 OID 16800)
+-- TOC entry 5012 (class 2606 OID 16800)
 -- Name: estados_pacientes estados_pacientes_estado_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1681,7 +1813,7 @@ ALTER TABLE ONLY public.estados_pacientes
 
 
 --
--- TOC entry 5010 (class 2606 OID 16798)
+-- TOC entry 5014 (class 2606 OID 16798)
 -- Name: estados_pacientes estados_pacientes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1690,7 +1822,7 @@ ALTER TABLE ONLY public.estados_pacientes
 
 
 --
--- TOC entry 5012 (class 2606 OID 16811)
+-- TOC entry 5016 (class 2606 OID 16811)
 -- Name: estados_turnos estados_turnos_estado_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1699,7 +1831,7 @@ ALTER TABLE ONLY public.estados_turnos
 
 
 --
--- TOC entry 5014 (class 2606 OID 16809)
+-- TOC entry 5018 (class 2606 OID 16809)
 -- Name: estados_turnos estados_turnos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1708,7 +1840,7 @@ ALTER TABLE ONLY public.estados_turnos
 
 
 --
--- TOC entry 5024 (class 2606 OID 16845)
+-- TOC entry 5028 (class 2606 OID 16845)
 -- Name: obras_sociales obras_sociales_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1717,7 +1849,7 @@ ALTER TABLE ONLY public.obras_sociales
 
 
 --
--- TOC entry 5034 (class 2606 OID 16907)
+-- TOC entry 5040 (class 2606 OID 16907)
 -- Name: pacientes pacientes_dni_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1726,7 +1858,7 @@ ALTER TABLE ONLY public.pacientes
 
 
 --
--- TOC entry 5036 (class 2606 OID 16905)
+-- TOC entry 5042 (class 2606 OID 16905)
 -- Name: pacientes pacientes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1735,7 +1867,7 @@ ALTER TABLE ONLY public.pacientes
 
 
 --
--- TOC entry 5038 (class 2606 OID 16930)
+-- TOC entry 5044 (class 2606 OID 16930)
 -- Name: pacientes_tutores pacientes_tutores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1744,7 +1876,7 @@ ALTER TABLE ONLY public.pacientes_tutores
 
 
 --
--- TOC entry 5000 (class 2606 OID 16778)
+-- TOC entry 5004 (class 2606 OID 16778)
 -- Name: parentescos parentescos_descripcion_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1753,7 +1885,7 @@ ALTER TABLE ONLY public.parentescos
 
 
 --
--- TOC entry 5002 (class 2606 OID 16776)
+-- TOC entry 5006 (class 2606 OID 16776)
 -- Name: parentescos parentescos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1762,7 +1894,7 @@ ALTER TABLE ONLY public.parentescos
 
 
 --
--- TOC entry 5028 (class 2606 OID 16876)
+-- TOC entry 5034 (class 2606 OID 16876)
 -- Name: profesionales profesionales_dni_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1771,7 +1903,7 @@ ALTER TABLE ONLY public.profesionales
 
 
 --
--- TOC entry 5030 (class 2606 OID 16878)
+-- TOC entry 5036 (class 2606 OID 16878)
 -- Name: profesionales profesionales_matricula_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1780,7 +1912,7 @@ ALTER TABLE ONLY public.profesionales
 
 
 --
--- TOC entry 5032 (class 2606 OID 16874)
+-- TOC entry 5038 (class 2606 OID 16874)
 -- Name: profesionales profesionales_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1789,7 +1921,7 @@ ALTER TABLE ONLY public.profesionales
 
 
 --
--- TOC entry 5043 (class 2606 OID 16958)
+-- TOC entry 5050 (class 2606 OID 16958)
 -- Name: registros_de_sesiones registros_de_sesiones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1798,7 +1930,7 @@ ALTER TABLE ONLY public.registros_de_sesiones
 
 
 --
--- TOC entry 5020 (class 2606 OID 16831)
+-- TOC entry 5024 (class 2606 OID 16831)
 -- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1807,7 +1939,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- TOC entry 5022 (class 2606 OID 16833)
+-- TOC entry 5026 (class 2606 OID 16833)
 -- Name: roles roles_rol_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1816,7 +1948,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- TOC entry 5004 (class 2606 OID 16787)
+-- TOC entry 5008 (class 2606 OID 16787)
 -- Name: tipos_obras_sociales tipos_obras_sociales_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1825,7 +1957,7 @@ ALTER TABLE ONLY public.tipos_obras_sociales
 
 
 --
--- TOC entry 5006 (class 2606 OID 16789)
+-- TOC entry 5010 (class 2606 OID 16789)
 -- Name: tipos_obras_sociales tipos_obras_sociales_tipo_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1834,7 +1966,7 @@ ALTER TABLE ONLY public.tipos_obras_sociales
 
 
 --
--- TOC entry 5047 (class 2606 OID 17052)
+-- TOC entry 5054 (class 2606 OID 17052)
 -- Name: turnos turnos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1843,7 +1975,7 @@ ALTER TABLE ONLY public.turnos
 
 
 --
--- TOC entry 5026 (class 2606 OID 16860)
+-- TOC entry 5030 (class 2606 OID 16860)
 -- Name: tutores tutores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1852,7 +1984,7 @@ ALTER TABLE ONLY public.tutores
 
 
 --
--- TOC entry 5041 (class 2606 OID 16932)
+-- TOC entry 5048 (class 2606 OID 16932)
 -- Name: pacientes_tutores uq_paciente_tutor; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1861,7 +1993,25 @@ ALTER TABLE ONLY public.pacientes_tutores
 
 
 --
--- TOC entry 5059 (class 1259 OID 17298)
+-- TOC entry 5058 (class 2606 OID 17378)
+-- Name: usuarios uq_usuarios_usuario; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usuarios
+    ADD CONSTRAINT uq_usuarios_usuario UNIQUE ("Usuario");
+
+
+--
+-- TOC entry 5060 (class 2606 OID 17388)
+-- Name: usuarios usuarios_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usuarios
+    ADD CONSTRAINT usuarios_pkey PRIMARY KEY ("ID_Usuario");
+
+
+--
+-- TOC entry 5072 (class 1259 OID 17298)
 -- Name: auth_group_name_a6ea08ec_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1869,7 +2019,7 @@ CREATE INDEX auth_group_name_a6ea08ec_like ON public.auth_group USING btree (nam
 
 
 --
--- TOC entry 5064 (class 1259 OID 17229)
+-- TOC entry 5077 (class 1259 OID 17229)
 -- Name: auth_group_permissions_group_id_b120cbf9; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1877,7 +2027,7 @@ CREATE INDEX auth_group_permissions_group_id_b120cbf9 ON public.auth_group_permi
 
 
 --
--- TOC entry 5067 (class 1259 OID 17230)
+-- TOC entry 5080 (class 1259 OID 17230)
 -- Name: auth_group_permissions_permission_id_84c5c92e; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1885,7 +2035,7 @@ CREATE INDEX auth_group_permissions_permission_id_84c5c92e ON public.auth_group_
 
 
 --
--- TOC entry 5054 (class 1259 OID 17215)
+-- TOC entry 5067 (class 1259 OID 17215)
 -- Name: auth_permission_content_type_id_2f476e4b; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1893,7 +2043,7 @@ CREATE INDEX auth_permission_content_type_id_2f476e4b ON public.auth_permission 
 
 
 --
--- TOC entry 5075 (class 1259 OID 17245)
+-- TOC entry 5088 (class 1259 OID 17245)
 -- Name: auth_user_groups_group_id_97559544; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1901,7 +2051,7 @@ CREATE INDEX auth_user_groups_group_id_97559544 ON public.auth_user_groups USING
 
 
 --
--- TOC entry 5078 (class 1259 OID 17244)
+-- TOC entry 5091 (class 1259 OID 17244)
 -- Name: auth_user_groups_user_id_6a12ed8b; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1909,7 +2059,7 @@ CREATE INDEX auth_user_groups_user_id_6a12ed8b ON public.auth_user_groups USING 
 
 
 --
--- TOC entry 5081 (class 1259 OID 17259)
+-- TOC entry 5094 (class 1259 OID 17259)
 -- Name: auth_user_user_permissions_permission_id_1fbb5f2c; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1917,7 +2067,7 @@ CREATE INDEX auth_user_user_permissions_permission_id_1fbb5f2c ON public.auth_us
 
 
 --
--- TOC entry 5084 (class 1259 OID 17258)
+-- TOC entry 5097 (class 1259 OID 17258)
 -- Name: auth_user_user_permissions_user_id_a95ead1b; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1925,7 +2075,7 @@ CREATE INDEX auth_user_user_permissions_user_id_a95ead1b ON public.auth_user_use
 
 
 --
--- TOC entry 5072 (class 1259 OID 17291)
+-- TOC entry 5085 (class 1259 OID 17291)
 -- Name: auth_user_username_6821ab7c_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1933,7 +2083,7 @@ CREATE INDEX auth_user_username_6821ab7c_like ON public.auth_user USING btree (u
 
 
 --
--- TOC entry 5087 (class 1259 OID 17285)
+-- TOC entry 5100 (class 1259 OID 17285)
 -- Name: django_admin_log_content_type_id_c4bce8eb; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1941,7 +2091,7 @@ CREATE INDEX django_admin_log_content_type_id_c4bce8eb ON public.django_admin_lo
 
 
 --
--- TOC entry 5090 (class 1259 OID 17286)
+-- TOC entry 5103 (class 1259 OID 17286)
 -- Name: django_admin_log_user_id_c564eba6; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1949,7 +2099,7 @@ CREATE INDEX django_admin_log_user_id_c564eba6 ON public.django_admin_log USING 
 
 
 --
--- TOC entry 5091 (class 1259 OID 17312)
+-- TOC entry 5104 (class 1259 OID 17312)
 -- Name: django_session_expire_date_a5c62663; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1957,7 +2107,7 @@ CREATE INDEX django_session_expire_date_a5c62663 ON public.django_session USING 
 
 
 --
--- TOC entry 5094 (class 1259 OID 17311)
+-- TOC entry 5107 (class 1259 OID 17311)
 -- Name: django_session_session_key_c0390e0f_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1965,7 +2115,15 @@ CREATE INDEX django_session_session_key_c0390e0f_like ON public.django_session U
 
 
 --
--- TOC entry 5039 (class 1259 OID 16948)
+-- TOC entry 5045 (class 1259 OID 17379)
+-- Name: uq_paciente_responsable_principal; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_paciente_responsable_principal ON public.pacientes_tutores USING btree ("ID_Paciente") WHERE ("ResponsablePrincipal" = true);
+
+
+--
+-- TOC entry 5046 (class 1259 OID 16948)
 -- Name: uq_paciente_responsableprincipal; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1973,7 +2131,23 @@ CREATE UNIQUE INDEX uq_paciente_responsableprincipal ON public.pacientes_tutores
 
 
 --
--- TOC entry 5110 (class 2606 OID 17224)
+-- TOC entry 5055 (class 1259 OID 17380)
+-- Name: uq_turno_profesional_fecha_hora; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_turno_profesional_fecha_hora ON public.turnos USING btree ("ID_Profesional", "Fecha", "Hora");
+
+
+--
+-- TOC entry 5056 (class 1259 OID 17381)
+-- Name: uq_turno_registro_sesion; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_turno_registro_sesion ON public.turnos USING btree ("ID_RegistroSesion") WHERE ("ID_RegistroSesion" IS NOT NULL);
+
+
+--
+-- TOC entry 5126 (class 2606 OID 17224)
 -- Name: auth_group_permissions auth_group_permissio_permission_id_84c5c92e_fk_auth_perm; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1982,7 +2156,7 @@ ALTER TABLE ONLY public.auth_group_permissions
 
 
 --
--- TOC entry 5111 (class 2606 OID 17219)
+-- TOC entry 5127 (class 2606 OID 17219)
 -- Name: auth_group_permissions auth_group_permissions_group_id_b120cbf9_fk_auth_group_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1991,7 +2165,7 @@ ALTER TABLE ONLY public.auth_group_permissions
 
 
 --
--- TOC entry 5109 (class 2606 OID 17210)
+-- TOC entry 5125 (class 2606 OID 17210)
 -- Name: auth_permission auth_permission_content_type_id_2f476e4b_fk_django_co; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2000,7 +2174,7 @@ ALTER TABLE ONLY public.auth_permission
 
 
 --
--- TOC entry 5112 (class 2606 OID 17239)
+-- TOC entry 5128 (class 2606 OID 17239)
 -- Name: auth_user_groups auth_user_groups_group_id_97559544_fk_auth_group_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2009,7 +2183,7 @@ ALTER TABLE ONLY public.auth_user_groups
 
 
 --
--- TOC entry 5113 (class 2606 OID 17234)
+-- TOC entry 5129 (class 2606 OID 17234)
 -- Name: auth_user_groups auth_user_groups_user_id_6a12ed8b_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2018,7 +2192,7 @@ ALTER TABLE ONLY public.auth_user_groups
 
 
 --
--- TOC entry 5114 (class 2606 OID 17253)
+-- TOC entry 5130 (class 2606 OID 17253)
 -- Name: auth_user_user_permissions auth_user_user_permi_permission_id_1fbb5f2c_fk_auth_perm; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2027,7 +2201,7 @@ ALTER TABLE ONLY public.auth_user_user_permissions
 
 
 --
--- TOC entry 5115 (class 2606 OID 17248)
+-- TOC entry 5131 (class 2606 OID 17248)
 -- Name: auth_user_user_permissions auth_user_user_permissions_user_id_a95ead1b_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2036,7 +2210,7 @@ ALTER TABLE ONLY public.auth_user_user_permissions
 
 
 --
--- TOC entry 5116 (class 2606 OID 17275)
+-- TOC entry 5132 (class 2606 OID 17275)
 -- Name: django_admin_log django_admin_log_content_type_id_c4bce8eb_fk_django_co; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2045,7 +2219,7 @@ ALTER TABLE ONLY public.django_admin_log
 
 
 --
--- TOC entry 5117 (class 2606 OID 17280)
+-- TOC entry 5133 (class 2606 OID 17280)
 -- Name: django_admin_log django_admin_log_user_id_c564eba6_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2054,7 +2228,7 @@ ALTER TABLE ONLY public.django_admin_log
 
 
 --
--- TOC entry 5103 (class 2606 OID 16971)
+-- TOC entry 5118 (class 2606 OID 16971)
 -- Name: asignaciones_profesionales fk_asignacionesprofesionales_paciente; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2063,7 +2237,7 @@ ALTER TABLE ONLY public.asignaciones_profesionales
 
 
 --
--- TOC entry 5104 (class 2606 OID 16976)
+-- TOC entry 5119 (class 2606 OID 16976)
 -- Name: asignaciones_profesionales fk_asignacionesprofesionales_profesional; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2072,7 +2246,7 @@ ALTER TABLE ONLY public.asignaciones_profesionales
 
 
 --
--- TOC entry 5095 (class 2606 OID 16846)
+-- TOC entry 5110 (class 2606 OID 16846)
 -- Name: obras_sociales fk_obrassociales_tipos; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2081,7 +2255,7 @@ ALTER TABLE ONLY public.obras_sociales
 
 
 --
--- TOC entry 5098 (class 2606 OID 16913)
+-- TOC entry 5113 (class 2606 OID 16913)
 -- Name: pacientes fk_pacientes_estados; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2090,7 +2264,7 @@ ALTER TABLE ONLY public.pacientes
 
 
 --
--- TOC entry 5099 (class 2606 OID 16908)
+-- TOC entry 5114 (class 2606 OID 16908)
 -- Name: pacientes fk_pacientes_obrassociales; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2099,7 +2273,7 @@ ALTER TABLE ONLY public.pacientes
 
 
 --
--- TOC entry 5100 (class 2606 OID 16938)
+-- TOC entry 5115 (class 2606 OID 16938)
 -- Name: pacientes_tutores fk_pacientestutores_paciente; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2108,7 +2282,7 @@ ALTER TABLE ONLY public.pacientes_tutores
 
 
 --
--- TOC entry 5101 (class 2606 OID 16943)
+-- TOC entry 5116 (class 2606 OID 16943)
 -- Name: pacientes_tutores fk_pacientestutores_parentesco; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2117,7 +2291,7 @@ ALTER TABLE ONLY public.pacientes_tutores
 
 
 --
--- TOC entry 5102 (class 2606 OID 16933)
+-- TOC entry 5117 (class 2606 OID 16933)
 -- Name: pacientes_tutores fk_pacientestutores_tutor; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2126,7 +2300,7 @@ ALTER TABLE ONLY public.pacientes_tutores
 
 
 --
--- TOC entry 5096 (class 2606 OID 16879)
+-- TOC entry 5111 (class 2606 OID 16879)
 -- Name: profesionales fk_profesionales_especialidades; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2135,16 +2309,16 @@ ALTER TABLE ONLY public.profesionales
 
 
 --
--- TOC entry 5097 (class 2606 OID 16884)
--- Name: profesionales fk_profesionales_roles; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 5112 (class 2606 OID 17394)
+-- Name: profesionales fk_profesionales_usuario; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.profesionales
-    ADD CONSTRAINT fk_profesionales_roles FOREIGN KEY ("ID_Rol") REFERENCES public.roles("ID_Rol");
+    ADD CONSTRAINT fk_profesionales_usuario FOREIGN KEY ("ID_Usuario") REFERENCES public.usuarios("ID_Usuario");
 
 
 --
--- TOC entry 5105 (class 2606 OID 17053)
+-- TOC entry 5120 (class 2606 OID 17053)
 -- Name: turnos fk_turnos_estados; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2153,7 +2327,7 @@ ALTER TABLE ONLY public.turnos
 
 
 --
--- TOC entry 5106 (class 2606 OID 17068)
+-- TOC entry 5121 (class 2606 OID 17068)
 -- Name: turnos fk_turnos_paciente; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2162,7 +2336,7 @@ ALTER TABLE ONLY public.turnos
 
 
 --
--- TOC entry 5107 (class 2606 OID 17063)
+-- TOC entry 5122 (class 2606 OID 17063)
 -- Name: turnos fk_turnos_profesional; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2171,7 +2345,7 @@ ALTER TABLE ONLY public.turnos
 
 
 --
--- TOC entry 5108 (class 2606 OID 17058)
+-- TOC entry 5123 (class 2606 OID 17058)
 -- Name: turnos fk_turnos_registrosesion; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2179,11 +2353,20 @@ ALTER TABLE ONLY public.turnos
     ADD CONSTRAINT fk_turnos_registrosesion FOREIGN KEY ("ID_RegistroSesion") REFERENCES public.registros_de_sesiones("ID_RegistroSesion") ON DELETE SET NULL;
 
 
--- Completed on 2026-09-04 17:29:17
+--
+-- TOC entry 5124 (class 2606 OID 17389)
+-- Name: usuarios fk_usuarios_rol; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usuarios
+    ADD CONSTRAINT fk_usuarios_rol FOREIGN KEY ("ID_Rol") REFERENCES public.roles("ID_Rol");
+
+
+-- Completed on 2026-09-07 17:16:37
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 6AAs5SQUdnbl2kwxeqWzyq816CkogkyV9edPevsVDesSM3YbUYQEOMsVW66PwOZ
+\unrestrict Oh7mZY3Dle1DrhdRKooctAjdBGc2uxhOcmKxxl8w8blFYDngeenFdeVObILjOOJ
 
