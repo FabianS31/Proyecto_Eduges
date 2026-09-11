@@ -8,7 +8,7 @@
     <div>
         <h1 class="h4 fw-bold mb-1" style="color: var(--eduges-text-main);">Panel General de Gestión</h1>
         <p class="text-muted small mb-0">
-            <i class="bi bi-clock me-1"></i> Sesiones y seguimiento clínico para hoy
+            <i class="bi bi-clock me-1"></i> Sesiones y seguimiento clínico para hoy ({{ hoy|date:"d/m/Y" }})
         </p>
     </div>
     <div class="d-flex gap-2">
@@ -28,8 +28,8 @@
         <div class="card-metric d-flex justify-content-between align-items-center">
             <div>
                 <span class="text-muted small fw-semibold text-uppercase">Turnos Hoy</span>
-                <div class="h3 fw-bold mb-0 mt-1">10</div>
-                <div class="text-muted small mt-1">4 realizados · 6 pendientes</div>
+                <div class="h3 fw-bold mb-0 mt-1">{{ total_turnos_hoy }}</div>
+                <div class="text-muted small mt-1">{{ turnos_completados }} realizados · {{ turnos_pendientes }} pendientes</div>
             </div>
             <div class="metric-icon-box" style="background-color: #E8F0FE; color: var(--eduges-primary);">
                 <i class="bi bi-calendar2-check fs-4"></i>
@@ -37,13 +37,13 @@
         </div>
     </div>
 
-    <!-- Métrica 2: Pacientes con CUD -->
+    <!-- Métrica 2: Pacientes Activos -->
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card-metric d-flex justify-content-between align-items-center">
             <div>
                 <span class="text-muted small fw-semibold text-uppercase">Pacientes Activos</span>
-                <div class="h3 fw-bold mb-0 mt-1">36</div>
-                <div class="text-muted small mt-1">Menores con CUD registrado</div>
+                <div class="h3 fw-bold mb-0 mt-1">{{ total_pacientes }}</div>
+                <div class="text-muted small mt-1">Registrados en el sistema</div>
             </div>
             <div class="metric-icon-box" style="background-color: #E6F4EA; color: #137333;">
                 <i class="bi bi-people fs-4"></i>
@@ -51,12 +51,12 @@
         </div>
     </div>
 
-    <!-- Métrica 3: Alerta CUD (Vencimientos) -->
+    <!-- Métrica 3: Alertas CUD (Vencimientos) -->
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card-metric d-flex justify-content-between align-items-center">
             <div>
                 <span class="text-muted small fw-semibold text-uppercase">Alertas CUD</span>
-                <div class="h3 fw-bold mb-0 mt-1 text-danger">3</div>
+                <div class="h3 fw-bold mb-0 mt-1 text-danger">{{ alertas_cud|default:"0" }}</div>
                 <div class="text-danger small mt-1 fw-semibold">Vencen en menos de 30 días</div>
             </div>
             <div class="metric-icon-box" style="background-color: #FCE8E6; color: #C5221F;">
@@ -70,8 +70,8 @@
         <div class="card-metric d-flex justify-content-between align-items-center">
             <div>
                 <span class="text-muted small fw-semibold text-uppercase">Profesionales</span>
-                <div class="h3 fw-bold mb-0 mt-1">5</div>
-                <div class="text-muted small mt-1">Atendiendo en consultorios</div>
+                <div class="h3 fw-bold mb-0 mt-1">{{ total_profesionales|default:"1" }}</div>
+                <div class="text-muted small mt-1">Activos en el equipo</div>
             </div>
             <div class="metric-icon-box" style="background-color: #F1F3F4; color: #5F6368;">
                 <i class="bi bi-person-workspace fs-4"></i>
@@ -83,7 +83,7 @@
 <!-- Contenido Principal: Turnos del Día + Panel Lateral de Alertas CUD -->
 <div class="row g-4">
     
-    <!-- Columna Izquierda (8 cols): Agenda de Sesiones de Hoy -->
+    <!-- Columna Izquierda: Agenda de Sesiones de Hoy -->
     <div class="col-12 col-lg-8">
         <div class="card-table shadow-sm">
             <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center">
@@ -92,7 +92,9 @@
                         <i class="bi bi-calendar-day me-1 text-primary"></i> Sesiones Programadas para Hoy
                     </h6>
                 </div>
-                <span class="badge bg-light text-secondary border">4 de 10 completadas</span>
+                <span class="badge bg-light text-secondary border">
+                    {{ turnos_completados }} de {{ total_turnos_hoy }} completadas
+                </span>
             </div>
 
             <div class="table-responsive">
@@ -100,7 +102,7 @@
                     <thead class="table-light small text-secondary">
                         <tr>
                             <th style="width: 80px;">HORA</th>
-                            <th>PACIENTE / TUTOR</th>
+                            <th>PACIENTE</th>
                             <th>OBRA SOCIAL</th>
                             <th>PROFESIONAL</th>
                             <th>ESTADO</th>
@@ -108,86 +110,55 @@
                         </tr>
                     </thead>
                     <tbody class="small">
-                        <!-- Turno 1 (Realizado) -->
-                        <tr>
-                            <td><span class="fw-bold">14:00</span></td>
+                        {% for turno in turnos_hoy %}
+                        <tr {% if 'Pendiente' in turno.estado.estado %}class="table-primary-subtle"{% elif 'Cancelado' in turno.estado.estado %}class="opacity-75"{% endif %}>
+                            <td><span class="fw-bold">{{ turno.hora|time:"H:i" }}</span></td>
                             <td>
-                                <div class="fw-semibold text-dark">Mateo González (7 años)</div>
+                                <div class="fw-semibold text-dark">{{ turno.paciente.apellido }}, {{ turno.paciente.nombre }}</div>
                                 <div class="text-muted small">
-                                    <i class="bi bi-person-heart text-secondary me-1"></i>Laura Benítez (Mamá)
+                                    <i class="bi bi-card-text text-secondary me-1"></i>DNI: {{ turno.paciente.dni }}
                                 </div>
                             </td>
-                            <td><span class="badge bg-light text-dark border">OSDE</span></td>
-                            <td>Lic. Mariana Soto</td>
-                            <td><span class="badge badge-turno-realizado">Realizado</span></td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    {{ turno.paciente.obra_social.nombre|default:"Particular" }}
+                                </span>
+                            </td>
+                            <td>Lic. {{ turno.profesional.apellido }} {{ turno.profesional.nombre }}</td>
+                            <td>
+                                {% if 'Realizado' in turno.estado.estado %}
+                                    <span class="badge badge-turno-realizado">{{ turno.estado.estado }}</span>
+                                {% elif 'Pendiente' in turno.estado.estado %}
+                                    <span class="badge badge-turno-pendiente">{{ turno.estado.estado }}</span>
+                                {% elif 'Confirmado' in turno.estado.estado %}
+                                    <span class="badge badge-turno-confirmado">{{ turno.estado.estado }}</span>
+                                {% elif 'Cancelado' in turno.estado.estado %}
+                                    <span class="badge badge-turno-cancelado">{{ turno.estado.estado }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ turno.estado.estado }}</span>
+                                {% endif %}
+                            </td>
                             <td class="text-end">
                                 <button class="btn btn-sm btn-light border text-success" title="Ver Evolución" data-bs-toggle="modal" data-bs-target="#modalSesion">
                                     <i class="bi bi-file-earmark-medical"></i>
                                 </button>
                             </td>
                         </tr>
-
-                        <!-- Turno 2 (Pendiente - Próximo) -->
-                        <tr class="table-primary-subtle">
-                            <td><span class="fw-bold text-primary">15:00</span></td>
-                            <td>
-                                <div class="fw-semibold text-dark">Valentina Martínez (5 años)</div>
-                                <div class="text-muted small">
-                                    <i class="bi bi-person-heart text-secondary me-1"></i>Marcos Martínez (Papá)
-                                </div>
-                            </td>
-                            <td><span class="badge bg-light text-dark border">IOMA</span></td>
-                            <td>Lic. Mariana Soto</td>
-                            <td><span class="badge badge-turno-pendiente">En Espera</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-eduges" title="Cargar Sesión" data-bs-toggle="modal" data-bs-target="#modalSesion">
-                                    <i class="bi bi-journal-plus me-1"></i> Registrar
-                                </button>
-                            </td>
-                        </tr>
-
-                        <!-- Turno 3 (Confirmado) -->
+                        {% empty %}
                         <tr>
-                            <td><span class="fw-bold">16:00</span></td>
-                            <td>
-                                <div class="fw-semibold text-dark">Ignacio López (8 años)</div>
-                                <div class="text-muted small">
-                                    <i class="bi bi-person-heart text-secondary me-1"></i>Clara Toledo (Tía)
-                                </div>
-                            </td>
-                            <td><span class="badge bg-light text-dark border">Swiss Medical</span></td>
-                            <td>Lic. Julián Pérez</td>
-                            <td><span class="badge badge-turno-confirmado">Confirmado</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-light border text-secondary" title="Opciones">
-                                    <i class="bi bi-three-dots-vertical"></i>
-                                </button>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-calendar-x fs-3 d-block mb-2 text-secondary"></i>
+                                No hay turnos programados para el día de hoy.
                             </td>
                         </tr>
-
-                        <!-- Turno 4 (Cancelado) -->
-                        <tr class="opacity-75">
-                            <td><span class="fw-bold text-muted">17:00</span></td>
-                            <td>
-                                <div class="fw-semibold text-muted text-decoration-line-through">Bautista Ruiz (6 años)</div>
-                                <div class="text-muted small">Aviso con anticipación</div>
-                            </td>
-                            <td><span class="badge bg-light text-muted border">Galeno</span></td>
-                            <td>Lic. Mariana Soto</td>
-                            <td><span class="badge badge-turno-cancelado">Cancelado</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-light border" disabled>
-                                    <i class="bi bi-slash-circle text-muted"></i>
-                                </button>
-                            </td>
-                        </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Columna Derecha (4 cols): Alertas CUD y Accesos Rápidos -->
+    <!-- Columna Derecha: Alertas CUD y Accesos Rápidos -->
     <div class="col-12 col-lg-4">
         
         <!-- Widget: Vencimientos de CUD -->
@@ -202,33 +173,10 @@
                 <p class="small text-muted mb-3">Pacientes con el Certificado Único de Discapacidad próximo a caducar:</p>
                 
                 <div class="d-flex flex-column gap-2">
-                    <!-- Paciente 1 -->
                     <div class="p-2 rounded border bg-light d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="fw-semibold small">Valentina Martínez</div>
-                            <small class="text-danger fw-semibold">Vence: 18/09/2026 (14 días)</small>
-                        </div>
-                        <button class="btn btn-xs btn-outline-secondary border-0" title="Contactar Tutor">
-                            <i class="bi bi-telephone-outbound"></i>
-                        </button>
-                    </div>
-
-                    <!-- Paciente 2 -->
-                    <div class="p-2 rounded border bg-light d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="fw-semibold small">Benjamín Sosa</div>
-                            <small class="text-warning-emphasis fw-semibold">Vence: 29/09/2026 (25 días)</small>
-                        </div>
-                        <button class="btn btn-xs btn-outline-secondary border-0" title="Contactar Tutor">
-                            <i class="bi bi-telephone-outbound"></i>
-                        </button>
-                    </div>
-
-                    <!-- Paciente 3 -->
-                    <div class="p-2 rounded border bg-light d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="fw-semibold small">Thiago Díaz</div>
-                            <small class="text-danger fw-semibold">Venció: 01/09/2026</small>
+                            <div class="fw-semibold small">Lucas Pérez</div>
+                            <small class="text-danger fw-semibold">Vigente hasta: 2027</small>
                         </div>
                         <button class="btn btn-xs btn-outline-secondary border-0" title="Contactar Tutor">
                             <i class="bi bi-telephone-outbound"></i>
@@ -259,7 +207,7 @@
 
 </div>
 
-<!-- Modal Interactivo: Registrar Evolución de Sesión (SQL: Registros_De_Sesiones) -->
+<!-- Modal: Registrar Evolución de Sesión -->
 <div class="modal fade" id="modalSesion" tabindex="-1" aria-labelledby="modalSesionLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow">
@@ -273,11 +221,11 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="small text-muted fw-semibold">Paciente</label>
-                        <div class="fw-bold">Valentina Martínez (5 años) - CUD Vigente</div>
+                        <div class="fw-bold">Lucas Pérez - CUD Vigente</div>
                     </div>
                     <div class="col-md-6">
                         <label class="small text-muted fw-semibold">Profesional a Cargo</label>
-                        <div class="fw-bold">Lic. Mariana Soto (Psicología Pediátrica)</div>
+                        <div class="fw-bold">Lic. Valeria Martínez</div>
                     </div>
                 </div>
 

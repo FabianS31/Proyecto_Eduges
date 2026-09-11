@@ -1,5 +1,8 @@
 entorno/
 venv/
+env/
 __pycache__/
-*.pyc
-db.sqlite3
+*.py[cod]
+*$py.class
+*.sqlite3
+.env

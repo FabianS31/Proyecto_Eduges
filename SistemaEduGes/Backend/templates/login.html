@@ -26,25 +26,21 @@
                         <div class="col-12 col-md-5 login-side-panel d-flex flex-column justify-content-between p-4 p-lg-5">
 
                             <div class="d-flex align-items-center gap-2">
-                                <img src="{% static 'img/logo.png' %}" alt="EduGes Logo" class="login-logo-side">
+                                <img src="{% static 'img/Logo.png' %}" alt="EduGes Logo" class="login-logo-side">
                                 <span class="fw-bold text-white fs-5">Rincón Psi</span>
                             </div>
 
                             <div class="text-center my-4">
-                                <!-- Ilustración institucional (temática de bienestar / psicología) -->
                                 <svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" class="login-illustration" role="img" aria-labelledby="ilustracionTitulo">
                                     <title id="ilustracionTitulo">Ilustración institucional de bienestar</title>
 
-                                    <!-- Elementos decorativos flotantes -->
                                     <circle cx="60" cy="70" r="10" fill="#FFFFFF" opacity="0.15"/>
                                     <circle cx="255" cy="55" r="6" fill="#FFFFFF" opacity="0.2"/>
                                     <circle cx="270" cy="230" r="14" fill="#FFFFFF" opacity="0.1"/>
                                     <path d="M60 220 q10 -14 22 0" stroke="#FFFFFF" stroke-width="3" fill="none" opacity="0.25" stroke-linecap="round"/>
 
-                                    <!-- Base / sombra -->
                                     <ellipse cx="160" cy="270" rx="120" ry="35" fill="#FFFFFF" opacity="0.06"/>
 
-                                    <!-- Silueta de cabeza pensante -->
                                     <path d="M110 150
                                              c0 -38 30 -66 66 -66
                                              c34 0 62 26 65 60
@@ -59,20 +55,17 @@
                                              z"
                                           fill="#FFFFFF" opacity="0.95"/>
 
-                                    <!-- Engranaje / proceso mental -->
                                     <circle cx="150" cy="140" r="20" fill="none" stroke="var(--eduges-primary)" stroke-width="4"/>
                                     <path d="M150 120 v-8 M150 168 v-8 M130 140 h-8 M178 140 h-8
                                              M136 126 l-6 -6 M170 126 l6 -6 M136 154 l-6 6 M170 154 l6 6"
                                           stroke="var(--eduges-primary)" stroke-width="4" stroke-linecap="round"/>
                                     <circle cx="150" cy="140" r="6" fill="var(--eduges-primary)"/>
 
-                                    <!-- Globo de diálogo / bienestar emocional -->
                                     <path d="M190 95 h55 a12 12 0 0 1 12 12 v28 a12 12 0 0 1 -12 12 h-18 l-14 16 v-16 h-23 a12 12 0 0 1 -12 -12 v-28 a12 12 0 0 1 12 -12 z"
                                           fill="var(--eduges-primary-light)"/>
                                     <path d="M205 115 c3 -6 9 -6 12 0 c3 -6 9 -6 12 0 c0 6 -6 10 -12 14 c-6 -4 -12 -8 -12 -14 z"
                                           fill="var(--eduges-primary)"/>
 
-                                    <!-- Hojas / crecimiento personal -->
                                     <path d="M225 235 q-4 -22 14 -34 q6 20 -4 34 q-5 4 -10 0 z" fill="#FFFFFF" opacity="0.85"/>
                                     <path d="M239 237 v-30" stroke="#FFFFFF" stroke-width="3" opacity="0.6" stroke-linecap="round"/>
                                 </svg>
@@ -94,16 +87,32 @@
                                 </div>
 
                                 <!-- Formulario de Acceso -->
-                               <form action="{% url 'home' %}" method="GET" novalidate autocomplete="off">
+                                <form method="POST" action="{% url 'login' %}" novalidate autocomplete="off">
+                                    {% csrf_token %}
 
-                                    <!-- Usuario / Matrícula -->
+                                    {% if form.errors %}
+                                    <div class="alert alert-danger py-2 small mb-3 d-flex align-items-center gap-2" role="alert">
+                                        <i class="bi bi-exclamation-circle-fill"></i>
+                                        <span>Usuario o contraseña incorrectos.</span>
+                                    </div>
+                                    {% endif %}
+
+                                    <!-- Usuario -->
                                     <div class="mb-3">
-                                        <label for="usuario" class="form-label small fw-semibold">Usuario o DNI</label>
+                                        <label for="usuario" class="form-label small fw-semibold">Usuario</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light" style="border: 1px solid var(--eduges-border); border-right: 0; border-radius: 8px 0 0 8px;">
                                                 <i class="bi bi-person text-secondary"></i>
                                             </span>
-                                            <input type="text" id="usuario" class="form-control form-control-eduges" style="border-radius: 0 8px 8px 0;" placeholder="Usuario o documento" required>
+                                            <input type="text" 
+                                                   name="username" 
+                                                   id="usuario" 
+                                                   class="form-control form-control-eduges" 
+                                                   style="border-radius: 0 8px 8px 0;" 
+                                                   placeholder="Ingresá tu usuario" 
+                                                   value="{{ form.username.value|default:'' }}" 
+                                                   required 
+                                                   autofocus>
                                         </div>
                                     </div>
 
@@ -111,17 +120,22 @@
                                     <div class="mb-3">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <label for="password" class="form-label small fw-semibold mb-0">Contraseña</label>
-                                            <a href="#" class="small link-eduges">¿Olvidaste tu clave?</a>
                                         </div>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light" style="border: 1px solid var(--eduges-border); border-right: 0; border-radius: 8px 0 0 8px;">
                                                 <i class="bi bi-lock text-secondary"></i>
                                             </span>
-                                            <input type="password" id="password" class="form-control form-control-eduges" style="border-radius: 0 8px 8px 0;" placeholder="••••••••" required>
+                                            <input type="password" 
+                                                   name="password" 
+                                                   id="password" 
+                                                   class="form-control form-control-eduges" 
+                                                   style="border-radius: 0 8px 8px 0;" 
+                                                   placeholder="••••••••" 
+                                                   required>
                                         </div>
                                     </div>
 
-                                    <!-- Recordar credenciales -->
+                                    <!-- Mantener sesión iniciada -->
                                     <div class="mb-4 form-check">
                                         <input type="checkbox" class="form-check-input" id="recordar">
                                         <label class="form-check-label small text-muted" for="recordar">Mantener sesión iniciada</label>
