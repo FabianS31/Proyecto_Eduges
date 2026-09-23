@@ -1,0 +1,171 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso al Sistema | EduGes</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Estilos institucionales -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body class="d-flex align-items-center justify-content-center min-vh-100 py-4">
+
+    <main class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10 col-xl-9">
+
+                <div class="card card-login-split p-0 overflow-hidden">
+                    <div class="row g-0">
+
+                        <!-- Panel izquierdo: identidad / ilustración -->
+                        <div class="col-12 col-md-5 login-side-panel d-flex flex-column justify-content-between p-4 p-lg-5">
+
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="{% static 'img/Logo.png' %}" alt="EduGes Logo" class="login-logo-side">
+                                <span class="fw-bold text-white fs-5">Rincón Psi</span>
+                            </div>
+
+                            <div class="text-center my-4">
+                                <svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" class="login-illustration" role="img" aria-labelledby="ilustracionTitulo">
+                                    <title id="ilustracionTitulo">Ilustración institucional de bienestar</title>
+
+                                    <circle cx="60" cy="70" r="10" fill="#FFFFFF" opacity="0.15"/>
+                                    <circle cx="255" cy="55" r="6" fill="#FFFFFF" opacity="0.2"/>
+                                    <circle cx="270" cy="230" r="14" fill="#FFFFFF" opacity="0.1"/>
+                                    <path d="M60 220 q10 -14 22 0" stroke="#FFFFFF" stroke-width="3" fill="none" opacity="0.25" stroke-linecap="round"/>
+
+                                    <ellipse cx="160" cy="270" rx="120" ry="35" fill="#FFFFFF" opacity="0.06"/>
+
+                                    <path d="M110 150
+                                             c0 -38 30 -66 66 -66
+                                             c34 0 62 26 65 60
+                                             c1 14 -3 22 3 30
+                                             c5 7 2 16 -8 16
+                                             h-8
+                                             v18
+                                             c0 8 -6 14 -14 14
+                                             h-14
+                                             c-2 10 -12 17 -23 15
+                                             c-30 -6 -67 -34 -67 -87
+                                             z"
+                                          fill="#FFFFFF" opacity="0.95"/>
+
+                                    <circle cx="150" cy="140" r="20" fill="none" stroke="var(--eduges-primary)" stroke-width="4"/>
+                                    <path d="M150 120 v-8 M150 168 v-8 M130 140 h-8 M178 140 h-8
+                                             M136 126 l-6 -6 M170 126 l6 -6 M136 154 l-6 6 M170 154 l6 6"
+                                          stroke="var(--eduges-primary)" stroke-width="4" stroke-linecap="round"/>
+                                    <circle cx="150" cy="140" r="6" fill="var(--eduges-primary)"/>
+
+                                    <path d="M190 95 h55 a12 12 0 0 1 12 12 v28 a12 12 0 0 1 -12 12 h-18 l-14 16 v-16 h-23 a12 12 0 0 1 -12 -12 v-28 a12 12 0 0 1 12 -12 z"
+                                          fill="var(--eduges-primary-light)"/>
+                                    <path d="M205 115 c3 -6 9 -6 12 0 c3 -6 9 -6 12 0 c0 6 -6 10 -12 14 c-6 -4 -12 -8 -12 -14 z"
+                                          fill="var(--eduges-primary)"/>
+
+                                    <path d="M225 235 q-4 -22 14 -34 q6 20 -4 34 q-5 4 -10 0 z" fill="#FFFFFF" opacity="0.85"/>
+                                    <path d="M239 237 v-30" stroke="#FFFFFF" stroke-width="3" opacity="0.6" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+
+                            <div>
+                                <h2 class="text-white fw-bold h4 mb-2">Bienvenido/a</h2>
+                                <p class="text-white-50 small mb-0">Accedé al sistema de gestión de Rincón Psi para administrar turnos, pacientes y seguimientos clínicos.</p>
+                            </div>
+                        </div>
+
+                        <!-- Panel derecho: formulario -->
+                        <div class="col-12 col-md-7 bg-white p-4 p-lg-5 d-flex align-items-center">
+                            <div class="w-100" style="max-width: 380px; margin: 0 auto;">
+
+                                <div class="text-center text-md-start mb-4">
+                                    <h1 class="h4 fw-bold mb-1" style="color: var(--eduges-primary);">EduGes</h1>
+                                    <p class="small text-muted mb-0">Gestión de Sesiones</p>
+                                </div>
+
+                                <!-- Formulario de Acceso -->
+                                <form method="POST" action="{% url 'login' %}" novalidate autocomplete="off">
+                                    {% csrf_token %}
+
+                                    {% if form.errors %}
+                                    <div class="alert alert-danger py-2 small mb-3 d-flex align-items-center gap-2" role="alert">
+                                        <i class="bi bi-exclamation-circle-fill"></i>
+                                        <span>Usuario o contraseña incorrectos.</span>
+                                    </div>
+                                    {% endif %}
+
+                                    <!-- Usuario -->
+                                    <div class="mb-3">
+                                        <label for="usuario" class="form-label small fw-semibold">Usuario</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light" style="border: 1px solid var(--eduges-border); border-right: 0; border-radius: 8px 0 0 8px;">
+                                                <i class="bi bi-person text-secondary"></i>
+                                            </span>
+                                            <input type="text" 
+                                                   name="username" 
+                                                   id="usuario" 
+                                                   class="form-control form-control-eduges" 
+                                                   style="border-radius: 0 8px 8px 0;" 
+                                                   placeholder="Ingresá tu usuario" 
+                                                   value="{{ form.username.value|default:'' }}" 
+                                                   required 
+                                                   autofocus>
+                                        </div>
+                                    </div>
+
+                                    <!-- Contraseña -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <label for="password" class="form-label small fw-semibold mb-0">Contraseña</label>
+                                        </div>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light" style="border: 1px solid var(--eduges-border); border-right: 0; border-radius: 8px 0 0 8px;">
+                                                <i class="bi bi-lock text-secondary"></i>
+                                            </span>
+                                            <input type="password" 
+                                                   name="password" 
+                                                   id="password" 
+                                                   class="form-control form-control-eduges" 
+                                                   style="border-radius: 0 8px 8px 0;" 
+                                                   placeholder="••••••••" 
+                                                   required>
+                                        </div>
+                                    </div>
+
+                                    <!-- Mantener sesión iniciada -->
+                                    <div class="mb-4 form-check">
+                                        <input type="checkbox" class="form-check-input" id="recordar">
+                                        <label class="form-check-label small text-muted" for="recordar">Mantener sesión iniciada</label>
+                                    </div>
+
+                                    <!-- Botón de Ingreso -->
+                                    <button type="submit" class="btn btn-eduges w-100 d-flex align-items-center justify-content-center gap-2">
+                                        <span>Ingresar</span>
+                                        <i class="bi bi-arrow-right-short fs-5"></i>
+                                    </button>
+                                </form>
+
+                                <!-- Pie de seguridad -->
+                                <div class="text-center mt-4 pt-3 border-top">
+                                    <small class="text-muted d-flex align-items-center justify-content-center gap-1">
+                                        <i class="bi bi-shield-check text-success"></i> Acceso seguro profesionales
+                                    </small>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

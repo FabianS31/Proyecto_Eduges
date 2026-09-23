@@ -1,0 +1,90 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}EduGes - Rincón Psi{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Estilos Propios -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Navbar Superior -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-eduges sticky-top">
+        <div class="container-fluid px-lg-4">
+            
+            <!-- Marca con Logo -->
+            <a class="navbar-brand d-flex align-items-center gap-2 fw-semibold" href="{% url 'home' %}">
+                <img src="{% static 'img/logo.png' %}" alt="Logo" width="30" height="30" class="rounded bg-white p-1">
+                <span>EduGes <span class="fw-light text-white-50" style="font-size: 0.85rem;">| Rincón Psi</span></span>
+            </a>
+
+            <!-- Botón Hamburguesa Móvil -->
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navPrincipal">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Links de Navegación -->
+            <div class="collapse navbar-collapse" id="navPrincipal">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'home' %}">
+                            <i class="bi bi-grid-1x2-fill me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-calendar3 me-1"></i> Turnos & Agenda
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-people me-1"></i> Pacientes (CUD)
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-person-badge me-1"></i> Profesionales
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Usuario Logueado y Cierre de Sesión -->
+                <div class="d-flex align-items-center gap-3 pt-2 pt-lg-0 border-top border-lg-0 border-white-50">
+                    <div class="text-white text-end d-none d-sm-block">
+                        <div class="small fw-semibold">Lic. Mariana Soto</div>
+                        <div class="text-white-50" style="font-size: 0.75rem;">Psicología Pediátrica</div>
+                    </div>
+                    <a href="{% url 'login' %}" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1" title="Cerrar sesión">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span class="d-lg-none">Salir</span>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </nav>
+
+    <!-- Contenido Inyectado -->
+    <main class="container-fluid px-lg-4 py-4 flex-grow-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-3 text-center text-muted small mt-auto border-top bg-white">
+        <div class="container-fluid">
+            EduGes &copy; 2026 — Sistema de Gestión Clínica Infantil · <strong>Rincón Psi</strong>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

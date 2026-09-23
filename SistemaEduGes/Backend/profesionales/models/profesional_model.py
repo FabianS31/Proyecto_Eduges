@@ -1,4 +1,5 @@
 from django.db import models
+from .estados_profesionales_model import EstadoProfesional
 
 
 class Especialidad(models.Model):
@@ -67,6 +68,12 @@ class Profesional(models.Model):
         'usuarios.Usuario',
         on_delete=models.PROTECT,
         db_column='ID_Usuario'
+    )
+
+    estado_profesional = models.ForeignKey(
+        EstadoProfesional,
+        on_delete=models.PROTECT,
+        db_column='ID_EstadoProfesional'
     )
 
     class Meta:

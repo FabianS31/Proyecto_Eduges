@@ -1,0 +1,485 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
+
+:root {
+    /* Paleta Institucional EduGes — SIN CAMBIOS de color */
+    --eduges-primary: #0B4379;
+    --eduges-primary-hover: #08325C;
+    --eduges-primary-light: #E8F0FE;
+
+    --eduges-bg: #F4F6F9;
+    --eduges-surface: #FFFFFF;
+    --eduges-border: #E2E8F0;
+
+    --eduges-text-main: #1C2733;
+    --eduges-text-muted: #52606D;
+
+    --eduges-success: #137333;
+    --eduges-success-bg: #E6F4EA;
+    --eduges-success-border: #CEEAD6;
+
+    --eduges-warning: #8A5A00;
+    --eduges-warning-bg: #FEF7E0;
+    --eduges-warning-border: #FEEFC3;
+
+    --eduges-danger: #B3261E;
+    --eduges-danger-bg: #FCE8E6;
+    --eduges-danger-border: #FAD2CF;
+
+    --eduges-info: #004085;
+    --eduges-info-bg: #CCE5FF;
+
+    /* Tipografía */
+    --eduges-font-display: 'Manrope', system-ui, sans-serif;
+    --eduges-font-body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    /* Nuevo: gradiente institucional derivado del mismo azul,
+       usado para dar profundidad sin sumar colores nuevos */
+    --eduges-gradient: linear-gradient(135deg, var(--eduges-primary) 0%, #1667B0 100%);
+
+    /* Nuevo: superficie "glass" para navbar/paneles flotantes */
+    --eduges-glass-bg: rgba(255, 255, 255, 0.78);
+    --eduges-glass-border: rgba(255, 255, 255, 0.6);
+
+    --eduges-radius-sm: 10px;
+    --eduges-radius-md: 14px;
+    --eduges-radius-lg: 20px;
+
+    --eduges-shadow-soft: 0 4px 20px rgba(11, 67, 121, 0.07);
+    --eduges-shadow-hover: 0 14px 34px rgba(11, 67, 121, 0.14);
+    --eduges-shadow-btn: 0 6px 16px rgba(11, 67, 121, 0.28);
+
+    --eduges-focus-ring: 0 0 0 3px rgba(11, 67, 121, 0.30);
+}
+
+/* ============================================
+   Base
+   ============================================ */
+
+html {
+    font-size: 17px; /* legible sin lupa */
+    scroll-behavior: smooth;
+}
+
+body {
+    background:
+        radial-gradient(1200px 500px at 100% -10%, rgba(11, 67, 121, 0.05), transparent),
+        var(--eduges-bg);
+    color: var(--eduges-text-main);
+    font-family: var(--eduges-font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--eduges-font-display);
+    color: var(--eduges-text-main);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.small, small {
+    font-size: 0.92rem !important;
+}
+
+.text-muted {
+    color: var(--eduges-text-muted) !important;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+.nav-link:focus-visible {
+    outline: 3px solid var(--eduges-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ============================================
+   Login
+   ============================================ */
+
+.card-login {
+    background-color: var(--eduges-surface);
+    border: 1px solid var(--eduges-border);
+    border-radius: var(--eduges-radius-lg);
+    box-shadow: var(--eduges-shadow-soft);
+}
+
+.login-logo {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    border-radius: var(--eduges-radius-sm);
+}
+
+.form-control-eduges {
+    border: 1.5px solid var(--eduges-border);
+    border-radius: var(--eduges-radius-sm);
+    padding: 0.85rem 1rem;
+    font-size: 1rem;
+    min-height: 48px;
+    color: var(--eduges-text-main);
+    background-color: #FAFCFE;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-control-eduges:focus {
+    background-color: #FFFFFF;
+    border-color: var(--eduges-primary);
+    box-shadow: var(--eduges-focus-ring);
+    outline: none;
+}
+
+.form-control-eduges::placeholder {
+    color: #8A95A3;
+}
+
+.btn-eduges {
+    background: var(--eduges-gradient);
+    border: 1px solid var(--eduges-primary);
+    color: #FFFFFF;
+    border-radius: var(--eduges-radius-sm);
+    padding: 0.75rem 1.3rem;
+    min-height: 44px;
+    font-weight: 700;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--eduges-shadow-btn);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.btn-eduges:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(11, 67, 121, 0.32);
+    color: #FFFFFF;
+}
+
+.btn-eduges:active {
+    transform: translateY(0);
+    filter: brightness(0.98);
+}
+
+.btn-eduges:disabled {
+    background: #9AAEC2;
+    border-color: #9AAEC2;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.link-eduges {
+    color: var(--eduges-primary);
+    text-decoration: underline;
+    text-decoration-color: rgba(11, 67, 121, 0.35);
+    font-weight: 600;
+}
+
+.link-eduges:hover {
+    color: var(--eduges-primary-hover);
+    text-decoration-color: currentColor;
+}
+
+/* ============================================
+   Login con panel dividido — "aurora" sutil,
+   sigue siendo 100% tonos del azul institucional
+   ============================================ */
+
+.card-login-split {
+    background-color: var(--eduges-surface);
+    border: none;
+    border-radius: 24px;
+    box-shadow: 0 20px 50px rgba(11, 67, 121, 0.16);
+    overflow: hidden;
+}
+
+.login-side-panel {
+    position: relative;
+    background: var(--eduges-gradient);
+    min-height: 100%;
+    overflow: hidden;
+}
+
+.login-side-panel::before,
+.login-side-panel::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(50px);
+    pointer-events: none;
+}
+
+.login-side-panel::before {
+    width: 260px;
+    height: 260px;
+    background: rgba(255, 255, 255, 0.14);
+    top: -80px;
+    right: -60px;
+}
+
+.login-side-panel::after {
+    width: 220px;
+    height: 220px;
+    background: rgba(255, 255, 255, 0.08);
+    bottom: -70px;
+    left: -50px;
+}
+
+.login-logo-side,
+.login-illustration {
+    position: relative;
+    z-index: 1;
+}
+
+.login-logo-side {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.15);
+    padding: 4px;
+}
+
+.login-illustration {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+}
+
+@media (max-width: 767.98px) {
+    .login-side-panel {
+        padding-bottom: 1.5rem !important;
+    }
+    .login-illustration {
+        max-width: 150px;
+    }
+}
+
+/* ============================================
+   Dashboard — Navbar (glass, sticky)
+   ============================================ */
+
+.navbar-eduges {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    background: var(--eduges-gradient);
+    box-shadow: 0 2px 16px rgba(11, 67, 121, 0.18);
+}
+
+.navbar-eduges .nav-link {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0.65rem 1rem;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    border-radius: 10px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.navbar-eduges .nav-link:hover {
+    color: #FFFFFF;
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
+.navbar-eduges .nav-link.active {
+    color: #FFFFFF;
+    background-color: rgba(255, 255, 255, 0.22);
+    font-weight: 700;
+}
+
+/* ============================================
+   Dashboard — Métricas
+   ============================================ */
+
+.card-metric {
+    background: #FFFFFF;
+    border: 1px solid var(--eduges-border);
+    border-radius: var(--eduges-radius-md);
+    padding: 1.5rem;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card-metric:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--eduges-shadow-hover);
+}
+
+.metric-icon-box {
+    position: relative;
+    width: 54px;
+    height: 54px;
+    border-radius: var(--eduges-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Halo de color que hereda el color del ícono (currentColor),
+   así cada métrica queda diferenciada automáticamente sin
+   tener que tocar el HTML ni sumar clases nuevas */
+.metric-icon-box::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0.18;
+    z-index: -1;
+}
+
+/* ============================================
+   Dashboard — Tablas
+   ============================================ */
+
+.card-table {
+    background: #FFFFFF;
+    border: 1px solid var(--eduges-border);
+    border-radius: var(--eduges-radius-lg);
+    overflow: hidden;
+}
+
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+}
+
+.table > :not(caption) > * > * {
+    padding: 1rem 1.1rem;
+    border-bottom-color: #EEF2F6;
+    vertical-align: middle;
+}
+
+.table thead th {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--eduges-text-muted);
+    background-color: #FAFBFD;
+}
+
+.table-hover > tbody > tr:hover > * {
+    background-color: var(--eduges-primary-light);
+}
+
+/* Celular: la tabla de turnos tiene 6 columnas, imposible de leer
+   cómodo en una pantalla chica. Ocultamos las dos menos críticas
+   (Obra Social y Profesional) y dejamos Hora / Paciente / Estado /
+   Acción, que son las que se necesitan de un vistazo. */
+@media (max-width: 767.98px) {
+    .table th:nth-child(3), .table td:nth-child(3),
+    .table th:nth-child(4), .table td:nth-child(4) {
+        display: none;
+    }
+}
+
+/* ============================================
+   Badges de estado
+   ============================================ */
+
+.badge-cud-ok,
+.badge-cud-alerta,
+.badge-cud-vencido,
+.badge-turno-pendiente,
+.badge-turno-confirmado,
+.badge-turno-realizado,
+.badge-turno-cancelado {
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.badge-cud-ok::before,
+.badge-cud-alerta::before,
+.badge-cud-vencido::before,
+.badge-turno-pendiente::before,
+.badge-turno-confirmado::before,
+.badge-turno-realizado::before,
+.badge-turno-cancelado::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+}
+
+.badge-cud-ok {
+    background-color: var(--eduges-success-bg);
+    color: var(--eduges-success);
+    border: 1px solid var(--eduges-success-border);
+}
+
+.badge-cud-alerta {
+    background-color: var(--eduges-warning-bg);
+    color: var(--eduges-warning);
+    border: 1px solid var(--eduges-warning-border);
+}
+
+.badge-cud-vencido {
+    background-color: var(--eduges-danger-bg);
+    color: var(--eduges-danger);
+    border: 1px solid var(--eduges-danger-border);
+}
+
+.badge-turno-pendiente {
+    background-color: var(--eduges-warning-bg);
+    color: var(--eduges-warning);
+}
+
+.badge-turno-confirmado {
+    background-color: var(--eduges-info-bg);
+    color: var(--eduges-info);
+}
+
+.badge-turno-realizado {
+    background-color: var(--eduges-success-bg);
+    color: var(--eduges-success);
+}
+
+.badge-turno-cancelado {
+    background-color: var(--eduges-danger-bg);
+    color: var(--eduges-danger);
+}
+
+/* ============================================
+   Modal de registro clínico — mismo estilo moderno
+   ============================================ */
+
+#modalSesion .modal-content {
+    border-radius: var(--eduges-radius-md);
+    overflow: hidden;
+}
+
+#modalSesion .modal-header {
+    background: var(--eduges-gradient) !important;
+}
+
+/* En celular, el modal ocupa casi toda la pantalla y los botones
+   quedan más cómodos de tocar */
+@media (max-width: 575.98px) {
+    #modalSesion .modal-dialog {
+        margin: 0.75rem;
+    }
+    #modalSesion .modal-footer .btn {
+        min-height: 44px;
+        flex: 1;
+    }
+}
