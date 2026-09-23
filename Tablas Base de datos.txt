@@ -82,6 +82,11 @@ ID_Rol (FK/int4)
 Contacto (varchar50)
 Mail (varchar50)
 ID_Usuario (FK/int4)
+ID_EstadoProfesional (FK/int4)
+
+ESTADOS_PROFESIONALES
+ID_EstadoProfesional (int4/PK)
+Estado (varchar100)
 
 ESPECIALIDADES
 ID_Especialidad (PK/int4)
