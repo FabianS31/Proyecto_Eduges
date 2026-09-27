@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Profesionales | EduGes - Rincón Psi{% endblock %}
+
+{% block content %}
+<!-- Esqueleto del módulo Profesionales: los datos los completa static/js/paginas/profesionales.js
+     a partir de la API (docs/api-contrato.md §8). -->
+
+<!-- Cabecera -->
+<div class="d-flex justify-content-between align-items-start align-items-md-center flex-column flex-md-row gap-3 mb-4">
+    <div>
+        <h1 class="h4 fw-bold mb-1" style="color: var(--eduges-text-main);">Profesionales</h1>
+        <p class="text-muted small mb-0">
+            <i class="bi bi-person-badge me-1"></i> Equipo terapéutico del centro
+        </p>
+    </div>
+    <button type="button" class="btn btn-eduges btn-sm d-flex align-items-center gap-1" id="btn-nuevo-profesional"
+            data-requiere-permiso="profesionales.edit">
+        <i class="bi bi-person-plus" aria-hidden="true"></i> Nuevo profesional
+    </button>
+</div>
+
+<!-- Filtros -->
+<form class="card-table shadow-sm p-3 mb-4" id="filtros-profesionales" role="search" aria-label="Filtrar profesionales">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-5">
+            <label for="filtro-q" class="form-label small fw-semibold text-secondary mb-1">Buscar</label>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white"><i class="bi bi-search" aria-hidden="true"></i></span>
+                <input type="search" class="form-control" id="filtro-q" name="q" placeholder="Nombre, apellido o matrícula" autocomplete="off">
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <label for="filtro-especialidad" class="form-label small fw-semibold text-secondary mb-1">Especialidad</label>
+            <select class="form-select form-select-sm" id="filtro-especialidad" name="especialidad">
+                <option value="">Todas</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label for="filtro-estado" class="form-label small fw-semibold text-secondary mb-1">Estado</label>
+            <select class="form-select form-select-sm" id="filtro-estado" name="estado">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-2 d-grid">
+            <button type="reset" class="btn btn-sm btn-outline-secondary bg-white" id="btn-limpiar-filtros">
+                <i class="bi bi-x-lg me-1" aria-hidden="true"></i>Limpiar
+            </button>
+        </div>
+    </div>
+</form>
+
+<!-- Listado -->
+<div class="card-table shadow-sm">
+    <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center gap-2">
+        <h2 class="h6 mb-0 fw-bold" style="color: var(--eduges-text-main);">
+            <i class="bi bi-people me-1 text-primary"></i> Equipo
+        </h2>
+        <span class="badge bg-light text-secondary border" id="profesionales-total" aria-live="polite">&nbsp;</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="profesionales-tabla">
+            <thead class="table-light small text-secondary">
+                <tr>
+                    <th scope="col">PROFESIONAL</th>
+                    <th scope="col" class="d-none d-md-table-cell">ESPECIALIDAD</th>
+                    <th scope="col" class="d-none d-lg-table-cell">CONTACTO</th>
+                    <th scope="col">ESTADO</th>
+                    <th scope="col" class="text-center d-none d-sm-table-cell">PACIENTES</th>
+                    <th scope="col" class="text-end">FICHA</th>
+                </tr>
+            </thead>
+            <tbody class="small" id="profesionales-cuerpo">
+                <tr><td colspan="6" class="p-0 border-0">
+                    <div class="placeholder-glow p-3" aria-busy="true">
+                        <span class="placeholder col-7 mb-2 d-block rounded"></span>
+                        <span class="placeholder col-10 mb-2 d-block rounded"></span>
+                        <span class="placeholder col-5 mb-2 d-block rounded"></span>
+                        <span class="visually-hidden" role="status">Cargando…</span>
+                    </div>
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginación (solo si hay más de una página) -->
+    <nav class="p-3 border-top d-flex justify-content-between align-items-center gap-2 d-none" id="profesionales-paginacion" aria-label="Paginación de profesionales">
+        <span class="small text-muted" id="paginacion-texto"></span>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary bg-white" id="btn-pagina-anterior">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i> Anterior
+            </button>
+            <button type="button" class="btn btn-outline-secondary bg-white" id="btn-pagina-siguiente">
+                Siguiente <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            </button>
+        </div>
+    </nav>
+</div>
+
+<!-- Ficha del profesional (panel lateral) -->
+<div class="offcanvas offcanvas-end offcanvas-ficha" tabindex="-1" id="ficha-profesional" aria-labelledby="ficha-titulo">
+    <div class="offcanvas-header border-bottom">
+        <div>
+            <h2 class="offcanvas-title h5 mb-0" id="ficha-titulo">Ficha del profesional</h2>
+            <div class="small text-muted" id="ficha-subtitulo"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+    </div>
+    <div class="offcanvas-body" id="ficha-cuerpo"></div>
+</div>
+
+<!-- Alta / edición de profesional (solo Administrador).
+     Los name de los campos coinciden con las claves de error de la API (contrato §8),
+     así los errores se muestran debajo de cada campo. -->
+<div class="modal fade" id="modal-profesional" tabindex="-1" aria-labelledby="modal-profesional-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <form class="modal-content border-0 shadow" id="form-profesional" novalidate>
+            <div class="modal-header modal-header-eduges">
+                <h5 class="modal-title fs-6 fw-bold" id="modal-profesional-titulo">Nuevo profesional</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="form-profesional-errores"></div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="prof-nombre" class="form-label small fw-semibold">Nombre *</label>
+                        <input type="text" class="form-control" id="prof-nombre" name="nombre" maxlength="100" required autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="prof-apellido" class="form-label small fw-semibold">Apellido *</label>
+                        <input type="text" class="form-control" id="prof-apellido" name="apellido" maxlength="100" required autocomplete="off">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="prof-dni" class="form-label small fw-semibold">DNI *</label>
+                        <input type="text" class="form-control" id="prof-dni" name="dni" maxlength="8" inputmode="numeric" required autocomplete="off"
+                               aria-describedby="prof-dni-ayuda">
+                        <div class="form-text" id="prof-dni-ayuda">Sin puntos, 7 u 8 dígitos.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="prof-matricula" class="form-label small fw-semibold">Matrícula *</label>
+                        <input type="text" class="form-control" id="prof-matricula" name="matricula" maxlength="50" required autocomplete="off">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="prof-especialidad" class="form-label small fw-semibold">Especialidad *</label>
+                        <select class="form-select" id="prof-especialidad" name="especialidad_id" required>
+                            <option value="">Elegí…</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="prof-contacto" class="form-label small fw-semibold">Teléfono</label>
+                        <input type="tel" class="form-control" id="prof-contacto" name="contacto" maxlength="50" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="prof-mail" class="form-label small fw-semibold">Mail</label>
+                        <input type="email" class="form-control" id="prof-mail" name="mail" maxlength="50" autocomplete="off">
+                    </div>
+                </div>
+
+                <!-- Solo en el alta: el usuario con el que va a entrar al sistema -->
+                <fieldset class="border rounded p-3 mt-4" id="grupo-usuario">
+                    <legend class="float-none w-auto px-2 fs-6 fw-semibold mb-0">Usuario de acceso</legend>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="prof-usuario" class="form-label small fw-semibold">Usuario *</label>
+                            <input type="text" class="form-control" id="prof-usuario" name="usuario.usuario" maxlength="100" autocomplete="off"
+                                   autocapitalize="none" spellcheck="false">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="prof-password" class="form-label small fw-semibold">Contraseña inicial *</label>
+                            <input type="password" class="form-control" id="prof-password" name="usuario.password" autocomplete="new-password"
+                                   aria-describedby="prof-password-ayuda">
+                            <div class="form-text" id="prof-password-ayuda">Mínimo 8 caracteres. Comunicásela al profesional.</div>
+                        </div>
+                    </div>
+                </fieldset>
+                <p class="small text-muted mt-3 mb-0">* Campos obligatorios.</p>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-profesional">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/paginas/profesionales.js' %}"></script>
+{% endblock %}

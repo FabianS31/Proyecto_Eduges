@@ -10,7 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 
 # ============================================================
@@ -21,14 +24,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # ============================================================
+# VARIABLES DE ENTORNO (.env junto a manage.py)
+# ============================================================
+
+load_dotenv(BASE_DIR / '.env')
+
+
+# ============================================================
 # SECURITY
 # ============================================================
 
-SECRET_KEY = 'django-insecure-y6fvq+!00&x9s6exizdp!yrzl*8yppr&t0cj$xx$1n0=_#j6qg'
+SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('1', 'true', 'yes')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv('DJANGO_ALLOWED_HOSTS', '').split(',')
+    if host.strip()
+]
 
 
 # ============================================================
@@ -95,11 +109,11 @@ TEMPLATES = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'EduGes',
-        'USER': 'postgres',
-        'PASSWORD': '98i4ji',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ['DB_NAME'],
+        'USER': os.environ['DB_USER'],
+        'PASSWORD': os.environ['DB_PASSWORD'],
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 

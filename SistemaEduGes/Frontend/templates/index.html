@@ -1,35 +1,52 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Dashboard | EduGes - Rincón Psi{% endblock %}
 
 {% block content %}
-<!-- Cabecera de Bienvenida y Acciones Rápidas -->
+<!-- Esqueleto del dashboard: los datos los completa static/js/paginas/dashboard.js
+     a partir de la API (docs/api-contrato.md §5). -->
+
+<!-- Cabecera: título, fecha mostrada y navegación por días -->
 <div class="d-flex justify-content-between align-items-start align-items-md-center flex-column flex-md-row gap-3 mb-4">
     <div>
         <h1 class="h4 fw-bold mb-1" style="color: var(--eduges-text-main);">Panel General de Gestión</h1>
         <p class="text-muted small mb-0">
-            <i class="bi bi-clock me-1"></i> Sesiones y seguimiento clínico para hoy ({{ hoy|date:"d/m/Y" }})
+            <i class="bi bi-clock me-1"></i> Sesiones y seguimiento clínico · <span id="dashboard-fecha-texto">&nbsp;</span>
         </p>
     </div>
-    <div class="d-flex gap-2">
-        <button class="btn btn-outline-secondary btn-sm bg-white" type="button">
+    <div class="d-flex flex-wrap gap-2">
+        <div class="btn-group btn-group-sm agenda-navegacion" role="group" aria-label="Cambiar de día">
+            <button type="button" class="btn btn-outline-secondary bg-white" id="btn-dia-anterior" title="Día anterior" aria-label="Día anterior">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary bg-white" id="btn-dia-hoy">Hoy</button>
+            <button type="button" class="btn btn-outline-secondary bg-white" id="btn-dia-siguiente" title="Día siguiente" aria-label="Día siguiente">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm bg-white" type="button" disabled title="Próximamente">
             <i class="bi bi-calendar-week me-1"></i> Ver Semana
         </button>
-        <button class="btn btn-eduges btn-sm d-flex align-items-center gap-1" type="button">
+        <button class="btn btn-eduges btn-sm d-flex align-items-center gap-1" type="button" disabled title="Próximamente"
+                data-requiere-permiso="turnos.editar">
             <i class="bi bi-plus-circle"></i> Nuevo Turno
         </button>
     </div>
 </div>
 
+<!-- Error al cargar las métricas (se completa solo si falla) -->
+<div id="metricas-error" class="mb-3"></div>
+
 <!-- Tarjetas de Métricas Rápidas -->
-<div class="row g-3 mb-4">
-    <!-- Métrica 1: Turnos Hoy -->
-    <div class="col-12 col-sm-6 col-xl-3">
+<div class="row g-3 mb-4" id="metricas">
+    <!-- Métrica 1: Turnos del día -->
+    <div class="col-12 col-sm-6 col-xl-3 metrica-col">
         <div class="card-metric d-flex justify-content-between align-items-center">
             <div>
-                <span class="text-muted small fw-semibold text-uppercase">Turnos Hoy</span>
-                <div class="h3 fw-bold mb-0 mt-1">{{ total_turnos_hoy }}</div>
-                <div class="text-muted small mt-1">{{ turnos_completados }} realizados · {{ turnos_pendientes }} pendientes</div>
+                <span class="text-muted small fw-semibold text-uppercase" id="metrica-turnos-titulo">Turnos Hoy</span>
+                <div class="h3 fw-bold mb-0 mt-1" data-metrica="turnos-total"><span class="placeholder-glow"><span class="placeholder" style="width: 2.5rem;"></span></span></div>
+                <div class="text-muted small mt-1" data-metrica="turnos-detalle">&nbsp;</div>
             </div>
             <div class="metric-icon-box" style="background-color: #E8F0FE; color: var(--eduges-primary);">
                 <i class="bi bi-calendar2-check fs-4"></i>
@@ -38,12 +55,12 @@
     </div>
 
     <!-- Métrica 2: Pacientes Activos -->
-    <div class="col-12 col-sm-6 col-xl-3">
+    <div class="col-12 col-sm-6 col-xl-3 metrica-col">
         <div class="card-metric d-flex justify-content-between align-items-center">
             <div>
                 <span class="text-muted small fw-semibold text-uppercase">Pacientes Activos</span>
-                <div class="h3 fw-bold mb-0 mt-1">{{ total_pacientes }}</div>
-                <div class="text-muted small mt-1">Registrados en el sistema</div>
+                <div class="h3 fw-bold mb-0 mt-1" data-metrica="pacientes-activos"><span class="placeholder-glow"><span class="placeholder" style="width: 2.5rem;"></span></span></div>
+                <div class="text-muted small mt-1" data-metrica="pacientes-detalle">&nbsp;</div>
             </div>
             <div class="metric-icon-box" style="background-color: #E6F4EA; color: #137333;">
                 <i class="bi bi-people fs-4"></i>
@@ -51,13 +68,13 @@
         </div>
     </div>
 
-    <!-- Métrica 3: Alertas CUD (Vencimientos) -->
-    <div class="col-12 col-sm-6 col-xl-3">
+    <!-- Métrica 3: Alertas CUD (vencidos o por vencer) -->
+    <div class="col-12 col-sm-6 col-xl-3 metrica-col">
         <div class="card-metric d-flex justify-content-between align-items-center">
             <div>
                 <span class="text-muted small fw-semibold text-uppercase">Alertas CUD</span>
-                <div class="h3 fw-bold mb-0 mt-1 text-danger">{{ alertas_cud|default:"0" }}</div>
-                <div class="text-danger small mt-1 fw-semibold">Vencen en menos de 30 días</div>
+                <div class="h3 fw-bold mb-0 mt-1 text-danger" data-metrica="alertas-cud"><span class="placeholder-glow"><span class="placeholder" style="width: 2.5rem;"></span></span></div>
+                <div class="text-danger small mt-1 fw-semibold" id="metrica-cud-detalle">Vencidos o vencen en 60 días</div>
             </div>
             <div class="metric-icon-box" style="background-color: #FCE8E6; color: #C5221F;">
                 <i class="bi bi-shield-exclamation fs-4"></i>
@@ -65,12 +82,12 @@
         </div>
     </div>
 
-    <!-- Métrica 4: Profesionales en Sede -->
-    <div class="col-12 col-sm-6 col-xl-3">
+    <!-- Métrica 4: Profesionales activos (solo Administrador) -->
+    <div class="col-12 col-sm-6 col-xl-3 metrica-col" id="metrica-profesionales-col">
         <div class="card-metric d-flex justify-content-between align-items-center">
             <div>
                 <span class="text-muted small fw-semibold text-uppercase">Profesionales</span>
-                <div class="h3 fw-bold mb-0 mt-1">{{ total_profesionales|default:"1" }}</div>
+                <div class="h3 fw-bold mb-0 mt-1" data-metrica="profesionales-activos"><span class="placeholder-glow"><span class="placeholder" style="width: 2.5rem;"></span></span></div>
                 <div class="text-muted small mt-1">Activos en el equipo</div>
             </div>
             <div class="metric-icon-box" style="background-color: #F1F3F4; color: #5F6368;">
@@ -82,120 +99,77 @@
 
 <!-- Contenido Principal: Turnos del Día + Panel Lateral de Alertas CUD -->
 <div class="row g-4">
-    
-    <!-- Columna Izquierda: Agenda de Sesiones de Hoy -->
+
+    <!-- Columna Izquierda: Agenda del día -->
     <div class="col-12 col-lg-8">
         <div class="card-table shadow-sm">
-            <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="mb-0 fw-bold" style="color: var(--eduges-text-main);">
-                        <i class="bi bi-calendar-day me-1 text-primary"></i> Sesiones Programadas para Hoy
-                    </h6>
-                </div>
-                <span class="badge bg-light text-secondary border">
-                    {{ turnos_completados }} de {{ total_turnos_hoy }} completadas
-                </span>
+            <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center gap-2">
+                <h2 class="h6 mb-0 fw-bold" style="color: var(--eduges-text-main);">
+                    <i class="bi bi-calendar-day me-1 text-primary"></i> <span id="agenda-titulo">Sesiones Programadas para Hoy</span>
+                </h2>
+                <span class="badge bg-light text-secondary border" id="agenda-progreso">&nbsp;</span>
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0" id="agenda-tabla">
                     <thead class="table-light small text-secondary">
                         <tr>
-                            <th style="width: 80px;">HORA</th>
-                            <th>PACIENTE</th>
-                            <th>OBRA SOCIAL</th>
-                            <th>PROFESIONAL</th>
-                            <th>ESTADO</th>
-                            <th class="text-end">ACCIÓN</th>
+                            <th scope="col" style="width: 80px;">HORA</th>
+                            <th scope="col">PACIENTE</th>
+                            <th scope="col">OBRA SOCIAL</th>
+                            <th scope="col" data-columna="profesional">PROFESIONAL</th>
+                            <th scope="col">ESTADO</th>
+                            <th scope="col" class="text-end">ACCIÓN</th>
                         </tr>
                     </thead>
-                    <tbody class="small">
-                        {% for turno in turnos_hoy %}
-                        <tr {% if 'Pendiente' in turno.estado.estado %}class="table-primary-subtle"{% elif 'Cancelado' in turno.estado.estado %}class="opacity-75"{% endif %}>
-                            <td><span class="fw-bold">{{ turno.hora|time:"H:i" }}</span></td>
-                            <td>
-                                <div class="fw-semibold text-dark">{{ turno.paciente.apellido }}, {{ turno.paciente.nombre }}</div>
-                                <div class="text-muted small">
-                                    <i class="bi bi-card-text text-secondary me-1"></i>DNI: {{ turno.paciente.dni }}
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-light text-dark border">
-                                    {{ turno.paciente.obra_social.nombre|default:"Particular" }}
-                                </span>
-                            </td>
-                            <td>Lic. {{ turno.profesional.apellido }} {{ turno.profesional.nombre }}</td>
-                            <td>
-                                {% if 'Realizado' in turno.estado.estado %}
-                                    <span class="badge badge-turno-realizado">{{ turno.estado.estado }}</span>
-                                {% elif 'Pendiente' in turno.estado.estado %}
-                                    <span class="badge badge-turno-pendiente">{{ turno.estado.estado }}</span>
-                                {% elif 'Confirmado' in turno.estado.estado %}
-                                    <span class="badge badge-turno-confirmado">{{ turno.estado.estado }}</span>
-                                {% elif 'Cancelado' in turno.estado.estado %}
-                                    <span class="badge badge-turno-cancelado">{{ turno.estado.estado }}</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">{{ turno.estado.estado }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-light border text-success" title="Ver Evolución" data-bs-toggle="modal" data-bs-target="#modalSesion">
-                                    <i class="bi bi-file-earmark-medical"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
-                                <i class="bi bi-calendar-x fs-3 d-block mb-2 text-secondary"></i>
-                                No hay turnos programados para el día de hoy.
-                            </td>
-                        </tr>
-                        {% endfor %}
+                    <tbody class="small" id="agenda-cuerpo">
+                        <tr><td colspan="6" class="p-0 border-0">
+                            <div class="placeholder-glow p-3" aria-busy="true">
+                                <span class="placeholder col-7 mb-2 d-block rounded"></span>
+                                <span class="placeholder col-10 mb-2 d-block rounded"></span>
+                                <span class="placeholder col-5 mb-2 d-block rounded"></span>
+                                <span class="visually-hidden" role="status">Cargando…</span>
+                            </div>
+                        </td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Columna Derecha: Alertas CUD y Accesos Rápidos -->
+    <!-- Columna Derecha: Alertas CUD y Recordatorio -->
     <div class="col-12 col-lg-4">
-        
+
         <!-- Widget: Vencimientos de CUD -->
-        <div class="card card-table shadow-sm mb-4">
+        <div class="card card-table shadow-sm mb-4" data-requiere-permiso="pacientes.ver">
             <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-bold" style="color: var(--eduges-text-main);">
-                    <i class="bi bi-shield-alert me-1 text-warning"></i> Control de CUD
-                </h6>
-                <span class="badge bg-danger-subtle text-danger-emphasis">Urgentes</span>
+                <h2 class="h6 mb-0 fw-bold" style="color: var(--eduges-text-main);">
+                    <i class="bi bi-shield-exclamation me-1 text-warning"></i> Control de CUD
+                </h2>
+                <span class="badge bg-danger-subtle text-danger-emphasis" id="cud-contador">&nbsp;</span>
             </div>
             <div class="p-3">
-                <p class="small text-muted mb-3">Pacientes con el Certificado Único de Discapacidad próximo a caducar:</p>
-                
-                <div class="d-flex flex-column gap-2">
-                    <div class="p-2 rounded border bg-light d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="fw-semibold small">Lucas Pérez</div>
-                            <small class="text-danger fw-semibold">Vigente hasta: 2027</small>
-                        </div>
-                        <button class="btn btn-xs btn-outline-secondary border-0" title="Contactar Tutor">
-                            <i class="bi bi-telephone-outbound"></i>
-                        </button>
+                <p class="small text-muted mb-3">Pacientes activos con el Certificado Único de Discapacidad vencido o próximo a vencer:</p>
+                <div class="d-flex flex-column gap-2" id="cud-lista">
+                    <div class="placeholder-glow" aria-busy="true">
+                        <span class="placeholder col-12 mb-2 d-block rounded" style="height: 3rem;"></span>
+                        <span class="placeholder col-12 mb-2 d-block rounded" style="height: 3rem;"></span>
+                        <span class="visually-hidden" role="status">Cargando…</span>
                     </div>
                 </div>
 
-                <a href="#" class="btn btn-outline-primary btn-sm w-100 mt-3">
+                <a href="#" class="btn btn-outline-primary btn-sm w-100 mt-3 disabled" aria-disabled="true" title="Próximamente">
                     Ver todos los certificados
                 </a>
             </div>
         </div>
 
-        <!-- Widget Informativo / Soporte -->
-        <div class="card card-metric border-0" style="background-color: #E8F0FE;">
+        <!-- Widget Informativo (solo quien registra sesiones) -->
+        <div class="card card-metric border-0" style="background-color: #E8F0FE;" data-requiere-permiso="sesiones.registrar">
             <div class="d-flex gap-3 align-items-start">
                 <i class="bi bi-info-circle-fill text-primary fs-4 mt-1"></i>
                 <div>
-                    <h6 class="fw-bold mb-1" style="color: var(--eduges-primary);">Recordatorio Clínico</h6>
+                    <h2 class="h6 fw-bold mb-1" style="color: var(--eduges-primary);">Recordatorio Clínico</h2>
                     <p class="small text-muted mb-0">
                         Recordá registrar la evolución en el campo <em>Tratamiento Aplicado</em> al finalizar cada sesión para mantener la historia clínica al día.
                     </p>
@@ -207,47 +181,57 @@
 
 </div>
 
-<!-- Modal: Registrar Evolución de Sesión -->
+<!-- Modal: Registro Clínico de Sesión (se completa desde dashboard.js) -->
 <div class="modal fade" id="modalSesion" tabindex="-1" aria-labelledby="modalSesionLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow">
+        <form class="modal-content border-0 shadow" id="form-sesion" novalidate>
             <div class="modal-header" style="background-color: var(--eduges-primary); color: #FFFFFF;">
                 <h5 class="modal-title fs-6 fw-bold" id="modalSesionLabel">
-                    <i class="bi bi-journal-medical me-2"></i>Registro Clínico de Sesión
+                    <i class="bi bi-journal-medical me-2"></i><span id="modal-sesion-titulo">Registro Clínico de Sesión</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
-                        <label class="small text-muted fw-semibold">Paciente</label>
-                        <div class="fw-bold">Lucas Pérez - CUD Vigente</div>
+                        <div class="small text-muted fw-semibold">Paciente</div>
+                        <div class="fw-bold" id="modal-sesion-paciente">&nbsp;</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="small text-muted fw-semibold">Profesional a Cargo</label>
-                        <div class="fw-bold">Lic. Valeria Martínez</div>
+                        <div class="small text-muted fw-semibold">Profesional a Cargo</div>
+                        <div class="fw-bold" id="modal-sesion-profesional">&nbsp;</div>
                     </div>
                 </div>
+
+                <div id="modal-sesion-errores"></div>
 
                 <div class="mb-3">
                     <label for="tratamientoAplicado" class="form-label small fw-semibold text-secondary">
-                        Tratamiento Aplicado / Evolución Clínica (Máx. 5000 caracteres)
+                        Tratamiento Aplicado / Evolución Clínica
                     </label>
-                    <textarea class="form-control" id="tratamientoAplicado" rows="6" placeholder="Detalle de actividades sensoriales, conducta observada, objetivos terapéuticos trabajados y pautas dadas a la familia..."></textarea>
+                    <textarea class="form-control" id="tratamientoAplicado" name="nota_clinica" rows="6" maxlength="5000" required
+                              aria-describedby="tratamientoAplicado-contador"
+                              placeholder="Detalle de actividades sensoriales, conducta observada, objetivos terapéuticos trabajados y pautas dadas a la familia..."></textarea>
+                    <div class="form-text text-end contador-caracteres" id="tratamientoAplicado-contador">0 / 5000</div>
                 </div>
 
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="turnoRealizado" checked>
+                <div class="form-check" id="modal-sesion-marcar">
+                    <input class="form-check-input" type="checkbox" id="turnoRealizado" name="marcar_realizado" checked>
                     <label class="form-check-label small" for="turnoRealizado">
                         Marcar turno automáticamente como <strong>Realizado</strong>
                     </label>
                 </div>
+                <div class="small text-muted" id="modal-sesion-auditoria"></div>
             </div>
             <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-sm btn-eduges" data-bs-dismiss="modal">Guardar Evolución</button>
+                <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-sesion">Guardar Evolución</button>
             </div>
-        </div>
+        </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/paginas/dashboard.js' %}"></script>
 {% endblock %}

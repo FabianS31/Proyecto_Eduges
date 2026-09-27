@@ -86,32 +86,30 @@
                                     <p class="small text-muted mb-0">Gestión de Sesiones</p>
                                 </div>
 
-                                <!-- Formulario de Acceso -->
-                                <form method="POST" action="{% url 'login' %}" novalidate autocomplete="off">
-                                    {% csrf_token %}
+                                <!-- Formulario de Acceso: lo envía static/js/paginas/login.js a la API
+                                     (POST /api/auth/login/, docs/api-contrato.md §3) -->
+                                <form id="form-login" novalidate>
 
-                                    {% if form.errors %}
-                                    <div class="alert alert-danger py-2 small mb-3 d-flex align-items-center gap-2" role="alert">
-                                        <i class="bi bi-exclamation-circle-fill"></i>
-                                        <span>Usuario o contraseña incorrectos.</span>
-                                    </div>
-                                    {% endif %}
+                                    <!-- Errores del login (usuario/contraseña incorrectos, bloqueo, conexión) -->
+                                    <div id="login-errores" aria-live="assertive"></div>
 
                                     <!-- Usuario -->
                                     <div class="mb-3">
                                         <label for="usuario" class="form-label small fw-semibold">Usuario</label>
-                                        <div class="input-group">
+                                        <div class="input-group has-validation">
                                             <span class="input-group-text bg-light" style="border: 1px solid var(--eduges-border); border-right: 0; border-radius: 8px 0 0 8px;">
                                                 <i class="bi bi-person text-secondary"></i>
                                             </span>
-                                            <input type="text" 
-                                                   name="username" 
-                                                   id="usuario" 
-                                                   class="form-control form-control-eduges" 
-                                                   style="border-radius: 0 8px 8px 0;" 
-                                                   placeholder="Ingresá tu usuario" 
-                                                   value="{{ form.username.value|default:'' }}" 
-                                                   required 
+                                            <input type="text"
+                                                   name="usuario"
+                                                   id="usuario"
+                                                   class="form-control form-control-eduges"
+                                                   style="border-radius: 0 8px 8px 0;"
+                                                   placeholder="Ingresá tu usuario"
+                                                   autocomplete="username"
+                                                   autocapitalize="none"
+                                                   spellcheck="false"
+                                                   required
                                                    autofocus>
                                         </div>
                                     </div>
@@ -121,28 +119,29 @@
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <label for="password" class="form-label small fw-semibold mb-0">Contraseña</label>
                                         </div>
-                                        <div class="input-group">
+                                        <div class="input-group has-validation">
                                             <span class="input-group-text bg-light" style="border: 1px solid var(--eduges-border); border-right: 0; border-radius: 8px 0 0 8px;">
                                                 <i class="bi bi-lock text-secondary"></i>
                                             </span>
-                                            <input type="password" 
-                                                   name="password" 
-                                                   id="password" 
-                                                   class="form-control form-control-eduges" 
-                                                   style="border-radius: 0 8px 8px 0;" 
-                                                   placeholder="••••••••" 
+                                            <input type="password"
+                                                   name="password"
+                                                   id="password"
+                                                   class="form-control form-control-eduges"
+                                                   style="border-radius: 0 8px 8px 0;"
+                                                   placeholder="••••••••"
+                                                   autocomplete="current-password"
                                                    required>
                                         </div>
                                     </div>
 
                                     <!-- Mantener sesión iniciada -->
                                     <div class="mb-4 form-check">
-                                        <input type="checkbox" class="form-check-input" id="recordar">
+                                        <input type="checkbox" class="form-check-input" name="recordar" id="recordar">
                                         <label class="form-check-label small text-muted" for="recordar">Mantener sesión iniciada</label>
                                     </div>
 
                                     <!-- Botón de Ingreso -->
-                                    <button type="submit" class="btn btn-eduges w-100 d-flex align-items-center justify-content-center gap-2">
+                                    <button type="submit" id="btn-ingresar" class="btn btn-eduges w-100 d-flex align-items-center justify-content-center gap-2">
                                         <span>Ingresar</span>
                                         <i class="bi bi-arrow-right-short fs-5"></i>
                                     </button>
@@ -167,5 +166,7 @@
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Lógica del login -->
+    <script type="module" src="{% static 'js/paginas/login.js' %}"></script>
 </body>
 </html>

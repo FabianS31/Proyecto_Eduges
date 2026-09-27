@@ -380,8 +380,8 @@ select:focus-visible,
    (Obra Social y Profesional) y dejamos Hora / Paciente / Estado /
    Acción, que son las que se necesitan de un vistazo. */
 @media (max-width: 767.98px) {
-    .table th:nth-child(3), .table td:nth-child(3),
-    .table th:nth-child(4), .table td:nth-child(4) {
+    #agenda-tabla th:nth-child(3), #agenda-tabla td:nth-child(3),
+    #agenda-tabla th:nth-child(4), #agenda-tabla td:nth-child(4) {
         display: none;
     }
 }
@@ -472,6 +472,11 @@ select:focus-visible,
     background: var(--eduges-gradient) !important;
 }
 
+/* La regla general de h1-h6 pone el texto oscuro: sobre el azul va blanco */
+#modalSesion .modal-title {
+    color: #FFFFFF;
+}
+
 /* En celular, el modal ocupa casi toda la pantalla y los botones
    quedan más cómodos de tocar */
 @media (max-width: 575.98px) {
@@ -482,4 +487,109 @@ select:focus-visible,
         min-height: 44px;
         flex: 1;
     }
+}
+
+/* ============================================
+   Permisos por rol (layout.js)
+   Los elementos con data-requiere-permiso no se muestran hasta
+   confirmar que el usuario tiene el permiso, así no "parpadean"
+   opciones que después desaparecen.
+   ============================================ */
+
+[data-requiere-permiso]:not(.permiso-concedido) {
+    display: none !important;
+}
+
+/* Módulos todavía no disponibles en el menú */
+.navbar-eduges .nav-link.disabled {
+    opacity: 0.5;
+}
+
+/* ============================================
+   Dashboard — Agenda y panel de CUD
+   ============================================ */
+
+.agenda-navegacion .btn {
+    min-width: 38px;
+}
+
+.cud-item {
+    background-color: #FAFBFD;
+    border: 1px solid var(--eduges-border);
+    border-radius: var(--eduges-radius-sm);
+}
+
+.cud-item-vencido {
+    border-left: 4px solid var(--eduges-danger);
+}
+
+.cud-item-alerta {
+    border-left: 4px solid var(--eduges-warning);
+}
+
+.contador-caracteres.excedido {
+    color: var(--eduges-danger);
+    font-weight: 700;
+}
+
+/* ============================================
+   Profesionales — ficha en panel lateral
+   ============================================ */
+
+.offcanvas-ficha {
+    --bs-offcanvas-width: 460px;
+}
+
+.ficha-dato dt {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--eduges-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.ficha-dato dd {
+    margin-bottom: 0.75rem;
+    /* Un mail o teléfono largo sin espacios no debe pisar la columna de al lado */
+    overflow-wrap: anywhere;
+}
+
+#profesionales-cuerpo td a {
+    overflow-wrap: anywhere;
+}
+
+.ficha-asignacion {
+    background-color: #FAFBFD;
+    border: 1px solid var(--eduges-border);
+    border-radius: var(--eduges-radius-sm);
+}
+
+#profesionales-cuerpo tr[data-profesional-id] {
+    cursor: pointer;
+}
+
+/* Encabezado institucional para modales (título blanco sobre el azul) */
+.modal-header-eduges {
+    background: var(--eduges-gradient);
+    color: #FFFFFF;
+}
+
+.modal-header-eduges .modal-title {
+    color: #FFFFFF;
+}
+
+/* Resultados del buscador de pacientes al asignar */
+.asignar-resultados .list-group-item.active {
+    background-color: var(--eduges-primary);
+    border-color: var(--eduges-primary);
+}
+
+.asignar-resultados .list-group-item.active .text-muted {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Con un panel lateral abierto a la derecha, los avisos pasan a la izquierda para no taparlo */
+body:has(.offcanvas-end.show) #eduges-avisos {
+    right: auto !important;
+    left: 0;
 }
