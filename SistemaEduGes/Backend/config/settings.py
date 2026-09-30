@@ -15,28 +15,23 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
-# ============================================================
 # PATHS
-# ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# ============================================================
 # VARIABLES DE ENTORNO (.env junto a manage.py)
-# ============================================================
 
 load_dotenv(BASE_DIR / '.env')
 
-
-# ============================================================
 # SECURITY
-# ============================================================
 
 SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 
-DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('1', 'true', 'yes')
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in (
+    '1',
+    'true',
+    'yes',
+)
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -44,25 +39,18 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
-
-# ============================================================
 # APPLICATIONS
-# ============================================================
 
 INSTALLED_APPS = [
     'django.contrib.staticfiles',
-
-    # Aplicaciones propias de EduGes
+    'rest_framework',
     'usuarios',
     'pacientes',
     'profesionales',
     'turnos',
 ]
 
-
-# ============================================================
 # MIDDLEWARE
-# ============================================================
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -71,25 +59,18 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-
-# ============================================================
 # URLS / WSGI
-# ============================================================
 
 ROOT_URLCONF = 'config.urls'
-
 WSGI_APPLICATION = 'config.wsgi.application'
 
-
-# ============================================================
 # TEMPLATES
-# ============================================================
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
-            BASE_DIR.parent / 'Frontend' / 'templates'
+            BASE_DIR.parent / 'Frontend' / 'templates',
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -101,9 +82,10 @@ TEMPLATES = [
     },
 ]
 
-
 # ============================================================
+
 # DATABASE
+
 # ============================================================
 
 DATABASES = {
@@ -117,34 +99,27 @@ DATABASES = {
     }
 }
 
+# DJANGO REST FRAMEWORK
 
-# ============================================================
+REST_FRAMEWORK = {
+    'UNAUTHENTICATED_USER': None,
+}
+
 # INTERNATIONALIZATION
-# ============================================================
 
 LANGUAGE_CODE = 'es-ar'
-
 TIME_ZONE = 'America/Argentina/Buenos_Aires'
-
 USE_I18N = True
-
 USE_TZ = True
 
-
-# ============================================================
 # STATIC FILES
-# ============================================================
 
 STATIC_URL = 'static/'
-
 STATICFILES_DIRS = [
-    BASE_DIR.parent / 'Frontend' / 'static'
+    BASE_DIR.parent / 'Frontend' / 'static',
 ]
 
-
-# ============================================================
 # EMAIL
-# ============================================================
 
 MAILERS = {
     'default': {
