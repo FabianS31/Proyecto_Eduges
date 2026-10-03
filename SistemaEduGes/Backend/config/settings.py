@@ -106,6 +106,10 @@ DATABASES = {
 
 REST_FRAMEWORK = {
     'UNAUTHENTICATED_USER': None,
+
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'APIs.autenticacion.autenticacion.UsuarioSessionAuthentication',
+    ),
 }
 
 # INTERNATIONALIZATION

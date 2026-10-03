@@ -30,6 +30,14 @@ class Usuario(models.Model):
         db_column='Activo'
     )
 
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
     class Meta:
         managed = False
         db_table = 'usuarios'
