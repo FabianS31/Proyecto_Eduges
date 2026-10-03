@@ -26,6 +26,10 @@ class Usuario(models.Model):
         db_column='Password'
     )
 
+    activo = models.BooleanField(
+        db_column='Activo'
+    )
+
     class Meta:
         managed = False
         db_table = 'usuarios'

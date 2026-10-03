@@ -43,6 +43,8 @@ ALLOWED_HOSTS = [
 
 INSTALLED_APPS = [
     'django.contrib.staticfiles',
+    'django.contrib.sessions',
+    
     'rest_framework',
     'usuarios',
     'pacientes',
@@ -54,6 +56,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -126,3 +129,5 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'

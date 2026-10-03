@@ -32,6 +32,11 @@ urlpatterns = [
     # API
     path(
         'api/profesionales/',
-        include('profesionales.urls')
+        include('APIs.profesionales.urls')
+    ),
+
+    path(
+        'api/auth/',
+        include('APIs.autenticacion.urls')
     ),
 ]

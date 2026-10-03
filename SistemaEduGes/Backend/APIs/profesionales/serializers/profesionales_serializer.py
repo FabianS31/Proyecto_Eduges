@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from ..models.profesional_model import Profesional
+from profesionales.models.profesional_model import Profesional
 
 
 class ProfesionalSerializer(serializers.ModelSerializer):
