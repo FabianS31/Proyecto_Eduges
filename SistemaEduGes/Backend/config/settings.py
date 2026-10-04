@@ -135,3 +135,10 @@ MAILERS = {
 }
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'eduges-rate-limit',
+    },
+}
