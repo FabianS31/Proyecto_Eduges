@@ -33,19 +33,39 @@ class Tutor(models.Model):
         db_column='Apellido'
     )
 
-    telefono_fijo = models.CharField(
+    telefono = models.CharField(
         max_length=30,
-        db_column='TelefonoFijo'
+        db_column='Telefono',
+        null=True,
+        blank=True
     )
 
-    telefono_movil = models.CharField(
+    movil = models.CharField(
         max_length=30,
-        db_column='TelefonoMovil'
+        db_column='Movil',
+        null=True,
+        blank=True
     )
 
     mail = models.CharField(
         max_length=150,
-        db_column='Mail'
+        db_column='Mail',
+        null=True,
+        blank=True
+    )
+
+    dni = models.CharField(
+        max_length=20,
+        db_column='DNI',
+        null=True,
+        blank=True
+    )
+
+    domicilio = models.CharField(
+        max_length=225,
+        db_column='Domicilio',
+        null=True,
+        blank=True
     )
 
     class Meta:

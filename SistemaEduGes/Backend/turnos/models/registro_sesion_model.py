@@ -8,9 +8,25 @@ class RegistroSesion(models.Model):
         db_column='ID_RegistroSesion'
     )
 
-    nota_clinica = models.CharField(
-        max_length=5000,
-        db_column='NotaClinica'
+    trabajo_sesion = models.CharField(
+        max_length=225,
+        db_column='TrabajoSesion',
+        null=True,
+        blank=True
+    )
+
+    resultado_respuesta = models.CharField(
+        max_length=225,
+        db_column='Resultado/Respuesta',
+        null=True,
+        blank=True
+    )
+
+    nota_especial = models.CharField(
+        max_length=225,
+        db_column='NotaEspecial',
+        null=True,
+        blank=True
     )
 
     class Meta:

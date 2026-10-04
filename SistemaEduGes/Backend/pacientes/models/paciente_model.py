@@ -47,8 +47,22 @@ class Paciente(models.Model):
         db_column='Direccion'
     )
 
+    mail = models.CharField(
+        max_length=50,
+        db_column='Mail',
+        null=True,
+        blank=True
+    )
+
     consentimiento = models.BooleanField(
         db_column='Consentimiento'
+    )
+
+    cud_numero = models.CharField(
+        max_length=20,
+        db_column='CUD_Numero',
+        null=True,
+        blank=True
     )
 
     cud_vencimiento = models.DateField(

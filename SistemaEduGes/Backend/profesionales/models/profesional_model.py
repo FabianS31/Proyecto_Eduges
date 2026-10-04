@@ -50,6 +50,12 @@ class Profesional(models.Model):
         db_column='ID_Especialidad'
     )
 
+    rol = models.ForeignKey(
+        'usuarios.Rol',
+        on_delete=models.PROTECT,
+        db_column='ID_Rol'
+    )
+
     contacto = models.CharField(
         max_length=50,
         db_column='Contacto',
