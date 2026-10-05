@@ -1,644 +1,655 @@
 // ============================================================
-// EduGes - Dashboard (templates/index.html)
-// Métricas del día, agenda del día (con acciones sobre cada turno),
-// panel de CUD por vencer y registro clínico de la sesión.
-// Endpoints: docs/api-contrato.md §5, §6 (cud-por-vencer) y §7.
+// EduGes - Inicio (templates/index.html)
 //
-// Cada bloque carga y falla por separado: si una request falla,
-// el resto del dashboard se sigue viendo.
+// Profesional → su dashboard: agenda del día, próxima sesión, sesiones sin
+// registrar, CUD por vencer, buscador de sus pacientes y alta rápida de turnos
+// y pacientes.
+// Resto de los usuarios → resumen general (cuenta, profesionales, accesos).
+//
+// Endpoints: /api/auth/me/ y /api/profesionales/ (reales). Pacientes, turnos y
+// catálogos todavía no tienen API: endpoints.js devuelve listas vacías y, al
+// guardar, un aviso. Cada bloque carga y falla por separado.
 // ============================================================
 
 import { ApiError } from '../api.js';
-import { DIAS_AVISO_CUD, ESTADO_TURNO, PERMISO, ROL } from '../constantes.js';
-import { dashboard, pacientes, sesiones, turnos } from '../endpoints.js';
-import { diasEntre, hoyISO, sumarDias } from '../fechas.js';
-import { obtenerUsuario, tienePermiso } from '../layout.js';
+import { buscarEnLista, crearCombobox } from '../componentes/combobox.js';
+import { DIAS_AVISO_CUD, ESTADO_TURNO, PERMISO } from '../constantes.js';
+import { catalogos, pacientes, profesionales, turnos } from '../endpoints.js';
+import { aFecha, diasEntre, hoyISO, sumarDias } from '../fechas.js';
+import { esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
 import {
-    badgeCud,
-    badgeEstadoTurno,
     bloqueCargando,
     bloqueVacio,
     botonCargando,
-    confirmar,
-    filaCompleta,
-    formatearFecha,
-    formatearFechaHora,
     formatearFechaLarga,
-    formatearHora,
     html,
     limpiarErroresFormulario,
     mostrarError,
     mostrarErroresFormulario,
     nombreCompleto,
     notificar,
-    notificarError,
     renderizar,
-    textoVencimientoCud,
 } from '../ui.js';
-
-const COLUMNAS_AGENDA = 6;
-const LIMITE_PANEL_CUD = 5;
-const MAX_NOTA_CLINICA = 5000;
-
-const estado = {
-    usuario: null,
-    fecha: fechaInicial(),
-    controlador: null,        // AbortController de las requests que dependen de la fecha
-    turnos: new Map(),        // turnos de la agenda mostrada, por id
-    borradores: new Map(),    // notas clínicas sin guardar, por id de turno
-};
 
 const $ = (id) => document.getElementById(id);
 
-// ------------------------------------------------------------
-// Fecha mostrada (se conserva en la URL: /dashboard/?fecha=2026-09-29)
-// ------------------------------------------------------------
-function fechaInicial() {
-    const fecha = new URLSearchParams(window.location.search).get('fecha');
-    return /^\d{4}-\d{2}-\d{2}$/.test(fecha ?? '') ? fecha : hoyISO();
-}
+const estado = {
+    usuario: null,
+    fecha: hoyISO(),          // día que muestra la agenda
+    agenda: null,             // AbortController de la agenda
+};
 
-function cambiarFecha(nuevaFecha) {
-    estado.fecha = nuevaFecha;
-    const url = new URL(window.location.href);
-    if (nuevaFecha === hoyISO()) {
-        url.searchParams.delete('fecha');
-    } else {
-        url.searchParams.set('fecha', nuevaFecha);
+// ------------------------------------------------------------
+// Utilidades
+// ------------------------------------------------------------
+function saludo() {
+    const hora = new Date().getHours();
+    if (hora < 13) {
+        return 'Buen día';
     }
-    window.history.replaceState(null, '', url);
-    cargarDelDia();
+    return hora < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
 
+const urlPaciente = (id) => `/pacientes/?paciente=${encodeURIComponent(id)}`;
+
+// Estado del turno: siempre con ícono y texto, no solo con color
+const ESTILO_ESTADO_TURNO = {
+    [ESTADO_TURNO.PENDIENTE]: { clase: 'badge-turno-pendiente', icono: 'bi-hourglass-split' },
+    [ESTADO_TURNO.CONFIRMADO]: { clase: 'badge-turno-confirmado', icono: 'bi-check2' },
+    [ESTADO_TURNO.CANCELADO]: { clase: 'badge-turno-cancelado', icono: 'bi-x-lg' },
+    [ESTADO_TURNO.REALIZADO]: { clase: 'badge-turno-realizado', icono: 'bi-check2-all' },
+};
+
+function badgeEstadoTurno(estadoTurno) {
+    const estilo = ESTILO_ESTADO_TURNO[estadoTurno?.id] ?? { clase: 'bg-secondary', icono: 'bi-question' };
+    return html`<span class="badge badge-turno ${estilo.clase}">
+        <i class="bi ${estilo.icono} me-1" aria-hidden="true"></i>${estadoTurno?.nombre ?? 'Sin estado'}</span>`;
+}
+
+const formatearHora = (hora) => (hora ? hora.slice(0, 5) : '—');
+
+const FORMATO_DIA = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+// "Mi agenda de hoy" / "de mañana" / "del lunes 5 de octubre"
 function textoDia(fecha) {
     const diferencia = diasEntre(hoyISO(), fecha);
     if (diferencia === 0) {
-        return 'hoy';
+        return { titulo: 'Mi agenda de hoy', vacio: 'No tenés sesiones hoy.' };
     }
     if (diferencia === 1) {
-        return 'mañana';
+        return { titulo: 'Mi agenda de mañana', vacio: 'No tenés sesiones mañana.' };
     }
     if (diferencia === -1) {
-        return 'ayer';
+        return { titulo: 'Mi agenda de ayer', vacio: 'No tuviste sesiones ayer.' };
     }
-    return `el ${formatearFecha(fecha)}`;
+    // "martes 6 de octubre" (sin coma ni año)
+    const conMinuscula = FORMATO_DIA.format(aFecha(fecha)).replace(',', '');
+    return {
+        titulo: `Mi agenda del ${conMinuscula}`,
+        vacio: diferencia < 0 ? `No tuviste sesiones el ${conMinuscula}.` : `No tenés sesiones el ${conMinuscula}.`,
+    };
 }
 
-function actualizarCabecera() {
-    const esHoy = estado.fecha === hoyISO();
-    $('dashboard-fecha-texto').textContent = formatearFechaLarga(estado.fecha);
-    $('agenda-titulo').textContent = `Sesiones programadas para ${textoDia(estado.fecha)}`;
-    $('metrica-turnos-titulo').textContent = esHoy ? 'Turnos Hoy' : `Turnos ${formatearFecha(estado.fecha).slice(0, 5)}`;
-    $('btn-dia-hoy').disabled = esHoy;
+function textoCud(dias) {
+    if (dias < -1) {
+        return `Venció hace ${-dias} días`;
+    }
+    if (dias === -1) {
+        return 'Venció ayer';
+    }
+    if (dias === 0) {
+        return 'Vence hoy';
+    }
+    return dias === 1 ? 'Vence mañana' : `Vence en ${dias} días`;
 }
 
 // ------------------------------------------------------------
-// Ajustes según el rol
+// Vista general (sin profesional asociado)
 // ------------------------------------------------------------
-const esProfesional = () => estado.usuario.rol.id === ROL.PROFESIONAL;
+async function mostrarVistaGeneral(usuario) {
+    $('vista-general').hidden = false;
+    const especialidad = usuario.profesional?.especialidad?.nombre;
+    renderizar($('inicio-cuenta'), html`
+        <div class="col-6"><dt>Usuario</dt><dd><code>${usuario.usuario}</code></dd></div>
+        <div class="col-6"><dt>Rol</dt><dd>${usuario.rol?.nombre ?? '—'}</dd></div>
+        ${especialidad && html`<div class="col-12"><dt>Especialidad</dt><dd>${especialidad}</dd></div>`}`);
 
-function ajustarPorRol() {
-    if (!esProfesional()) {
+    if (!tienePermiso(usuario, PERMISO.PROFESIONALES_VER)) {
         return;
     }
-    // El profesional solo ve su propia agenda: la columna "Profesional" sobra
-    document.querySelectorAll('[data-columna="profesional"]').forEach((th) => th.classList.add('d-none'));
-
-    // No ve la cantidad de profesionales: las otras tres métricas ocupan la fila
-    $('metrica-profesionales-col').remove();
-    document.querySelectorAll('.metrica-col').forEach((col) => col.classList.replace('col-xl-3', 'col-xl-4'));
-}
-
-// ------------------------------------------------------------
-// Métricas
-// ------------------------------------------------------------
-const PLACEHOLDER_NUMERO = html`<span class="placeholder-glow"><span class="placeholder" style="width: 2.5rem;"></span></span>`;
-
-function metrica(nombre) {
-    return document.querySelector(`[data-metrica="${nombre}"]`);
-}
-
-function mostrarMetricas(valores) {
-    for (const [nombre, valor] of Object.entries(valores)) {
-        const elemento = metrica(nombre);
-        if (elemento) {
-            renderizar(elemento, valor);
-        }
-    }
-}
-
-// silencioso: actualiza los números sin mostrar el estado de carga (después de una acción)
-async function cargarResumen(signal, { silencioso = false } = {}) {
-    renderizar($('metricas-error'), '');
-    if (!silencioso) {
-        mostrarMetricas({
-            'turnos-total': PLACEHOLDER_NUMERO,
-            'pacientes-activos': PLACEHOLDER_NUMERO,
-            'alertas-cud': PLACEHOLDER_NUMERO,
-            'profesionales-activos': PLACEHOLDER_NUMERO,
-        });
-    }
-
+    const contenedor = $('inicio-profesionales');
     try {
-        const resumen = await dashboard.resumen(estado.fecha, { signal });
-        const t = resumen.turnos;
-        const porAtender = t.pendientes + t.confirmados;
-
-        mostrarMetricas({
-            'turnos-total': t.total,
-            'turnos-detalle': `${t.realizados} realizados · ${porAtender} por atender`,
-            'pacientes-activos': resumen.pacientes_activos,
-            'pacientes-detalle': esProfesional() ? 'Asignados a vos' : 'En tratamiento en el centro',
-            'alertas-cud': resumen.alertas_cud,
-            'profesionales-activos': resumen.profesionales_activos ?? '—',
-        });
-
-        // "4 de 6 completadas": los cancelados no cuentan
-        const atendibles = t.total - t.cancelados;
-        $('agenda-progreso').textContent = atendibles > 0 ? `${t.realizados} de ${atendibles} completadas` : 'Sin sesiones';
+        contenedor.textContent = (await profesionales.listar()).length;
     } catch (error) {
-        // Cancelada por un cambio de día: ya hay otra carga en curso
-        if (error.name === 'AbortError') {
-            return;
+        if (error.status !== 401) {
+            renderizar(contenedor, html`<span class="text-muted fs-6 fw-normal" title="${error.message}">No disponible</span>`);
         }
-        const sinDato = '—';
-        mostrarMetricas({
-            'turnos-total': sinDato,
-            'turnos-detalle': '',
-            'pacientes-activos': sinDato,
-            'pacientes-detalle': '',
-            'alertas-cud': sinDato,
-            'profesionales-activos': sinDato,
-        });
-        $('agenda-progreso').textContent = '';
-        mostrarError($('metricas-error'), error, () => cargarResumen(estado.controlador.signal));
     }
 }
 
 // ------------------------------------------------------------
-// Agenda del día
+// Dashboard del profesional: bloques
 // ------------------------------------------------------------
-const CLASE_FILA = {
-    [ESTADO_TURNO.PENDIENTE]: 'table-primary-subtle',
-    [ESTADO_TURNO.CANCELADO]: 'opacity-75',
-};
-
-function filaTurno(turno) {
-    const paciente = turno.paciente;
+function itemTurno(turno, { mostrarFecha = false } = {}) {
+    const paciente = nombreCompleto(turno.paciente, { apellidoPrimero: true });
     return html`
-        <tr class="${CLASE_FILA[turno.estado.id] ?? ''}" data-turno-id="${turno.id}">
-            <td><span class="fw-bold">${formatearHora(turno.hora_inicio)}</span></td>
-            <td>
-                <div class="fw-semibold text-dark">${nombreCompleto(paciente, { apellidoPrimero: true })}</div>
-                <div class="text-muted small d-flex flex-wrap align-items-center gap-2">
-                    <span><i class="bi bi-card-text text-secondary me-1"></i>DNI: ${paciente.dni}</span>
-                    ${paciente.cud_estado !== 'vigente' && badgeCud(paciente.cud_estado)}
-                </div>
-            </td>
-            <td>
-                <span class="badge bg-light text-dark border">${paciente.obra_social?.nombre ?? 'Particular'}</span>
-            </td>
-            <td class="${esProfesional() ? 'd-none' : ''}">${nombreCompleto(turno.profesional, { apellidoPrimero: true })}</td>
-            <td>${badgeEstadoTurno(turno.estado)}</td>
-            <td class="text-end text-nowrap">${accionesTurno(turno)}</td>
-        </tr>`;
-}
-
-// ------------------------------------------------------------
-// Acciones sobre cada turno
-// Solo se ofrece lo que la API va a permitir (contrato §2 y §7);
-// igual, si la API rechaza algo, se muestra su mensaje.
-// ------------------------------------------------------------
-function botonAccion(accion, icono, etiqueta, clase, turno) {
-    const descripcion = `${etiqueta}: ${formatearHora(turno.hora_inicio)}, ${nombreCompleto(turno.paciente, { apellidoPrimero: true })}`;
-    return html`
-        <button type="button" class="btn btn-sm btn-light border ${clase}" data-accion="${accion}"
-                title="${etiqueta}" aria-label="${descripcion}">
-            <i class="bi ${icono}" aria-hidden="true"></i>
-        </button>`;
-}
-
-function accionesTurno(turno) {
-    const usuario = estado.usuario;
-    const esPropio = usuario.profesional?.id === turno.profesional.id;
-    const puedeEditar = tienePermiso(usuario, PERMISO.TURNOS_EDITAR)
-        && (usuario.rol.id === ROL.ADMINISTRADOR || esPropio);
-    const puedeRegistrar = esPropio && tienePermiso(usuario, PERMISO.SESIONES_REGISTRAR);
-    const puedeVerNota = esPropio && tienePermiso(usuario, PERMISO.SESIONES_VER);
-    const noEsFuturo = turno.fecha <= hoyISO();
-    const botones = [];
-
-    switch (turno.estado.id) {
-    case ESTADO_TURNO.PENDIENTE:
-        if (puedeEditar) {
-            botones.push(botonAccion('confirmar', 'bi-check2-circle', 'Confirmar turno', 'text-primary', turno));
-            botones.push(botonAccion('cancelar', 'bi-x-circle', 'Cancelar turno', 'text-danger', turno));
-        }
-        break;
-    case ESTADO_TURNO.CONFIRMADO:
-        if (puedeRegistrar && noEsFuturo) {
-            botones.push(botonAccion('registrar', 'bi-journal-plus', 'Registrar sesión', 'text-success', turno));
-        } else if (puedeEditar && noEsFuturo) {
-            botones.push(botonAccion('realizado', 'bi-check2-all', 'Marcar como realizado', 'text-success', turno));
-        }
-        if (puedeEditar) {
-            botones.push(botonAccion('cancelar', 'bi-x-circle', 'Cancelar turno', 'text-danger', turno));
-        }
-        break;
-    case ESTADO_TURNO.REALIZADO:
-        if (turno.tiene_registro_sesion && puedeVerNota) {
-            botones.push(botonAccion('ver', 'bi-file-earmark-medical', 'Ver evolución', 'text-success', turno));
-        } else if (!turno.tiene_registro_sesion && puedeRegistrar) {
-            botones.push(botonAccion('registrar', 'bi-journal-plus', 'Registrar sesión', 'text-warning-emphasis', turno));
-        }
-        break;
-    default:
-        break;
-    }
-
-    return botones.length > 0 ? html`<div class="d-inline-flex gap-1">${botones}</div>` : html``;
-}
-
-// Pone el foco en el primer botón de la fila del turno (o en la fila si no tiene botones),
-// para que quien usa teclado no pierda su lugar cuando la fila se redibuja.
-function enfocarTurno(turnoId) {
-    const fila = $('agenda-cuerpo').querySelector(`tr[data-turno-id="${turnoId}"]`);
-    if (!fila) {
-        return;
-    }
-    const boton = fila.querySelector('button[data-accion]');
-    if (boton) {
-        boton.focus();
-    } else {
-        fila.tabIndex = -1;
-        fila.focus();
-    }
-}
-
-// Reemplaza la fila del turno con los datos nuevos, sin recargar toda la agenda
-function actualizarTurnoEnAgenda(turno) {
-    estado.turnos.set(turno.id, turno);
-    const fila = $('agenda-cuerpo').querySelector(`tr[data-turno-id="${turno.id}"]`);
-    if (!fila) {
-        return;
-    }
-    const teniaElFoco = fila.contains(document.activeElement);
-    fila.outerHTML = String(filaTurno(turno));
-    if (teniaElFoco) {
-        enfocarTurno(turno.id);
-    }
-}
-
-// Después de un cambio: métricas al día sin parpadeo
-function refrescarResumen() {
-    cargarResumen(estado.controlador.signal, { silencioso: true });
-}
-
-async function cambiarEstadoTurno(boton, operacion, mensajeExito) {
-    botonCargando(boton, true, '');
-    try {
-        const actualizado = await operacion();
-        actualizarTurnoEnAgenda(actualizado);
-        refrescarResumen();
-        notificar(mensajeExito);
-    } catch (error) {
-        notificarError(error);
-        // Si la API lo rechazó, probablemente la agenda está desactualizada (otro usuario lo cambió)
-        if ([400, 404, 409].includes(error.status)) {
-            cargarAgenda(estado.controlador.signal);
-            refrescarResumen();
-        } else {
-            botonCargando(boton, false);
-        }
-    }
-}
-
-const ACCIONES = {
-    confirmar: (turno, boton) =>
-        cambiarEstadoTurno(boton, () => turnos.confirmar(turno.id), 'Turno confirmado.'),
-
-    realizado: (turno, boton) =>
-        cambiarEstadoTurno(boton, () => turnos.cambiarEstado(turno.id, ESTADO_TURNO.REALIZADO), 'Turno marcado como realizado.'),
-
-    cancelar: async (turno, boton) => {
-        const aceptado = await confirmar({
-            titulo: '¿Cancelar el turno?',
-            mensaje: `${formatearHora(turno.hora_inicio)} hs · ${nombreCompleto(turno.paciente)}. El horario queda libre y no se puede deshacer.`,
-            textoAceptar: 'Cancelar turno',
-            textoCancelar: 'Volver',
-            peligro: true,
-        });
-        if (aceptado) {
-            await cambiarEstadoTurno(boton, () => turnos.cancelar(turno.id), 'Turno cancelado.');
-        }
-    },
-
-    registrar: (turno) => abrirModalSesion(turno, 'registrar'),
-
-    ver: (turno) => abrirModalSesion(turno, 'ver'),
-};
-
-function alHacerClicEnAgenda(evento) {
-    const boton = evento.target.closest('button[data-accion]');
-    const fila = boton?.closest('tr[data-turno-id]');
-    const turno = fila && estado.turnos.get(Number(fila.dataset.turnoId));
-    if (turno && ACCIONES[boton.dataset.accion]) {
-        ACCIONES[boton.dataset.accion](turno, boton);
-    }
-}
-
-async function cargarAgenda(signal) {
-    const cuerpo = $('agenda-cuerpo');
-    renderizar(cuerpo, filaCompleta(COLUMNAS_AGENDA, bloqueCargando(3)));
-
-    try {
-        const lista = await turnos.delDia(estado.fecha, {}, { signal });
-        estado.turnos = new Map(lista.map((turno) => [turno.id, turno]));
-        renderizar(cuerpo, lista.length > 0
-            ? lista.map(filaTurno)
-            : filaCompleta(COLUMNAS_AGENDA, bloqueVacio(`No hay turnos programados para ${textoDia(estado.fecha)}.`, 'bi-calendar-x')));
-    } catch (error) {
-        mostrarError(cuerpo, error, () => cargarAgenda(estado.controlador.signal), { colspan: COLUMNAS_AGENDA });
-    }
-}
-
-// ------------------------------------------------------------
-// Panel de CUD (no depende del día elegido)
-// ------------------------------------------------------------
-function telefonoParaLlamar(telefono) {
-    return telefono ? telefono.replace(/[^\d+]/g, '') : null;
-}
-
-function itemCud(paciente) {
-    const vencido = paciente.cud_estado === 'vencido';
-    const tutor = paciente.tutor_principal;
-    const telefono = telefonoParaLlamar(tutor?.telefono_movil);
-    const nombre = nombreCompleto(paciente);
-
-    const botonLlamar = telefono
-        ? html`<a class="btn btn-sm btn-outline-secondary border-0" href="tel:${telefono}"
-                  title="Llamar a ${tutor.nombre}" aria-label="Llamar a ${tutor.nombre}, tutor de ${nombre}">
-                  <i class="bi bi-telephone-outbound"></i></a>`
-        : html`<span class="btn btn-sm border-0 text-muted disabled" title="Sin teléfono cargado" aria-hidden="true">
-                  <i class="bi bi-telephone-x"></i></span>`;
-
-    return html`
-        <div class="cud-item ${vencido ? 'cud-item-vencido' : 'cud-item-alerta'} p-2 d-flex justify-content-between align-items-center gap-2">
-            <div>
-                <div class="fw-semibold small">${nombre}</div>
-                <small class="${vencido ? 'text-danger' : 'text-warning-emphasis'} fw-semibold">
-                    ${textoVencimientoCud(paciente.dias_restantes)} · ${formatearFecha(paciente.cud_vencimiento)}
-                </small>
-                <div class="text-muted" style="font-size: 0.75rem;">
-                    ${tutor ? html`Tutor: ${tutor.nombre}${tutor.telefono_movil ? html` · ${tutor.telefono_movil}` : ''}` : 'Sin tutor cargado'}
-                </div>
+        <li class="list-group-item d-flex align-items-center gap-3 py-3">
+            <div class="dashboard-hora">${formatearHora(turno.hora)}</div>
+            <div class="flex-grow-1 min-w-0">
+                <a href="${urlPaciente(turno.paciente?.id)}" class="fw-semibold text-dark text-decoration-none d-block text-truncate">${paciente}</a>
+                ${mostrarFecha
+                    ? html`<span class="small text-muted">${formatearFechaLarga(turno.fecha)}</span>`
+                    : badgeEstadoTurno(turno.estado)}
             </div>
-            ${botonLlamar}
+            <a href="${urlPaciente(turno.paciente?.id)}" class="btn btn-sm btn-light border text-primary"
+               aria-label="Ver ficha de ${paciente}" title="Ver ficha">
+                <i class="bi bi-person-lines-fill" aria-hidden="true"></i>
+            </a>
+        </li>`;
+}
+
+function vacioConAccion(mensaje, icono, accion) {
+    return html`
+        <div class="text-center text-muted py-4 px-3">
+            <i class="bi ${icono} fs-3 d-block mb-2 text-secondary" aria-hidden="true"></i>
+            <p class="mb-0">${mensaje}</p>
+            ${accion}
         </div>`;
 }
 
-async function cargarCud() {
-    const lista = $('cud-lista');
-    if (!lista) {
-        return; // el rol no tiene permiso para ver pacientes: el panel no existe
+function botonAgendar() {
+    return tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR)
+        ? html`<button type="button" class="btn btn-sm btn-outline-primary mt-3" data-accion="agendar">
+                <i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>Agendar un turno</button>`
+        : null;
+}
+
+// La próxima sesión de hoy que todavía no pasó (pendiente o confirmada)
+function proximaSesion(turnosDeHoy) {
+    const ahora = new Date().toTimeString().slice(0, 5);
+    return turnosDeHoy
+        .filter((t) => [ESTADO_TURNO.PENDIENTE, ESTADO_TURNO.CONFIRMADO].includes(t.estado?.id))
+        .filter((t) => formatearHora(t.hora) >= ahora)
+        .sort((a, b) => formatearHora(a.hora).localeCompare(formatearHora(b.hora)))[0] ?? null;
+}
+
+function mostrarProxima(turnosDeHoy) {
+    const turno = proximaSesion(turnosDeHoy);
+    if (!turno) {
+        renderizar($('proxima-cuerpo'), bloqueVacio('No tenés más sesiones por hoy.', 'bi-cup-hot'));
+        return;
     }
-    const contador = $('cud-contador');
-    renderizar(lista, bloqueCargando(2));
-    contador.textContent = '';
+    const paciente = nombreCompleto(turno.paciente);
+    renderizar($('proxima-cuerpo'), html`
+        <div class="p-3">
+            <div class="d-flex align-items-baseline gap-2 mb-1">
+                <span class="dashboard-hora-grande">${formatearHora(turno.hora)}</span>
+                ${badgeEstadoTurno(turno.estado)}
+            </div>
+            <div class="fw-semibold fs-6 mb-3">${paciente}</div>
+            <a href="${urlPaciente(turno.paciente?.id)}" class="btn btn-sm btn-eduges">
+                <i class="bi bi-person-lines-fill me-1" aria-hidden="true"></i>Ver ficha de ${paciente}
+            </a>
+        </div>`);
+}
+
+function mostrarMetricaHoy(turnosDeHoy) {
+    const activos = turnosDeHoy.filter((t) => t.estado?.id !== ESTADO_TURNO.CANCELADO);
+    const porAtender = activos.filter((t) => [ESTADO_TURNO.PENDIENTE, ESTADO_TURNO.CONFIRMADO].includes(t.estado?.id));
+    $('metrica-hoy').textContent = activos.length;
+    $('metrica-hoy-detalle').textContent = activos.length === 0
+        ? 'Sin sesiones agendadas'
+        : `${porAtender.length} por atender`;
+}
+
+async function cargarAgenda() {
+    estado.agenda?.abort();
+    estado.agenda = new AbortController();
+    const { signal } = estado.agenda;
+    const fecha = estado.fecha;
+    const esHoy = fecha === hoyISO();
+    const textos = textoDia(fecha);
+
+    $('agenda-titulo-texto').textContent = textos.titulo;
+    $('btn-dia-hoy').disabled = esHoy;
+    $('btn-dia-hoy').setAttribute('aria-pressed', esHoy ? 'true' : 'false');
+    renderizar($('agenda-cuerpo'), bloqueCargando(3));
+    if (esHoy) {
+        renderizar($('proxima-cuerpo'), bloqueCargando(2));
+    }
 
     try {
-        // Se piden todos para mostrar el total real; se listan los más urgentes
-        const todos = await pacientes.cudPorVencer({ dias: DIAS_AVISO_CUD });
-        contador.textContent = todos.length === 1 ? '1 paciente' : `${todos.length} pacientes`;
-        renderizar(lista, todos.length > 0
-            ? todos.slice(0, LIMITE_PANEL_CUD).map(itemCud)
-            : bloqueVacio('No hay certificados vencidos ni por vencer.', 'bi-shield-check'));
+        const lista = await turnos.delDia(fecha, { signal });
+        if (signal.aborted) {
+            return;
+        }
+        const ordenados = [...lista].sort((a, b) => formatearHora(a.hora).localeCompare(formatearHora(b.hora)));
+        renderizar($('agenda-cuerpo'), ordenados.length > 0
+            ? html`<ul class="list-group list-group-flush">${ordenados.map((t) => itemTurno(t))}</ul>`
+            : vacioConAccion(textos.vacio, 'bi-calendar-x', botonAgendar()));
+        if (esHoy) {
+            mostrarProxima(ordenados);
+            mostrarMetricaHoy(ordenados);
+        }
     } catch (error) {
-        mostrarError(lista, error, cargarCud);
+        if (error.name === 'AbortError') {
+            return;
+        }
+        mostrarError($('agenda-cuerpo'), error, cargarAgenda);
+        if (esHoy) {
+            mostrarError($('proxima-cuerpo'), error, cargarAgenda);
+        }
+    }
+}
+
+function cambiarDia(dias) {
+    estado.fecha = dias === 0 ? hoyISO() : sumarDias(estado.fecha, dias);
+    cargarAgenda();
+}
+
+async function cargarSinRegistrar() {
+    renderizar($('registrar-cuerpo'), bloqueCargando(2));
+    try {
+        const lista = await turnos.sinRegistrar();
+        $('metrica-registrar').textContent = lista.length;
+        renderizar($('registrar-cuerpo'), lista.length > 0
+            ? html`<ul class="list-group list-group-flush">${lista.map((t) => itemTurno(t, { mostrarFecha: true }))}</ul>`
+            : bloqueVacio('Tenés todas tus sesiones registradas.', 'bi-journal-check'));
+    } catch (error) {
+        $('metrica-registrar').textContent = '—';
+        mostrarError($('registrar-cuerpo'), error, cargarSinRegistrar);
+    }
+}
+
+async function cargarCud() {
+    renderizar($('cud-cuerpo'), bloqueCargando(2));
+    try {
+        const hoy = hoyISO();
+        const lista = (await pacientes.cudPorVencer())
+            .map((p) => ({ ...p, dias: diasEntre(hoy, p.cud_vencimiento) }))
+            .filter((p) => p.dias <= DIAS_AVISO_CUD)
+            .sort((a, b) => a.dias - b.dias);
+        $('metrica-cud').textContent = lista.length;
+        renderizar($('cud-cuerpo'), lista.length > 0
+            ? html`<ul class="list-group list-group-flush">${lista.map((p) => html`
+                <li class="list-group-item d-flex justify-content-between align-items-center gap-2 py-3">
+                    <a href="${urlPaciente(p.id)}" class="fw-semibold text-dark text-decoration-none">${nombreCompleto(p, { apellidoPrimero: true })}</a>
+                    <span class="badge ${p.dias < 0 ? 'badge-cud-vencido' : 'badge-cud-alerta'}">
+                        <i class="bi ${p.dias < 0 ? 'bi-x-octagon' : 'bi-exclamation-triangle'} me-1" aria-hidden="true"></i>${textoCud(p.dias)}
+                    </span>
+                </li>`)}</ul>`
+            : bloqueVacio(`Ningún CUD de tus pacientes vence en los próximos ${DIAS_AVISO_CUD} días.`, 'bi-shield-check'));
+    } catch (error) {
+        $('metrica-cud').textContent = '—';
+        mostrarError($('cud-cuerpo'), error, cargarCud);
+    }
+}
+
+async function cargarCantidadPacientes() {
+    try {
+        $('metrica-pacientes').textContent = (await pacientes.mios()).length;
+    } catch {
+        $('metrica-pacientes').textContent = '—';
     }
 }
 
 // ------------------------------------------------------------
-// Registro clínico de la sesión (modal)
-// modo 'registrar': nota nueva (POST). Lo escrito se guarda como borrador
-//                   si se cierra el modal sin guardar.
-// modo 'ver':       muestra la nota existente y permite corregirla (PATCH).
+// Sugerencias para los campos
 // ------------------------------------------------------------
-const modalSesion = {
-    turno: null,
-    modo: null,
-    notaOriginal: '',
-    turnoOrigen: null, // turno cuyo botón abrió el modal: al cerrar, el foco vuelve ahí
+const MENSAJE_SIN_PACIENTES = 'No encontramos pacientes tuyos con ese nombre o DNI.';
+
+async function sugerirPacientes(texto, signal) {
+    const lista = await pacientes.buscar(texto, { signal });
+    return lista.map((p) => ({
+        valor: p.id,
+        texto: nombreCompleto(p, { apellidoPrimero: true }),
+        detalle: p.dni ? `DNI ${p.dni}` : null,
+    }));
+}
+
+// Horarios cada 30 minutos de 8 a 20. Se puede escribir "9", "930" o "9:30".
+const HORARIOS = Array.from({ length: 25 }, (_, i) => {
+    const minutos = 8 * 60 + i * 30;
+    const texto = `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}`;
+    return { valor: texto, texto };
+});
+
+async function sugerirHorarios(texto) {
+    const digitos = texto.replace(/\D/g, '');
+    if (!digitos) {
+        return HORARIOS;
+    }
+    return HORARIOS.filter((h) => {
+        const deLaOpcion = h.texto.replace(':', '');
+        return deLaOpcion.startsWith(digitos) || deLaOpcion.startsWith(`0${digitos}`);
+    });
+}
+
+// "9:30", "930", "09:30" → "09:30"; null si no es una hora válida
+function normalizarHora(texto) {
+    const coincidencia = String(texto ?? '').trim().match(/^(\d{1,2}):?(\d{2})$/);
+    if (!coincidencia) {
+        return null;
+    }
+    const [hora, minutos] = [Number(coincidencia[1]), Number(coincidencia[2])];
+    if (hora > 23 || minutos > 59) {
+        return null;
+    }
+    return `${String(hora).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
+}
+
+const sugerirDeCatalogo = (obtener) => async (texto) => {
+    const opciones = (await obtener()).map((item) => ({ valor: item.id, texto: item.nombre }));
+    return buscarEnLista(opciones)(texto);
 };
 
-let placeholderNota = '';
-
-const modalBootstrap = () => window.bootstrap.Modal.getOrCreateInstance($('modalSesion'));
-
-function actualizarContador() {
-    const largo = $('tratamientoAplicado').value.length;
-    const contador = $('tratamientoAplicado-contador');
-    contador.textContent = `${largo} / ${MAX_NOTA_CLINICA}`;
-    contador.classList.toggle('excedido', largo >= MAX_NOTA_CLINICA);
-}
-
-function mostrarErroresGenerales(mensajes) {
-    renderizar($('modal-sesion-errores'), mensajes.length > 0
-        ? html`<div class="alert alert-danger small py-2" role="alert">${mensajes.map((m) => html`<div>${m}</div>`)}</div>`
+// ------------------------------------------------------------
+// Formularios (modales)
+// ------------------------------------------------------------
+function mostrarErroresDelFormulario(formulario, idErrores, error) {
+    const generales = mostrarErroresFormulario(formulario, error);
+    renderizar($(idErrores), generales.length > 0
+        ? html`
+            <div class="alert alert-danger py-2 small mb-3 d-flex align-items-start gap-2" role="alert">
+                <i class="bi bi-exclamation-circle-fill mt-1" aria-hidden="true"></i>
+                <span>${generales.join(' ')}</span>
+            </div>`
         : '');
-}
-
-function mostrarAuditoria(sesion) {
-    const partes = [];
-    if (sesion.creado) {
-        partes.push(`Registrada el ${formatearFechaHora(sesion.creado)}${sesion.autor ? ` por ${nombreCompleto(sesion.autor)}` : ''}.`);
-    }
-    if (sesion.modificado) {
-        partes.push(`Última corrección: ${formatearFechaHora(sesion.modificado)}.`);
-    }
-    $('modal-sesion-auditoria').textContent = partes.join(' ');
-}
-
-async function abrirModalSesion(turno, modo) {
-    const formulario = $('form-sesion');
-    const nota = $('tratamientoAplicado');
-    const guardar = $('btn-guardar-sesion');
-
-    modalSesion.turno = turno;
-    modalSesion.modo = modo;
-    modalSesion.notaOriginal = '';
-    modalSesion.turnoOrigen = turno.id;
-
-    limpiarErroresFormulario(formulario);
-    mostrarErroresGenerales([]);
-    $('modal-sesion-auditoria').textContent = '';
-    $('modal-sesion-titulo').textContent = modo === 'ver' ? 'Evolución Clínica de la Sesión' : 'Registro Clínico de Sesión';
-    renderizar($('modal-sesion-paciente'), html`
-        ${nombreCompleto(turno.paciente, { apellidoPrimero: true })}
-        ${turno.paciente.cud_estado !== 'vigente' && badgeCud(turno.paciente.cud_estado)}
-        <div class="small text-muted fw-normal">Turno del ${formatearFecha(turno.fecha)} · ${formatearHora(turno.hora_inicio)} hs</div>`);
-    $('modal-sesion-profesional').textContent = nombreCompleto(turno.profesional);
-
-    // "Marcar como realizado" solo tiene sentido para una nota nueva de un turno confirmado
-    const mostrarMarcar = modo === 'registrar' && turno.estado.id === ESTADO_TURNO.CONFIRMADO;
-    $('modal-sesion-marcar').classList.toggle('d-none', !mostrarMarcar);
-    $('turnoRealizado').checked = true;
-
-    guardar.textContent = modo === 'ver' ? 'Guardar Cambios' : 'Guardar Evolución';
-
-    if (modo === 'registrar') {
-        nota.value = estado.borradores.get(turno.id) ?? '';
-        nota.disabled = false;
-        nota.placeholder = placeholderNota;
-        guardar.disabled = false;
-    } else {
-        nota.value = '';
-        nota.disabled = true;
-        nota.placeholder = 'Cargando la evolución…';
-        guardar.disabled = true;
-    }
-    actualizarContador();
-    modalBootstrap().show();
-
-    if (modo !== 'ver') {
-        return;
-    }
-    try {
-        const sesion = await sesiones.obtener(turno.id);
-        if (modalSesion.turno !== turno) {
-            return; // se cerró o se abrió otro turno mientras cargaba
-        }
-        nota.value = sesion.nota_clinica;
-        nota.disabled = false;
-        nota.placeholder = placeholderNota;
-        modalSesion.notaOriginal = sesion.nota_clinica;
-        actualizarContador();
-        mostrarAuditoria(sesion);
-    } catch (error) {
-        if (modalSesion.turno === turno) {
-            nota.placeholder = '';
-            mostrarErroresGenerales([error.message ?? 'No se pudo cargar la evolución.']);
-        }
+    // El foco va al primer campo con error; si el error es general, al aviso
+    const campo = formulario.querySelector('.is-invalid');
+    const aviso = $(idErrores).querySelector('[role="alert"]');
+    if (campo) {
+        campo.focus();
+    } else if (aviso) {
+        aviso.tabIndex = -1;
+        aviso.focus();
     }
 }
 
-function alEscribirNota() {
-    const nota = $('tratamientoAplicado');
-    actualizarContador();
-    nota.classList.remove('is-invalid');
-
-    if (modalSesion.modo === 'registrar') {
-        estado.borradores.set(modalSesion.turno.id, nota.value);
-    } else if (modalSesion.modo === 'ver') {
-        // En modo corrección, "Guardar" se habilita solo si hubo cambios
-        $('btn-guardar-sesion').disabled = nota.value.trim() === modalSesion.notaOriginal.trim();
-    }
-}
-
-async function guardarSesion(evento) {
-    evento.preventDefault();
-    const formulario = $('form-sesion');
-    const nota = $('tratamientoAplicado');
-    const guardar = $('btn-guardar-sesion');
-    const { turno, modo } = modalSesion;
-    const texto = nota.value.trim();
-
-    // Validación mínima antes de ir a la API (la API vuelve a validar)
-    if (!texto) {
-        mostrarErroresFormulario(formulario, new ApiError(400, { nota_clinica: ['Escribí la evolución antes de guardar.'] }));
-        nota.focus();
-        return;
-    }
-
-    limpiarErroresFormulario(formulario);
-    mostrarErroresGenerales([]);
-    botonCargando(guardar, true);
-
-    try {
-        if (modo === 'registrar') {
-            const marcarRealizado = !$('modal-sesion-marcar').classList.contains('d-none') && $('turnoRealizado').checked;
-            await sesiones.registrar(turno.id, texto, marcarRealizado);
-            estado.borradores.delete(turno.id);
-        } else {
-            await sesiones.actualizar(turno.id, texto);
-        }
-    } catch (error) {
-        botonCargando(guardar, false);
-        mostrarErroresGenerales(mostrarErroresFormulario(formulario, error));
-        return;
-    }
-
-    botonCargando(guardar, false);
-    modalBootstrap().hide();
-    notificar(modo === 'registrar' ? 'Evolución registrada.' : 'Evolución actualizada.');
-
-    // El turno pudo cambiar de estado (Realizado) y ahora tiene registro: se actualiza su fila
-    try {
-        actualizarTurnoEnAgenda(await turnos.obtener(turno.id));
-        refrescarResumen();
-    } catch {
-        cargarAgenda(estado.controlador.signal);
-    }
-}
-
-function prepararModalSesion() {
-    const nota = $('tratamientoAplicado');
-    placeholderNota = nota.placeholder;
-    nota.addEventListener('input', alEscribirNota);
-    $('form-sesion').addEventListener('submit', guardarSesion);
-
-    const modal = $('modalSesion');
-    modal.addEventListener('shown.bs.modal', () => {
-        if (!nota.disabled) {
-            nota.focus();
-        }
-    });
+function prepararModal({ idModal, formulario, idErrores, comboboxes, alAbrir }) {
+    const modal = $(idModal);
+    formulario.addEventListener('input', (e) => e.target.classList.remove('is-invalid'));
+    modal.addEventListener('show.bs.modal', () => alAbrir?.());
+    modal.addEventListener('shown.bs.modal', () => formulario.querySelector('input:not([type="hidden"])')?.focus());
+    // Al cerrar no quedan datos ni errores en el formulario
     modal.addEventListener('hidden.bs.modal', () => {
-        modalSesion.turno = null;
-        modalSesion.modo = null;
-        // Bootstrap no devuelve el foco porque el modal se abre por código
-        enfocarTurno(modalSesion.turnoOrigen);
+        formulario.reset();
+        comboboxes.forEach((combo) => combo.limpiar());
+        limpiarErroresFormulario(formulario);
+        renderizar($(idErrores), '');
+    });
+    return () => window.bootstrap.Modal.getOrCreateInstance(modal);
+}
+
+async function guardar({ formulario, idErrores, boton, errores, enviar, mensajeExito, modal }) {
+    if (Object.keys(errores).length > 0) {
+        mostrarErroresDelFormulario(formulario, idErrores, new ApiError(400, errores));
+        return;
+    }
+    limpiarErroresFormulario(formulario);
+    renderizar($(idErrores), '');
+    botonCargando(boton, true);
+    try {
+        await enviar();
+        modal().hide();
+        notificar(mensajeExito);
+        refrescarDashboard();
+    } catch (error) {
+        mostrarErroresDelFormulario(formulario, idErrores, error);
+    } finally {
+        botonCargando(boton, false);
+    }
+}
+
+// --- Nuevo turno ---
+let modalTurno = null;
+let fechaParaTurno = null;
+
+function prepararFormularioTurno() {
+    const formulario = $('form-turno');
+    const paciente = crearCombobox($('turno-paciente'), {
+        buscar: sugerirPacientes,
+        minimo: 1,
+        mensajeVacio: MENSAJE_SIN_PACIENTES,
+    });
+    const hora = crearCombobox($('turno-hora'), {
+        buscar: sugerirHorarios,
+        textoLibre: true,
+        maximo: HORARIOS.length,
+        mensajeVacio: 'Escribí la hora con el formato hh:mm, por ejemplo 9:30.',
+    });
+
+    modalTurno = prepararModal({
+        idModal: 'modal-turno',
+        formulario,
+        idErrores: 'form-turno-errores',
+        comboboxes: [paciente, hora],
+        alAbrir: () => {
+            const fecha = $('turno-fecha');
+            fecha.min = hoyISO();
+            fecha.value = fechaParaTurno && fechaParaTurno >= hoyISO() ? fechaParaTurno : hoyISO();
+        },
+    });
+
+    formulario.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        const datos = {
+            paciente: paciente.valor(),
+            fecha: formulario.elements.fecha.value,
+            hora: normalizarHora(hora.valor()),
+            profesional: estado.usuario.profesional.id,
+        };
+        const errores = {};
+        if (!datos.paciente) {
+            errores.paciente = [$('turno-paciente').value.trim()
+                ? 'Elegí el paciente de la lista de sugerencias.'
+                : 'Indicá el paciente.'];
+        }
+        if (!datos.fecha) {
+            errores.fecha = ['Indicá la fecha.'];
+        } else if (datos.fecha < hoyISO()) {
+            errores.fecha = ['La fecha no puede ser anterior a hoy.'];
+        }
+        if (!datos.hora) {
+            errores.hora = [hora.valor() ? 'Escribí la hora con el formato hh:mm, por ejemplo 9:30.' : 'Indicá la hora.'];
+        }
+        guardar({
+            formulario,
+            idErrores: 'form-turno-errores',
+            boton: $('btn-guardar-turno'),
+            errores,
+            enviar: () => turnos.crear(datos),
+            mensajeExito: 'El turno quedó agendado.',
+            modal: modalTurno,
+        });
+    });
+}
+
+function abrirNuevoTurno(fecha = null) {
+    fechaParaTurno = fecha;
+    modalTurno().show();
+}
+
+// --- Nuevo paciente ---
+let modalPaciente = null;
+
+const soloDigitos = (texto) => /^\d+$/.test(texto);
+
+function prepararFormularioPaciente() {
+    const formulario = $('form-paciente');
+    const obraSocial = crearCombobox($('pac-obra-social'), {
+        buscar: sugerirDeCatalogo(catalogos.obrasSociales),
+        mensajeVacio: 'No hay obras sociales cargadas.',
+    });
+    const parentesco = crearCombobox($('tutor-parentesco'), {
+        buscar: sugerirDeCatalogo(catalogos.parentescos),
+        mensajeVacio: 'No hay parentescos cargados.',
+    });
+
+    modalPaciente = prepararModal({
+        idModal: 'modal-paciente',
+        formulario,
+        idErrores: 'form-paciente-errores',
+        comboboxes: [obraSocial, parentesco],
+        alAbrir: () => {
+            $('pac-nacimiento').max = hoyISO();
+        },
+    });
+
+    formulario.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        const campo = (nombre) => formulario.elements[nombre].value.trim();
+        const datos = {
+            nombre: campo('nombre'),
+            apellido: campo('apellido'),
+            dni: campo('dni'),
+            fecha_nacimiento: campo('fecha_nacimiento'),
+            mail: campo('mail') || null,
+            direccion: campo('direccion'),
+            obra_social: obraSocial.valor(),
+            numero_afiliado: campo('numero_afiliado'),
+            cud_numero: campo('cud_numero') || null,
+            cud_vencimiento: campo('cud_vencimiento'),
+            consentimiento: formulario.elements.consentimiento.checked,
+            tutor: {
+                nombre: campo('tutor.nombre'),
+                apellido: campo('tutor.apellido'),
+                parentesco: parentesco.valor(),
+                dni: campo('tutor.dni') || null,
+                movil: campo('tutor.movil'),
+                telefono: campo('tutor.telefono') || null,
+                mail: campo('tutor.mail') || null,
+                domicilio: campo('tutor.domicilio') || null,
+                responsable_principal: true,
+            },
+        };
+
+        const errores = {};
+        const obligatorio = (nombre, valor, mensaje) => {
+            if (!valor) {
+                errores[nombre] = [mensaje];
+            }
+        };
+        obligatorio('nombre', datos.nombre, 'Indicá el nombre.');
+        obligatorio('apellido', datos.apellido, 'Indicá el apellido.');
+        if (!datos.dni) {
+            errores.dni = ['Indicá el DNI.'];
+        } else if (!soloDigitos(datos.dni) || datos.dni.length < 7) {
+            errores.dni = ['El DNI tiene que tener 7 u 8 números, sin puntos.'];
+        }
+        if (!datos.fecha_nacimiento) {
+            errores.fecha_nacimiento = ['Indicá la fecha de nacimiento.'];
+        } else if (datos.fecha_nacimiento > hoyISO()) {
+            errores.fecha_nacimiento = ['La fecha de nacimiento no puede ser futura.'];
+        }
+        if (datos.mail && !formulario.elements.mail.checkValidity()) {
+            errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
+        }
+        obligatorio('direccion', datos.direccion, 'Indicá la dirección.');
+        if (!datos.obra_social) {
+            errores.obra_social = [$('pac-obra-social').value.trim()
+                ? 'Elegí la obra social de la lista de sugerencias.'
+                : 'Indicá la obra social.'];
+        }
+        obligatorio('numero_afiliado', datos.numero_afiliado, 'Indicá el número de afiliado.');
+        obligatorio('cud_vencimiento', datos.cud_vencimiento, 'Indicá el vencimiento del CUD.');
+        obligatorio('tutor.nombre', datos.tutor.nombre, 'Indicá el nombre del tutor.');
+        obligatorio('tutor.apellido', datos.tutor.apellido, 'Indicá el apellido del tutor.');
+        if (!datos.tutor.parentesco) {
+            errores['tutor.parentesco'] = [$('tutor-parentesco').value.trim()
+                ? 'Elegí el parentesco de la lista de sugerencias.'
+                : 'Indicá el parentesco.'];
+        }
+        if (datos.tutor.dni && (!soloDigitos(datos.tutor.dni) || datos.tutor.dni.length < 7)) {
+            errores['tutor.dni'] = ['El DNI tiene que tener 7 u 8 números, sin puntos.'];
+        }
+        obligatorio('tutor.movil', datos.tutor.movil, 'Indicá un celular de contacto.');
+        if (datos.tutor.mail && !formulario.elements['tutor.mail'].checkValidity()) {
+            errores['tutor.mail'] = ['Revisá el mail: falta la @ o el dominio.'];
+        }
+        if (!datos.consentimiento) {
+            errores.consentimiento = ['Sin el consentimiento firmado no se puede registrar al paciente.'];
+        }
+
+        guardar({
+            formulario,
+            idErrores: 'form-paciente-errores',
+            boton: $('btn-guardar-paciente'),
+            errores,
+            enviar: () => pacientes.crear(datos),
+            mensajeExito: 'El paciente quedó registrado y asignado a vos.',
+            modal: modalPaciente,
+        });
     });
 }
 
 // ------------------------------------------------------------
-// Carga
+// Dashboard del profesional: armado
 // ------------------------------------------------------------
-function cargarDelDia() {
-    // Si se cambia de día rápido, se cancelan las requests del día anterior
-    estado.controlador?.abort();
-    estado.controlador = new AbortController();
-    actualizarCabecera();
-    cargarResumen(estado.controlador.signal);
-    cargarAgenda(estado.controlador.signal);
+function refrescarDashboard() {
+    cargarAgenda();
+    if (estado.fecha !== hoyISO()) {
+        // La próxima sesión y el número de hoy siempre son de hoy
+        turnos.delDia(hoyISO()).then((deHoy) => {
+            mostrarProxima(deHoy);
+            mostrarMetricaHoy(deHoy);
+        }).catch(() => {});
+    }
+    cargarSinRegistrar();
+    cargarCud();
+    cargarCantidadPacientes();
 }
 
+function mostrarDashboardProfesional() {
+    $('vista-profesional').hidden = false;
+    $('acciones-profesional').hidden = false;
+    $('turno-profesional').textContent = `${nombreCompleto(estado.usuario.profesional)} (vos)`;
+
+    crearCombobox($('buscar-paciente'), {
+        buscar: sugerirPacientes,
+        minimo: 1,
+        mensajeVacio: MENSAJE_SIN_PACIENTES,
+        alElegir: (opcion) => opcion && window.location.assign(urlPaciente(opcion.valor)),
+    });
+    prepararFormularioTurno();
+    prepararFormularioPaciente();
+
+    $('btn-dia-anterior').addEventListener('click', () => cambiarDia(-1));
+    $('btn-dia-siguiente').addEventListener('click', () => cambiarDia(1));
+    $('btn-dia-hoy').addEventListener('click', () => cambiarDia(0));
+    $('btn-nuevo-turno').addEventListener('click', () => abrirNuevoTurno());
+    $('btn-nuevo-paciente').addEventListener('click', () => modalPaciente().show());
+    $('agenda-cuerpo').addEventListener('click', (evento) => {
+        if (evento.target.closest('[data-accion="agendar"]')) {
+            abrirNuevoTurno(estado.fecha);
+        }
+    });
+
+    refrescarDashboard();
+}
+
+// ------------------------------------------------------------
+// Inicio
+// ------------------------------------------------------------
 async function iniciar() {
-    $('btn-dia-anterior').addEventListener('click', () => cambiarFecha(sumarDias(estado.fecha, -1)));
-    $('btn-dia-siguiente').addEventListener('click', () => cambiarFecha(sumarDias(estado.fecha, 1)));
-    $('btn-dia-hoy').addEventListener('click', () => cambiarFecha(hoyISO()));
-    $('agenda-cuerpo').addEventListener('click', alHacerClicEnAgenda);
-    prepararModalSesion();
-    actualizarCabecera();
+    $('inicio-fecha').textContent = formatearFechaLarga(hoyISO());
 
     try {
         estado.usuario = await obtenerUsuario();
-    } catch (error) {
-        // 401: api.js ya redirige al login. Otro error: se muestra en los bloques.
-        if (error.status !== 401) {
-            mostrarError($('agenda-cuerpo'), error, () => window.location.reload(), { colspan: COLUMNAS_AGENDA });
-        }
+    } catch {
+        // layout.js ya avisa del error (o redirigió al login si fue 401)
+        $('inicio-saludo').textContent = 'Inicio';
         return;
     }
 
-    if (!tienePermiso(estado.usuario, PERMISO.DASHBOARD_VER)) {
-        renderizar($('agenda-cuerpo'), filaCompleta(COLUMNAS_AGENDA, bloqueVacio('No tenés acceso al panel general.', 'bi-lock')));
-        return;
-    }
+    const usuario = estado.usuario;
+    $('inicio-saludo').textContent = `${saludo()}, ${usuario.profesional?.nombre ?? usuario.usuario}`;
 
-    ajustarPorRol();
-    cargarDelDia();
-    cargarCud();
+    if (esProfesional(usuario)) {
+        mostrarDashboardProfesional();
+    } else {
+        mostrarVistaGeneral(usuario);
+    }
 }
 
 iniciar();

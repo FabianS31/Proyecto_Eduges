@@ -15,8 +15,11 @@
 </head>
 <body class="d-flex flex-column min-vh-100">
 
+    <!-- Para quien navega con teclado o lector de pantalla: salta el menú -->
+    <a href="#contenido" class="saltar-contenido">Saltar al contenido</a>
+
     <!-- Navbar Superior -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-eduges sticky-top">
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-eduges sticky-top" aria-label="Menú principal">
         <div class="container-fluid px-lg-4">
 
             <!-- Marca con Logo -->
@@ -31,22 +34,21 @@
             </button>
 
             <!-- Links de Navegación
-                 data-requiere-permiso: el ítem solo se muestra si el usuario tiene ese permiso (lo resuelve layout.js).
-                 Los módulos que todavía no existen quedan deshabilitados. -->
+                 data-requiere-permiso: el ítem solo se muestra si el usuario tiene ese permiso (lo resuelve layout.js). -->
             <div class="collapse navbar-collapse" id="navPrincipal">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
                     <li class="nav-item" data-requiere-permiso="dashboard.ver">
                         <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}" {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>
-                            <i class="bi bi-grid-1x2-fill me-1"></i> Dashboard
+                            <i class="bi bi-grid-1x2-fill me-1"></i> Inicio
                         </a>
                     </li>
                     <li class="nav-item" data-requiere-permiso="turnos.ver">
-                        <a class="nav-link disabled" href="#" aria-disabled="true" title="Próximamente">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'turnos' %}active{% endif %}" href="{% url 'turnos' %}" {% if request.resolver_match.url_name == 'turnos' %}aria-current="page"{% endif %}>
                             <i class="bi bi-calendar3 me-1"></i> Turnos & Agenda
                         </a>
                     </li>
                     <li class="nav-item" data-requiere-permiso="pacientes.ver">
-                        <a class="nav-link disabled" href="#" aria-disabled="true" title="Próximamente">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'pacientes' %}active{% endif %}" href="{% url 'pacientes' %}" {% if request.resolver_match.url_name == 'pacientes' %}aria-current="page"{% endif %}>
                             <i class="bi bi-people me-1"></i> Pacientes (CUD)
                         </a>
                     </li>
@@ -65,6 +67,11 @@
                             <span class="placeholder placeholder-xs d-block ms-auto" style="width: 90px;"></span>
                         </div>
                     </div>
+                    <button type="button" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1" title="Cambiar contraseña"
+                            data-bs-toggle="modal" data-bs-target="#modal-cambiar-password">
+                        <i class="bi bi-key"></i>
+                        <span class="d-lg-none">Contraseña</span>
+                    </button>
                     <button type="button" id="btn-cerrar-sesion" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1" title="Cerrar sesión">
                         <i class="bi bi-box-arrow-right"></i>
                         <span class="d-lg-none">Salir</span>
@@ -76,9 +83,46 @@
     </nav>
 
     <!-- Contenido Inyectado -->
-    <main class="container-fluid px-lg-4 py-4 flex-grow-1">
+    <main class="container-fluid px-lg-4 py-4 flex-grow-1" id="contenido" tabindex="-1">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Cambiar contraseña (POST /api/auth/cambiar-password/, lo maneja layout.js).
+         Los name de los campos coinciden con las claves de error de la API,
+         así los errores se muestran debajo de cada campo. -->
+    <div class="modal fade" id="modal-cambiar-password" tabindex="-1" aria-labelledby="modal-cambiar-password-titulo" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content border-0 shadow" id="form-cambiar-password" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title fs-6 fw-bold" id="modal-cambiar-password-titulo">
+                        <i class="bi bi-key me-1" aria-hidden="true"></i> Cambiar contraseña
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div id="form-cambiar-password-errores"></div>
+                    <div class="mb-3">
+                        <label for="password-actual" class="form-label small fw-semibold">Contraseña actual</label>
+                        <input type="password" class="form-control" id="password-actual" name="password_actual" autocomplete="current-password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password-nueva" class="form-label small fw-semibold">Contraseña nueva</label>
+                        <input type="password" class="form-control" id="password-nueva" name="password_nueva" autocomplete="new-password" required
+                               aria-describedby="password-nueva-ayuda">
+                        <div class="form-text" id="password-nueva-ayuda">Mínimo 8 caracteres.</div>
+                    </div>
+                    <div>
+                        <label for="password-confirmacion" class="form-label small fw-semibold">Repetí la contraseña nueva</label>
+                        <input type="password" class="form-control" id="password-confirmacion" name="password_confirmacion" autocomplete="new-password" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-password">Cambiar contraseña</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="py-3 text-center text-muted small mt-auto border-top bg-white">

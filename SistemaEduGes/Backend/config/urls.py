@@ -24,6 +24,18 @@ urlpatterns = [
     ),
 
     path(
+        'pacientes/',
+        TemplateView.as_view(template_name='pacientes.html'),
+        name='pacientes'
+    ),
+
+    path(
+        'turnos/',
+        TemplateView.as_view(template_name='turnos.html'),
+        name='turnos'
+    ),
+
+    path(
         'login/',
         TemplateView.as_view(template_name='login.html'),
         name='login'

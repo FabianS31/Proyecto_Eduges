@@ -1,10 +1,10 @@
 // ============================================================
 // EduGes - Login (templates/login.html)
-// Endpoints: docs/api-contrato.md §3 (csrf, login, me).
+// Endpoints: /api/auth/csrf/, /api/auth/login/ y /api/auth/me/.
 //
 // - Si ya hay sesión, va directo al destino.
 // - Después de entrar vuelve a la página de ?next= (solo rutas internas).
-// - 429: bloquea el botón con una cuenta regresiva (contrato: 5 fallos → 60 s).
+// - 429: bloquea el botón con una cuenta regresiva (la API bloquea 60 s después de 5 fallos).
 // ============================================================
 
 import { ApiError } from '../api.js';

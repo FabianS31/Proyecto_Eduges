@@ -1,12 +1,11 @@
 // ============================================================
 // EduGes - Utilidades de interfaz
 // Formato de datos, HTML seguro, estados de carga/vacío/error,
-// avisos (toasts), confirmaciones y errores de formularios.
+// avisos (toasts) y errores de formularios.
 // Usa Bootstrap 5 (cargado en base.html como window.bootstrap).
 // ============================================================
 
 import { ApiError } from './api.js';
-import { CUD_ESTADO, ESTADO_TURNO } from './constantes.js';
 import { aFecha } from './fechas.js';
 
 // ============================================================
@@ -31,7 +30,7 @@ class HtmlSeguro {
 
 const ENTIDADES_HTML = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
-export function escaparHtml(valor) {
+function escaparHtml(valor) {
     return String(valor ?? '').replace(/[&<>"']/g, (c) => ENTIDADES_HTML[c]);
 }
 
@@ -71,15 +70,6 @@ const FORMATO_FECHA_LARGA = new Intl.DateTimeFormat('es-AR', {
     year: 'numeric',
 });
 
-// "2026-09-26" → "26/09/2026"
-export function formatearFecha(iso) {
-    if (!iso) {
-        return '—';
-    }
-    const [anio, mes, dia] = iso.slice(0, 10).split('-');
-    return `${dia}/${mes}/${anio}`;
-}
-
 // "2026-09-26" → "Sábado, 26 de septiembre de 2026"
 export function formatearFechaLarga(iso) {
     if (!iso) {
@@ -89,68 +79,12 @@ export function formatearFechaLarga(iso) {
     return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
-// "14:30:00" → "14:30"
-export function formatearHora(hora) {
-    return hora ? hora.slice(0, 5) : '—';
-}
-
-// "2026-09-26T14:30:12-03:00" → "26/09/2026 14:30" (hora tal como la informa la API)
-export function formatearFechaHora(isoCompleto) {
-    if (!isoCompleto) {
-        return '—';
-    }
-    return `${formatearFecha(isoCompleto)} ${isoCompleto.slice(11, 16)}`;
-}
-
 // { nombre: 'Lucas', apellido: 'Pérez' } → "Lucas Pérez" o "Pérez, Lucas"
 export function nombreCompleto(persona, { apellidoPrimero = false } = {}) {
     if (!persona) {
         return '—';
     }
     return apellidoPrimero ? `${persona.apellido}, ${persona.nombre}` : `${persona.nombre} ${persona.apellido}`;
-}
-
-// Días hasta el vencimiento del CUD → texto para mostrar
-export function textoVencimientoCud(dias) {
-    if (dias < -1) {
-        return `Vencido hace ${-dias} días`;
-    }
-    if (dias === -1) {
-        return 'Venció ayer';
-    }
-    if (dias === 0) {
-        return 'Vence hoy';
-    }
-    if (dias === 1) {
-        return 'Vence mañana';
-    }
-    return `Vence en ${dias} días`;
-}
-
-// ============================================================
-// Badges
-// ============================================================
-const CLASE_ESTADO_TURNO = {
-    [ESTADO_TURNO.PENDIENTE]: 'badge-turno-pendiente',
-    [ESTADO_TURNO.CONFIRMADO]: 'badge-turno-confirmado',
-    [ESTADO_TURNO.CANCELADO]: 'badge-turno-cancelado',
-    [ESTADO_TURNO.REALIZADO]: 'badge-turno-realizado',
-};
-
-export function badgeEstadoTurno(estado) {
-    const clase = CLASE_ESTADO_TURNO[estado?.id] ?? 'bg-secondary';
-    return html`<span class="badge ${clase}">${estado?.nombre ?? 'Sin estado'}</span>`;
-}
-
-const ESTILO_CUD = {
-    [CUD_ESTADO.VENCIDO]: { clase: 'badge-cud-vencido', texto: 'CUD vencido' },
-    [CUD_ESTADO.POR_VENCER]: { clase: 'badge-cud-alerta', texto: 'CUD por vencer' },
-    [CUD_ESTADO.VIGENTE]: { clase: 'badge-cud-ok', texto: 'CUD vigente' },
-};
-
-export function badgeCud(cudEstado) {
-    const estilo = ESTILO_CUD[cudEstado];
-    return estilo ? html`<span class="badge ${estilo.clase}">${estilo.texto}</span>` : html``;
 }
 
 // ============================================================
@@ -266,85 +200,6 @@ export function notificarError(error) {
     if (mensaje !== null) {
         notificar(mensaje, 'error');
     }
-}
-
-// ============================================================
-// Confirmación (reemplaza a window.confirm, que bloquea la página)
-//   if (await confirmar({ mensaje: '¿Cancelar el turno?', peligro: true })) { ... }
-// ============================================================
-let contadorDialogos = 0;
-
-export function confirmar({
-    titulo = '¿Confirmás la acción?',
-    mensaje = '',
-    textoAceptar = 'Aceptar',
-    textoCancelar = 'Volver',
-    peligro = false,
-} = {}) {
-    return new Promise((resolver) => {
-        const idTitulo = `eduges-confirmar-${++contadorDialogos}`;
-        const dialogo = document.createElement('div');
-        dialogo.className = 'modal fade';
-        dialogo.tabIndex = -1;
-        dialogo.setAttribute('aria-labelledby', idTitulo);
-        dialogo.setAttribute('aria-hidden', 'true');
-        renderizar(dialogo, html`
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content border-0 shadow">
-                    <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title fs-6 fw-bold" id="${idTitulo}">${titulo}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                    </div>
-                    <div class="modal-body small text-muted">${mensaje}</div>
-                    <div class="modal-footer border-0 pt-0">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">${textoCancelar}</button>
-                        <button type="button" class="btn btn-sm ${peligro ? 'btn-danger' : 'btn-eduges'}" data-accion="aceptar">${textoAceptar}</button>
-                    </div>
-                </div>
-            </div>`);
-        document.body.append(dialogo);
-
-        // Al cerrar, el foco vuelve a donde estaba (Bootstrap solo lo hace si el modal se abrió con data-bs-toggle)
-        const focoAnterior = document.activeElement;
-        const modal = new window.bootstrap.Modal(dialogo);
-        let aceptado = false;
-        let visible = false;
-        dialogo.addEventListener('shown.bs.modal', () => {
-            visible = true;
-            // El foco arranca en "Volver": un Enter apurado no confirma una acción peligrosa.
-            // Además, si el diálogo se abrió desde un panel lateral, la trampa de foco del panel
-            // puede habérselo robado al abrir: acá se recupera.
-            dialogo.querySelector('.modal-footer [data-bs-dismiss="modal"]')?.focus();
-        });
-        // Bootstrap ignora el cierre durante la animación de apertura: en ese caso se cierra al terminar
-        const cerrar = () => {
-            if (visible) {
-                modal.hide();
-            } else {
-                dialogo.addEventListener('shown.bs.modal', () => modal.hide(), { once: true });
-            }
-        };
-        dialogo.querySelector('[data-accion="aceptar"]').addEventListener('click', () => {
-            aceptado = true;
-            cerrar();
-        });
-        dialogo.querySelectorAll('[data-bs-dismiss="modal"]').forEach((boton) => {
-            boton.addEventListener('click', () => {
-                if (!visible) {
-                    cerrar();
-                }
-            });
-        });
-        dialogo.addEventListener('hidden.bs.modal', () => {
-            modal.dispose();
-            dialogo.remove();
-            if (focoAnterior?.isConnected) {
-                focoAnterior.focus();
-            }
-            resolver(aceptado);
-        });
-        modal.show();
-    });
 }
 
 // ============================================================

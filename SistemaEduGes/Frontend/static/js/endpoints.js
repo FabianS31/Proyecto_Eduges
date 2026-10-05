@@ -1,200 +1,83 @@
 // ============================================================
 // EduGes - Endpoints de la API
-// Una función por endpoint de docs/api-contrato.md. Es el único lugar
-// del frontend donde aparecen las rutas: si el contrato cambia, se cambia acá.
+// Una función por endpoint del backend. Es el único lugar del frontend
+// donde aparecen las rutas: si el backend cambia una ruta, se cambia acá.
 //
 // Todas devuelven una Promise con el JSON de la respuesta y lanzan ApiError
 // ante un error. El último parámetro "opciones" es opcional y se pasa tal cual
-// a request() (ej.: { signal } para cancelar una búsqueda).
+// a request() (ej.: { signal } para cancelar una request).
 // ============================================================
 
-import { api } from './api.js';
-import { ESTADO_PACIENTE, ESTADO_TURNO } from './constantes.js';
+import { api, ApiError } from './api.js';
 
 // ------------------------------------------------------------
-// §3 Autenticación
+// Autenticación — /api/auth/
 // ------------------------------------------------------------
 export const auth = {
     csrf: () => api.get('/auth/csrf/', { redirigirSi401: false }),
 
+    // 200 → { id, usuario, rol }. 400 → credenciales incorrectas. 429 → bloqueado ({ reintentar_en })
     login: (usuario, password, recordar = false) =>
         api.post('/auth/login/', { usuario, password, recordar }, { redirigirSi401: false }),
 
     logout: () => api.post('/auth/logout/'),
 
+    // { id, usuario, rol: { id, nombre }, profesional: { id, nombre, apellido, especialidad } | null, permisos: [...] }
     me: (opciones) => api.get('/auth/me/', opciones),
 
-    cambiarPassword: (passwordActual, passwordNuevo, confirmacion) =>
+    // La API no pide confirmación: que las dos contraseñas coincidan se valida en el formulario
+    cambiarPassword: (passwordActual, passwordNueva) =>
         api.post('/auth/cambiar-password/', {
             password_actual: passwordActual,
-            password_nuevo: passwordNuevo,
-            password_nuevo_confirmacion: confirmacion,
+            password_nueva: passwordNueva,
         }),
 };
 
 // ------------------------------------------------------------
-// §4 Catálogos (se piden una sola vez y quedan en memoria)
-// ------------------------------------------------------------
-let catalogosEnMemoria = null;
-
-export const catalogos = {
-    obtener() {
-        if (!catalogosEnMemoria) {
-            catalogosEnMemoria = api.get('/catalogos/').catch((error) => {
-                catalogosEnMemoria = null;
-                throw error;
-            });
-        }
-        return catalogosEnMemoria;
-    },
-
-    // Llamar después de modificar un catálogo (ej.: alta de obra social)
-    invalidar() {
-        catalogosEnMemoria = null;
-    },
-};
-
-// ------------------------------------------------------------
-// §5 Dashboard
-// ------------------------------------------------------------
-export const dashboard = {
-    resumen: (fecha, opciones) => api.get('/dashboard/resumen/', { ...opciones, parametros: { fecha } }),
-};
-
-// ------------------------------------------------------------
-// §6 Pacientes y tutores
-// ------------------------------------------------------------
-export const pacientes = {
-    // filtros: { q, estado, profesional, obra_social, cud_estado, ordering, page, page_size }
-    listar: (filtros = {}, opciones) => api.get('/pacientes/', { ...opciones, parametros: filtros }),
-
-    obtener: (id, opciones) => api.get(`/pacientes/${id}/`, opciones),
-
-    crear: (datos) => api.post('/pacientes/', datos),
-
-    actualizar: (id, datos) => api.patch(`/pacientes/${id}/`, datos),
-
-    darDeBaja: (id) => api.patch(`/pacientes/${id}/`, { estado_id: ESTADO_PACIENTE.INACTIVO }),
-
-    reactivar: (id) => api.patch(`/pacientes/${id}/`, { estado_id: ESTADO_PACIENTE.ACTIVO }),
-
-    // { dias, limite }
-    cudPorVencer: (filtros = {}, opciones) =>
-        api.get('/pacientes/cud-por-vencer/', { ...opciones, parametros: filtros }),
-
-    tutores: {
-        listar: (pacienteId, opciones) => api.get(`/pacientes/${pacienteId}/tutores/`, opciones),
-
-        // datos: { tutor_id, parentesco_id, responsable_principal }
-        //    o   { tutor: {...datos del tutor nuevo}, parentesco_id, responsable_principal }
-        vincular: (pacienteId, datos) => api.post(`/pacientes/${pacienteId}/tutores/`, datos),
-
-        actualizarVinculo: (pacienteId, vinculoId, datos) =>
-            api.patch(`/pacientes/${pacienteId}/tutores/${vinculoId}/`, datos),
-
-        desvincular: (pacienteId, vinculoId) => api.delete(`/pacientes/${pacienteId}/tutores/${vinculoId}/`),
-    },
-};
-
-export const tutores = {
-    buscar: (q, opciones) => api.get('/tutores/', { ...opciones, parametros: { q } }),
-
-    actualizar: (id, datos) => api.patch(`/tutores/${id}/`, datos),
-};
-
-// ------------------------------------------------------------
-// §7 Turnos y registro de sesión
-// ------------------------------------------------------------
-export const turnos = {
-    // filtros: { fecha } | { desde, hasta } | { paciente }, más { profesional, estado: [1, 2] }
-    listar: (filtros = {}, opciones) => api.get('/turnos/', { ...opciones, parametros: filtros }),
-
-    delDia: (fecha, filtros = {}, opciones) =>
-        api.get('/turnos/', { ...opciones, parametros: { ...filtros, fecha } }),
-
-    obtener: (id, opciones) => api.get(`/turnos/${id}/`, opciones),
-
-    crear: (datos) => api.post('/turnos/', datos),
-
-    // Reprogramar: { fecha, hora_inicio, hora_fin, profesional_id }
-    actualizar: (id, datos) => api.patch(`/turnos/${id}/`, datos),
-
-    cambiarEstado: (id, estadoId) => api.patch(`/turnos/${id}/`, { estado_id: estadoId }),
-
-    confirmar: (id) => turnos.cambiarEstado(id, ESTADO_TURNO.CONFIRMADO),
-
-    cancelar: (id) => turnos.cambiarEstado(id, ESTADO_TURNO.CANCELADO),
-};
-
-export const sesiones = {
-    obtener: (turnoId, opciones) => api.get(`/turnos/${turnoId}/sesion/`, opciones),
-
-    registrar: (turnoId, notaClinica, marcarRealizado = true) =>
-        api.post(`/turnos/${turnoId}/sesion/`, { nota_clinica: notaClinica, marcar_realizado: marcarRealizado }),
-
-    actualizar: (turnoId, notaClinica) => api.patch(`/turnos/${turnoId}/sesion/`, { nota_clinica: notaClinica }),
-};
-
-// ------------------------------------------------------------
-// §8 Profesionales, asignaciones y obras sociales
+// Profesionales — /api/profesionales/
 // ------------------------------------------------------------
 export const profesionales = {
-    // filtros: { q, especialidad, estado, page, page_size }
-    listar: (filtros = {}, opciones) => api.get('/profesionales/', { ...opciones, parametros: filtros }),
-
-    obtener: (id, opciones) => api.get(`/profesionales/${id}/`, opciones),
-
-    // datos incluye usuario: { usuario, password }
-    crear: (datos) => api.post('/profesionales/', datos),
-
-    actualizar: (id, datos) => api.patch(`/profesionales/${id}/`, datos),
-};
-
-export const asignaciones = {
-    // filtros: { paciente, profesional, vigentes: true }
-    listar: (filtros = {}, opciones) => api.get('/asignaciones/', { ...opciones, parametros: filtros }),
-
-    crear: (pacienteId, profesionalId, fechaInicio) =>
-        api.post('/asignaciones/', {
-            paciente_id: pacienteId,
-            profesional_id: profesionalId,
-            fecha_inicio: fechaInicio,
-        }),
-
-    actualizar: (id, datos) => api.patch(`/asignaciones/${id}/`, datos),
-
-    finalizar: (id, fechaFin) => api.patch(`/asignaciones/${id}/`, { fecha_fin: fechaFin }),
-};
-
-export const obrasSociales = {
-    // filtros: { estado }
-    listar: (filtros = {}, opciones) => api.get('/obras-sociales/', { ...opciones, parametros: filtros }),
-
-    obtener: (id, opciones) => api.get(`/obras-sociales/${id}/`, opciones),
-
-    crear: async (datos) => {
-        const creada = await api.post('/obras-sociales/', datos);
-        catalogos.invalidar();
-        return creada;
-    },
-
-    actualizar: async (id, datos) => {
-        const actualizada = await api.patch(`/obras-sociales/${id}/`, datos);
-        catalogos.invalidar();
-        return actualizada;
-    },
+    // Array con todos los profesionales (sin paginación ni filtros en el servidor)
+    listar: (opciones) => api.get('/profesionales/', opciones),
 };
 
 // ------------------------------------------------------------
-// §9 Usuarios (solo Administrador)
+// Sin API todavía: pacientes, turnos y catálogos
+// Devuelven lo mismo que la API sin datos (listas vacías) y, al guardar, avisan
+// que no se puede. Cuando el backend tenga cada endpoint, se reemplaza el cuerpo
+// de la función por la llamada real (api.get / api.post) y las pantallas no cambian.
 // ------------------------------------------------------------
-export const usuarios = {
-    listar: (opciones) => api.get('/usuarios/', opciones),
+const sinDatos = async () => [];
 
-    crear: (usuario, password, rolId) => api.post('/usuarios/', { usuario, password, rol_id: rolId }),
+const sinApiParaGuardar = (que) => Promise.reject(new ApiError(501, {
+    detail: `Todavía no se pueden guardar ${que}: falta la API en el servidor.`,
+}));
 
-    actualizar: (id, datos) => api.patch(`/usuarios/${id}/`, datos),
+export const pacientes = {
+    // Pacientes asignados al profesional logueado: [{ id, nombre, apellido, dni, cud_vencimiento }]
+    mios: sinDatos,
 
-    resetearPassword: (id, passwordNuevo) =>
-        api.post(`/usuarios/${id}/resetear-password/`, { password_nuevo: passwordNuevo }),
+    // Sugerencias del buscador: mismo formato que mios()
+    buscar: (texto, opciones) => sinDatos(texto, opciones),
+
+    // Pacientes del profesional con CUD vencido o por vencer: [{ id, nombre, apellido, cud_vencimiento }]
+    cudPorVencer: sinDatos,
+
+    crear: () => sinApiParaGuardar('pacientes'),
+};
+
+export const turnos = {
+    // Turnos del profesional logueado en una fecha:
+    // [{ id, fecha, hora, estado: { id, nombre }, paciente: { id, nombre, apellido }, registrado }]
+    delDia: (fecha, opciones) => sinDatos(fecha, opciones),
+
+    // Turnos realizados del profesional que todavía no tienen registro de sesión: mismo formato
+    sinRegistrar: sinDatos,
+
+    crear: () => sinApiParaGuardar('turnos'),
+};
+
+export const catalogos = {
+    obrasSociales: sinDatos,   // [{ id, nombre }]
+    parentescos: sinDatos,     // [{ id, nombre }]
 };

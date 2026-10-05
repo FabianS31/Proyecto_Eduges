@@ -1,11 +1,11 @@
 // ============================================================
 // EduGes - Fechas
-// La API usa fechas ISO "YYYY-MM-DD" sin zona horaria (docs/api-contrato.md §1.2).
+// Fechas ISO "YYYY-MM-DD" sin zona horaria.
 // Se trabaja siempre en hora local para que "hoy" sea el día del usuario,
 // no el día en UTC (que en Argentina cambia a las 21 hs).
 // ============================================================
 
-export function fechaISO(fecha) {
+function fechaISO(fecha) {
     const anio = fecha.getFullYear();
     const mes = String(fecha.getMonth() + 1).padStart(2, '0');
     const dia = String(fecha.getDate()).padStart(2, '0');

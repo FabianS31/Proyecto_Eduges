@@ -1,7 +1,7 @@
 // ============================================================
 // EduGes - Cliente HTTP de la API REST
 // Todas las pantallas hablan con el backend a través de este módulo.
-// Formato de requests, respuestas y errores: docs/api-contrato.md §1
+// Errores con el formato de Django REST Framework ({ detail }, { campo: [...] }, { non_field_errors }).
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -131,20 +131,6 @@ function redirigirAlLogin() {
     window.location.assign(`${CONFIG.LOGIN_URL}?next=${siguiente}`);
 }
 
-// La API simulada se carga solo si está activada, así no pesa en producción
-let fetchSimulado = null;
-
-async function obtenerFetch() {
-    if (!CONFIG.USE_MOCKS) {
-        return window.fetch.bind(window);
-    }
-    if (!fetchSimulado) {
-        const modulo = await import('../mocks/servidor.js');
-        fetchSimulado = modulo.mockFetch;
-    }
-    return fetchSimulado;
-}
-
 // ------------------------------------------------------------
 // Request genérica
 // opciones:
@@ -170,11 +156,9 @@ export async function request(metodo, ruta, opciones = {}) {
         }
     }
 
-    const hacerFetch = await obtenerFetch();
-
     let respuesta;
     try {
-        respuesta = await hacerFetch(construirUrl(ruta, parametros), {
+        respuesta = await window.fetch(construirUrl(ruta, parametros), {
             method: metodoMayus,
             headers,
             body: cuerpo !== undefined ? JSON.stringify(cuerpo) : undefined,

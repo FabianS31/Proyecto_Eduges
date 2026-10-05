@@ -179,18 +179,6 @@ select:focus-visible,
     cursor: not-allowed;
 }
 
-.link-eduges {
-    color: var(--eduges-primary);
-    text-decoration: underline;
-    text-decoration-color: rgba(11, 67, 121, 0.35);
-    font-weight: 600;
-}
-
-.link-eduges:hover {
-    color: var(--eduges-primary-hover);
-    text-decoration-color: currentColor;
-}
-
 /* ============================================
    Login con panel dividido — "aurora" sutil,
    sigue siendo 100% tonos del azul institucional
@@ -375,120 +363,6 @@ select:focus-visible,
     background-color: var(--eduges-primary-light);
 }
 
-/* Celular: la tabla de turnos tiene 6 columnas, imposible de leer
-   cómodo en una pantalla chica. Ocultamos las dos menos críticas
-   (Obra Social y Profesional) y dejamos Hora / Paciente / Estado /
-   Acción, que son las que se necesitan de un vistazo. */
-@media (max-width: 767.98px) {
-    #agenda-tabla th:nth-child(3), #agenda-tabla td:nth-child(3),
-    #agenda-tabla th:nth-child(4), #agenda-tabla td:nth-child(4) {
-        display: none;
-    }
-}
-
-/* ============================================
-   Badges de estado
-   ============================================ */
-
-.badge-cud-ok,
-.badge-cud-alerta,
-.badge-cud-vencido,
-.badge-turno-pendiente,
-.badge-turno-confirmado,
-.badge-turno-realizado,
-.badge-turno-cancelado {
-    font-size: 0.85rem;
-    font-weight: 700;
-    padding: 0.4rem 0.8rem;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.badge-cud-ok::before,
-.badge-cud-alerta::before,
-.badge-cud-vencido::before,
-.badge-turno-pendiente::before,
-.badge-turno-confirmado::before,
-.badge-turno-realizado::before,
-.badge-turno-cancelado::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-    flex-shrink: 0;
-}
-
-.badge-cud-ok {
-    background-color: var(--eduges-success-bg);
-    color: var(--eduges-success);
-    border: 1px solid var(--eduges-success-border);
-}
-
-.badge-cud-alerta {
-    background-color: var(--eduges-warning-bg);
-    color: var(--eduges-warning);
-    border: 1px solid var(--eduges-warning-border);
-}
-
-.badge-cud-vencido {
-    background-color: var(--eduges-danger-bg);
-    color: var(--eduges-danger);
-    border: 1px solid var(--eduges-danger-border);
-}
-
-.badge-turno-pendiente {
-    background-color: var(--eduges-warning-bg);
-    color: var(--eduges-warning);
-}
-
-.badge-turno-confirmado {
-    background-color: var(--eduges-info-bg);
-    color: var(--eduges-info);
-}
-
-.badge-turno-realizado {
-    background-color: var(--eduges-success-bg);
-    color: var(--eduges-success);
-}
-
-.badge-turno-cancelado {
-    background-color: var(--eduges-danger-bg);
-    color: var(--eduges-danger);
-}
-
-/* ============================================
-   Modal de registro clínico — mismo estilo moderno
-   ============================================ */
-
-#modalSesion .modal-content {
-    border-radius: var(--eduges-radius-md);
-    overflow: hidden;
-}
-
-#modalSesion .modal-header {
-    background: var(--eduges-gradient) !important;
-}
-
-/* La regla general de h1-h6 pone el texto oscuro: sobre el azul va blanco */
-#modalSesion .modal-title {
-    color: #FFFFFF;
-}
-
-/* En celular, el modal ocupa casi toda la pantalla y los botones
-   quedan más cómodos de tocar */
-@media (max-width: 575.98px) {
-    #modalSesion .modal-dialog {
-        margin: 0.75rem;
-    }
-    #modalSesion .modal-footer .btn {
-        min-height: 44px;
-        flex: 1;
-    }
-}
-
 /* ============================================
    Permisos por rol (layout.js)
    Los elementos con data-requiere-permiso no se muestran hasta
@@ -498,38 +372,6 @@ select:focus-visible,
 
 [data-requiere-permiso]:not(.permiso-concedido) {
     display: none !important;
-}
-
-/* Módulos todavía no disponibles en el menú */
-.navbar-eduges .nav-link.disabled {
-    opacity: 0.5;
-}
-
-/* ============================================
-   Dashboard — Agenda y panel de CUD
-   ============================================ */
-
-.agenda-navegacion .btn {
-    min-width: 38px;
-}
-
-.cud-item {
-    background-color: #FAFBFD;
-    border: 1px solid var(--eduges-border);
-    border-radius: var(--eduges-radius-sm);
-}
-
-.cud-item-vencido {
-    border-left: 4px solid var(--eduges-danger);
-}
-
-.cud-item-alerta {
-    border-left: 4px solid var(--eduges-warning);
-}
-
-.contador-caracteres.excedido {
-    color: var(--eduges-danger);
-    font-weight: 700;
 }
 
 /* ============================================
@@ -558,38 +400,201 @@ select:focus-visible,
     overflow-wrap: anywhere;
 }
 
-.ficha-asignacion {
-    background-color: #FAFBFD;
-    border: 1px solid var(--eduges-border);
-    border-radius: var(--eduges-radius-sm);
-}
-
 #profesionales-cuerpo tr[data-profesional-id] {
     cursor: pointer;
-}
-
-/* Encabezado institucional para modales (título blanco sobre el azul) */
-.modal-header-eduges {
-    background: var(--eduges-gradient);
-    color: #FFFFFF;
-}
-
-.modal-header-eduges .modal-title {
-    color: #FFFFFF;
-}
-
-/* Resultados del buscador de pacientes al asignar */
-.asignar-resultados .list-group-item.active {
-    background-color: var(--eduges-primary);
-    border-color: var(--eduges-primary);
-}
-
-.asignar-resultados .list-group-item.active .text-muted {
-    color: rgba(255, 255, 255, 0.8) !important;
 }
 
 /* Con un panel lateral abierto a la derecha, los avisos pasan a la izquierda para no taparlo */
 body:has(.offcanvas-end.show) #eduges-avisos {
     right: auto !important;
     left: 0;
+}
+/* ============================================
+   Accesibilidad
+   ============================================ */
+
+/* "Saltar al contenido": invisible hasta que llega el foco con Tab */
+.saltar-contenido {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 2000;
+    padding: 0.6rem 1rem;
+    border-radius: var(--eduges-radius-sm);
+    background: var(--eduges-surface);
+    color: var(--eduges-primary);
+    font-weight: 700;
+    box-shadow: var(--eduges-shadow-hover);
+    transform: translateY(-200%);
+}
+
+.saltar-contenido:focus {
+    transform: none;
+}
+
+/* El destino del salto no muestra un borde al recibir el foco por código */
+#contenido:focus {
+    outline: none;
+}
+
+/* En pantallas táctiles, todo lo que se toca mide al menos 44 px */
+@media (pointer: coarse) {
+    .btn,
+    .form-control,
+    .form-select,
+    .list-group-item-action {
+        min-height: 44px;
+    }
+
+    .form-check-input {
+        width: 1.4em;
+        height: 1.4em;
+    }
+}
+
+/* Quien pidió "reducir movimiento" en su sistema no ve animaciones */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ============================================
+   Campo con sugerencias (componentes/combobox.js)
+   ============================================ */
+
+.combobox {
+    position: relative;
+}
+
+.combobox-lista {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 1060;
+    max-height: 260px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    border-radius: var(--eduges-radius-sm);
+}
+
+.combobox-opcion {
+    cursor: pointer;
+}
+
+.combobox-opcion.activa {
+    background-color: var(--eduges-primary);
+    border-color: var(--eduges-primary);
+    color: #FFFFFF;
+}
+
+.combobox-detalle {
+    color: var(--eduges-text-muted);
+}
+
+.combobox-opcion.activa .combobox-detalle {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* ============================================
+   Dashboard del profesional
+   ============================================ */
+
+/* Celular: un bloque debajo del otro, en el orden del HTML
+   (próxima sesión, agenda, sin registrar, CUD, buscador).
+   Pantalla grande: buscador y agenda a la izquierda; próxima sesión,
+   sin registrar y CUD a la derecha. */
+.dashboard-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+}
+
+@media (min-width: 992px) {
+    .dashboard-grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        grid-template-areas:
+            "buscador proxima"
+            "agenda   registrar"
+            "agenda   cud";
+    }
+
+    .dashboard-agenda { grid-area: agenda; }
+    .dashboard-proxima { grid-area: proxima; }
+    .dashboard-registrar { grid-area: registrar; }
+    .dashboard-cud { grid-area: cud; }
+    .dashboard-buscador { grid-area: buscador; }
+}
+
+/* La tarjeta del buscador deja salir la lista de sugerencias
+   (.card-table recorta lo que sobresale) */
+.dashboard-buscador {
+    overflow: visible;
+    position: relative;
+    z-index: 2;
+}
+
+.dashboard-hora {
+    min-width: 3.5rem;
+    font-family: var(--eduges-font-display);
+    font-weight: 700;
+    color: var(--eduges-primary);
+}
+
+.dashboard-hora-grande {
+    font-family: var(--eduges-font-display);
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--eduges-primary);
+}
+
+.min-w-0 {
+    min-width: 0;
+}
+
+/* Estados de turno y de CUD: color + ícono + texto (nunca solo color) */
+.badge-turno,
+.badge-cud-alerta,
+.badge-cud-vencido {
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.badge-turno-pendiente {
+    background-color: var(--eduges-warning-bg);
+    border-color: var(--eduges-warning-border);
+    color: var(--eduges-warning);
+}
+
+.badge-turno-confirmado {
+    background-color: var(--eduges-primary-light);
+    border-color: #C6DAFC;
+    color: var(--eduges-primary);
+}
+
+.badge-turno-realizado {
+    background-color: var(--eduges-success-bg);
+    border-color: var(--eduges-success-border);
+    color: var(--eduges-success);
+}
+
+.badge-turno-cancelado,
+.badge-cud-vencido {
+    background-color: var(--eduges-danger-bg);
+    border-color: var(--eduges-danger-border);
+    color: var(--eduges-danger);
+}
+
+.badge-cud-alerta {
+    background-color: var(--eduges-warning-bg);
+    border-color: var(--eduges-warning-border);
+    color: var(--eduges-warning);
 }
