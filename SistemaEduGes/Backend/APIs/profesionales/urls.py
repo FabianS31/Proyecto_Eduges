@@ -1,8 +1,21 @@
 from django.urls import path
 
-from .views import ProfesionalListView
-
+from .views import (
+ProfesionalListCreateView,
+ProfesionalDetailView,
+)
 
 urlpatterns = [
-    path('', ProfesionalListView.as_view(), name='profesionales-list'),
+
+    path(
+        '',
+        ProfesionalListCreateView.as_view(),
+        name='profesionales-list-create'
+    ),
+
+    path(
+        '<int:pk>/',
+        ProfesionalDetailView.as_view(),
+        name='profesionales-detail'
+    ),
 ]

@@ -10,8 +10,12 @@ class Especialidad(models.Model):
 
     especialidad = models.CharField(
         max_length=100,
+        unique=True,
         db_column='Especialidad'
     )
+
+    def __str__(self):
+        return self.especialidad
 
     class Meta:
         managed = False
@@ -36,11 +40,13 @@ class Profesional(models.Model):
 
     dni = models.CharField(
         max_length=20,
+        unique=True,
         db_column='DNI'
     )
 
     matricula = models.CharField(
         max_length=50,
+        unique=True,
         db_column='Matricula'
     )
 

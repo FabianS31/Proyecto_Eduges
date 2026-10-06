@@ -8,7 +8,7 @@ class EstadoPaciente(models.Model):
     )
 
     estado = models.CharField(
-        max_length=50,
+        max_length=100,
         db_column='Estado'
     )
 
@@ -35,6 +35,7 @@ class Paciente(models.Model):
 
     dni = models.CharField(
         max_length=20,
+        unique=True,
         db_column='DNI'
     )
 

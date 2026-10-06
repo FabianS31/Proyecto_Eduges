@@ -9,8 +9,12 @@ class Rol(models.Model):
 
     rol = models.CharField(
         max_length=50,
+        unique=True,
         db_column='Rol'
     )
+
+    def __str__(self):
+        return self.rol
 
     class Meta:
         managed = False
@@ -59,3 +63,10 @@ class RolPermiso(models.Model):
     class Meta:
         managed = False
         db_table = 'roles_permisos'
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=['rol', 'permiso'],
+                name='UQ_RolesPermisos_Rol_Permiso'
+            )
+        ]

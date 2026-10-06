@@ -9,6 +9,7 @@ class Parentesco(models.Model):
 
     descripcion = models.CharField(
         max_length=100,
+        unique=True,
         db_column='Descripcion'
     )
 
@@ -33,6 +34,12 @@ class Tutor(models.Model):
         db_column='Apellido'
     )
 
+    dni = models.CharField(
+        max_length=20,
+        unique=True,
+        db_column='DNI'
+    )
+
     telefono = models.CharField(
         max_length=30,
         db_column='Telefono',
@@ -50,13 +57,6 @@ class Tutor(models.Model):
     mail = models.CharField(
         max_length=150,
         db_column='Mail',
-        null=True,
-        blank=True
-    )
-
-    dni = models.CharField(
-        max_length=20,
-        db_column='DNI',
         null=True,
         blank=True
     )
@@ -104,3 +104,9 @@ class PacienteTutor(models.Model):
     class Meta:
         managed = False
         db_table = 'pacientes_tutores'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['paciente', 'tutor'],
+                name='UQ_PacienteTutor_Paciente_Tutor'
+            )
+        ]

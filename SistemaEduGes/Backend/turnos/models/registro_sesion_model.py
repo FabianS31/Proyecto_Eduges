@@ -10,23 +10,17 @@ class RegistroSesion(models.Model):
 
     trabajo_sesion = models.CharField(
         max_length=225,
-        db_column='TrabajoSesion',
-        null=True,
-        blank=True
+        db_column='TrabajoSesion'
     )
 
-    resultado_respuesta = models.CharField(
+    resultado = models.CharField(
         max_length=225,
-        db_column='Resultado/Respuesta',
-        null=True,
-        blank=True
+        db_column='Resultado'
     )
 
     nota_especial = models.CharField(
         max_length=225,
-        db_column='NotaEspecial',
-        null=True,
-        blank=True
+        db_column='NotaEspecial'
     )
 
     class Meta:

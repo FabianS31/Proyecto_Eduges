@@ -9,6 +9,7 @@ class EstadoObraSocial(models.Model):
 
     descripcion = models.CharField(
         max_length=100,
+        unique=True,
         db_column='Descripcion'
     )
 
@@ -25,6 +26,7 @@ class TipoObraSocial(models.Model):
 
     tipo = models.CharField(
         max_length=100,
+        unique=True,
         db_column='Tipo'
     )
 
