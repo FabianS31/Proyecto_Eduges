@@ -2,3 +2,8 @@ SUPERADMIN
 
 U: Eduges Admin
 C: eduges123
+
+UsuarioProfesional
+
+U:PedroGrande
+C:PG123456
