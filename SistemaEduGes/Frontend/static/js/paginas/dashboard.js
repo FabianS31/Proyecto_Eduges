@@ -11,23 +11,23 @@
 // guardar, un aviso. Cada bloque carga y falla por separado.
 // ============================================================
 
-import { ApiError } from '../api.js';
 import { buscarEnLista, crearCombobox } from '../componentes/combobox.js';
+import { prepararFormularioPaciente } from '../componentes/formulario-paciente.js';
+import { guardar, prepararModal } from '../componentes/formularios.js';
 import { DIAS_AVISO_CUD, ESTADO_TURNO, PERMISO } from '../constantes.js';
-import { catalogos, pacientes, profesionales, turnos } from '../endpoints.js';
+import { pacientes, profesionales, turnos } from '../endpoints.js';
 import { aFecha, diasEntre, hoyISO, sumarDias } from '../fechas.js';
 import { esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
 import {
+    badgeCud,
     bloqueCargando,
     bloqueVacio,
-    botonCargando,
+    CUD,
+    estadoCud,
     formatearFechaLarga,
     html,
-    limpiarErroresFormulario,
     mostrarError,
-    mostrarErroresFormulario,
     nombreCompleto,
-    notificar,
     renderizar,
 } from '../ui.js';
 
@@ -88,19 +88,6 @@ function textoDia(fecha) {
         titulo: `Mi agenda del ${conMinuscula}`,
         vacio: diferencia < 0 ? `No tuviste sesiones el ${conMinuscula}.` : `No tenés sesiones el ${conMinuscula}.`,
     };
-}
-
-function textoCud(dias) {
-    if (dias < -1) {
-        return `Venció hace ${-dias} días`;
-    }
-    if (dias === -1) {
-        return 'Venció ayer';
-    }
-    if (dias === 0) {
-        return 'Vence hoy';
-    }
-    return dias === 1 ? 'Vence mañana' : `Vence en ${dias} días`;
 }
 
 // ------------------------------------------------------------
@@ -264,30 +251,34 @@ async function cargarSinRegistrar() {
 async function cargarCud() {
     renderizar($('cud-cuerpo'), bloqueCargando(2));
     try {
-        const hoy = hoyISO();
-        const lista = (await pacientes.cudPorVencer())
-            .map((p) => ({ ...p, dias: diasEntre(hoy, p.cud_vencimiento) }))
-            .filter((p) => p.dias <= DIAS_AVISO_CUD)
-            .sort((a, b) => a.dias - b.dias);
+        // Vencidos y por vencer, el más urgente primero
+        const lista = (await pacientes.listar())
+            .map((p) => ({ ...p, cud: estadoCud(p.cud_vencimiento) }))
+            .filter((p) => p.cud.clave !== CUD.VIGENTE)
+            .sort((a, b) => a.cud.dias - b.cud.dias);
         $('metrica-cud').textContent = lista.length;
         renderizar($('cud-cuerpo'), lista.length > 0
             ? html`<ul class="list-group list-group-flush">${lista.map((p) => html`
                 <li class="list-group-item d-flex justify-content-between align-items-center gap-2 py-3">
-                    <a href="${urlPaciente(p.id)}" class="fw-semibold text-dark text-decoration-none">${nombreCompleto(p, { apellidoPrimero: true })}</a>
-                    <span class="badge ${p.dias < 0 ? 'badge-cud-vencido' : 'badge-cud-alerta'}">
-                        <i class="bi ${p.dias < 0 ? 'bi-x-octagon' : 'bi-exclamation-triangle'} me-1" aria-hidden="true"></i>${textoCud(p.dias)}
-                    </span>
+                    <a href="${urlPaciente(p.id_paciente)}" class="fw-semibold text-dark text-decoration-none">${nombreCompleto(p, { apellidoPrimero: true })}</a>
+                    ${badgeCud(p.cud_vencimiento)}
                 </li>`)}</ul>`
             : bloqueVacio(`Ningún CUD de tus pacientes vence en los próximos ${DIAS_AVISO_CUD} días.`, 'bi-shield-check'));
     } catch (error) {
         $('metrica-cud').textContent = '—';
-        mostrarError($('cud-cuerpo'), error, cargarCud);
+        // Reintentar vuelve a pedir los pacientes para los dos bloques que los usan
+        mostrarError($('cud-cuerpo'), error, recargarPacientes);
     }
+}
+
+function recargarPacientes() {
+    cargarCud();
+    cargarCantidadPacientes();
 }
 
 async function cargarCantidadPacientes() {
     try {
-        $('metrica-pacientes').textContent = (await pacientes.mios()).length;
+        $('metrica-pacientes').textContent = (await pacientes.listar()).length;
     } catch {
         $('metrica-pacientes').textContent = '—';
     }
@@ -298,13 +289,15 @@ async function cargarCantidadPacientes() {
 // ------------------------------------------------------------
 const MENSAJE_SIN_PACIENTES = 'No encontramos pacientes tuyos con ese nombre o DNI.';
 
-async function sugerirPacientes(texto, signal) {
-    const lista = await pacientes.buscar(texto, { signal });
-    return lista.map((p) => ({
-        valor: p.id,
+// La API no busca en el servidor: se filtra la lista de pacientes (ya en memoria)
+// por cada palabra escrita, en el nombre, el apellido o el DNI
+async function sugerirPacientes(texto) {
+    const opciones = (await pacientes.listar()).map((p) => ({
+        valor: p.id_paciente,
         texto: nombreCompleto(p, { apellidoPrimero: true }),
-        detalle: p.dni ? `DNI ${p.dni}` : null,
+        detalle: `DNI ${p.dni}`,
     }));
+    return buscarEnLista(opciones)(texto);
 }
 
 // Horarios cada 30 minutos de 8 a 20. Se puede escribir "9", "930" o "9:30".
@@ -338,70 +331,9 @@ function normalizarHora(texto) {
     return `${String(hora).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
 }
 
-const sugerirDeCatalogo = (obtener) => async (texto) => {
-    const opciones = (await obtener()).map((item) => ({ valor: item.id, texto: item.nombre }));
-    return buscarEnLista(opciones)(texto);
-};
-
 // ------------------------------------------------------------
-// Formularios (modales)
+// Nuevo turno
 // ------------------------------------------------------------
-function mostrarErroresDelFormulario(formulario, idErrores, error) {
-    const generales = mostrarErroresFormulario(formulario, error);
-    renderizar($(idErrores), generales.length > 0
-        ? html`
-            <div class="alert alert-danger py-2 small mb-3 d-flex align-items-start gap-2" role="alert">
-                <i class="bi bi-exclamation-circle-fill mt-1" aria-hidden="true"></i>
-                <span>${generales.join(' ')}</span>
-            </div>`
-        : '');
-    // El foco va al primer campo con error; si el error es general, al aviso
-    const campo = formulario.querySelector('.is-invalid');
-    const aviso = $(idErrores).querySelector('[role="alert"]');
-    if (campo) {
-        campo.focus();
-    } else if (aviso) {
-        aviso.tabIndex = -1;
-        aviso.focus();
-    }
-}
-
-function prepararModal({ idModal, formulario, idErrores, comboboxes, alAbrir }) {
-    const modal = $(idModal);
-    formulario.addEventListener('input', (e) => e.target.classList.remove('is-invalid'));
-    modal.addEventListener('show.bs.modal', () => alAbrir?.());
-    modal.addEventListener('shown.bs.modal', () => formulario.querySelector('input:not([type="hidden"])')?.focus());
-    // Al cerrar no quedan datos ni errores en el formulario
-    modal.addEventListener('hidden.bs.modal', () => {
-        formulario.reset();
-        comboboxes.forEach((combo) => combo.limpiar());
-        limpiarErroresFormulario(formulario);
-        renderizar($(idErrores), '');
-    });
-    return () => window.bootstrap.Modal.getOrCreateInstance(modal);
-}
-
-async function guardar({ formulario, idErrores, boton, errores, enviar, mensajeExito, modal }) {
-    if (Object.keys(errores).length > 0) {
-        mostrarErroresDelFormulario(formulario, idErrores, new ApiError(400, errores));
-        return;
-    }
-    limpiarErroresFormulario(formulario);
-    renderizar($(idErrores), '');
-    botonCargando(boton, true);
-    try {
-        await enviar();
-        modal().hide();
-        notificar(mensajeExito);
-        refrescarDashboard();
-    } catch (error) {
-        mostrarErroresDelFormulario(formulario, idErrores, error);
-    } finally {
-        botonCargando(boton, false);
-    }
-}
-
-// --- Nuevo turno ---
 let modalTurno = null;
 let fechaParaTurno = null;
 
@@ -420,9 +352,9 @@ function prepararFormularioTurno() {
     });
 
     modalTurno = prepararModal({
-        idModal: 'modal-turno',
+        modal: $('modal-turno'),
         formulario,
-        idErrores: 'form-turno-errores',
+        contenedorErrores: $('form-turno-errores'),
         comboboxes: [paciente, hora],
         alAbrir: () => {
             const fecha = $('turno-fecha');
@@ -455,12 +387,13 @@ function prepararFormularioTurno() {
         }
         guardar({
             formulario,
-            idErrores: 'form-turno-errores',
+            contenedorErrores: $('form-turno-errores'),
             boton: $('btn-guardar-turno'),
             errores,
             enviar: () => turnos.crear(datos),
             mensajeExito: 'El turno quedó agendado.',
             modal: modalTurno,
+            alGuardar: refrescarDashboard,
         });
     });
 }
@@ -468,119 +401,6 @@ function prepararFormularioTurno() {
 function abrirNuevoTurno(fecha = null) {
     fechaParaTurno = fecha;
     modalTurno().show();
-}
-
-// --- Nuevo paciente ---
-let modalPaciente = null;
-
-const soloDigitos = (texto) => /^\d+$/.test(texto);
-
-function prepararFormularioPaciente() {
-    const formulario = $('form-paciente');
-    const obraSocial = crearCombobox($('pac-obra-social'), {
-        buscar: sugerirDeCatalogo(catalogos.obrasSociales),
-        mensajeVacio: 'No hay obras sociales cargadas.',
-    });
-    const parentesco = crearCombobox($('tutor-parentesco'), {
-        buscar: sugerirDeCatalogo(catalogos.parentescos),
-        mensajeVacio: 'No hay parentescos cargados.',
-    });
-
-    modalPaciente = prepararModal({
-        idModal: 'modal-paciente',
-        formulario,
-        idErrores: 'form-paciente-errores',
-        comboboxes: [obraSocial, parentesco],
-        alAbrir: () => {
-            $('pac-nacimiento').max = hoyISO();
-        },
-    });
-
-    formulario.addEventListener('submit', (evento) => {
-        evento.preventDefault();
-        const campo = (nombre) => formulario.elements[nombre].value.trim();
-        const datos = {
-            nombre: campo('nombre'),
-            apellido: campo('apellido'),
-            dni: campo('dni'),
-            fecha_nacimiento: campo('fecha_nacimiento'),
-            mail: campo('mail') || null,
-            direccion: campo('direccion'),
-            obra_social: obraSocial.valor(),
-            numero_afiliado: campo('numero_afiliado'),
-            cud_numero: campo('cud_numero') || null,
-            cud_vencimiento: campo('cud_vencimiento'),
-            consentimiento: formulario.elements.consentimiento.checked,
-            tutor: {
-                nombre: campo('tutor.nombre'),
-                apellido: campo('tutor.apellido'),
-                parentesco: parentesco.valor(),
-                dni: campo('tutor.dni') || null,
-                movil: campo('tutor.movil'),
-                telefono: campo('tutor.telefono') || null,
-                mail: campo('tutor.mail') || null,
-                domicilio: campo('tutor.domicilio') || null,
-                responsable_principal: true,
-            },
-        };
-
-        const errores = {};
-        const obligatorio = (nombre, valor, mensaje) => {
-            if (!valor) {
-                errores[nombre] = [mensaje];
-            }
-        };
-        obligatorio('nombre', datos.nombre, 'Indicá el nombre.');
-        obligatorio('apellido', datos.apellido, 'Indicá el apellido.');
-        if (!datos.dni) {
-            errores.dni = ['Indicá el DNI.'];
-        } else if (!soloDigitos(datos.dni) || datos.dni.length < 7) {
-            errores.dni = ['El DNI tiene que tener 7 u 8 números, sin puntos.'];
-        }
-        if (!datos.fecha_nacimiento) {
-            errores.fecha_nacimiento = ['Indicá la fecha de nacimiento.'];
-        } else if (datos.fecha_nacimiento > hoyISO()) {
-            errores.fecha_nacimiento = ['La fecha de nacimiento no puede ser futura.'];
-        }
-        if (datos.mail && !formulario.elements.mail.checkValidity()) {
-            errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
-        }
-        obligatorio('direccion', datos.direccion, 'Indicá la dirección.');
-        if (!datos.obra_social) {
-            errores.obra_social = [$('pac-obra-social').value.trim()
-                ? 'Elegí la obra social de la lista de sugerencias.'
-                : 'Indicá la obra social.'];
-        }
-        obligatorio('numero_afiliado', datos.numero_afiliado, 'Indicá el número de afiliado.');
-        obligatorio('cud_vencimiento', datos.cud_vencimiento, 'Indicá el vencimiento del CUD.');
-        obligatorio('tutor.nombre', datos.tutor.nombre, 'Indicá el nombre del tutor.');
-        obligatorio('tutor.apellido', datos.tutor.apellido, 'Indicá el apellido del tutor.');
-        if (!datos.tutor.parentesco) {
-            errores['tutor.parentesco'] = [$('tutor-parentesco').value.trim()
-                ? 'Elegí el parentesco de la lista de sugerencias.'
-                : 'Indicá el parentesco.'];
-        }
-        if (datos.tutor.dni && (!soloDigitos(datos.tutor.dni) || datos.tutor.dni.length < 7)) {
-            errores['tutor.dni'] = ['El DNI tiene que tener 7 u 8 números, sin puntos.'];
-        }
-        obligatorio('tutor.movil', datos.tutor.movil, 'Indicá un celular de contacto.');
-        if (datos.tutor.mail && !formulario.elements['tutor.mail'].checkValidity()) {
-            errores['tutor.mail'] = ['Revisá el mail: falta la @ o el dominio.'];
-        }
-        if (!datos.consentimiento) {
-            errores.consentimiento = ['Sin el consentimiento firmado no se puede registrar al paciente.'];
-        }
-
-        guardar({
-            formulario,
-            idErrores: 'form-paciente-errores',
-            boton: $('btn-guardar-paciente'),
-            errores,
-            enviar: () => pacientes.crear(datos),
-            mensajeExito: 'El paciente quedó registrado y asignado a vos.',
-            modal: modalPaciente,
-        });
-    });
 }
 
 // ------------------------------------------------------------
@@ -612,13 +432,13 @@ function mostrarDashboardProfesional() {
         alElegir: (opcion) => opcion && window.location.assign(urlPaciente(opcion.valor)),
     });
     prepararFormularioTurno();
-    prepararFormularioPaciente();
+    const abrirNuevoPaciente = prepararFormularioPaciente({ alGuardar: refrescarDashboard });
 
     $('btn-dia-anterior').addEventListener('click', () => cambiarDia(-1));
     $('btn-dia-siguiente').addEventListener('click', () => cambiarDia(1));
     $('btn-dia-hoy').addEventListener('click', () => cambiarDia(0));
     $('btn-nuevo-turno').addEventListener('click', () => abrirNuevoTurno());
-    $('btn-nuevo-paciente').addEventListener('click', () => modalPaciente().show());
+    $('btn-nuevo-paciente').addEventListener('click', abrirNuevoPaciente);
     $('agenda-cuerpo').addEventListener('click', (evento) => {
         if (evento.target.closest('[data-accion="agendar"]')) {
             abrirNuevoTurno(estado.fecha);
@@ -636,9 +456,13 @@ async function iniciar() {
 
     try {
         estado.usuario = await obtenerUsuario();
-    } catch {
-        // layout.js ya avisa del error (o redirigió al login si fue 401)
+    } catch (error) {
+        // 401: api.js ya redirigió al login. Si no, se explica qué pasó y se ofrece reintentar
+        // (sin los datos de la sesión no se sabe qué mostrar).
         $('inicio-saludo').textContent = 'Inicio';
+        if (error.status !== 401) {
+            mostrarError($('inicio-error'), error, () => window.location.reload());
+        }
         return;
     }
 

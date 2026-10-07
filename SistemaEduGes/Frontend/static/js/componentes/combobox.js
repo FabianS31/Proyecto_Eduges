@@ -19,25 +19,15 @@
 // está en la lista, el valor queda vacío (salvo con textoLibre).
 // ============================================================
 
+import { coincideBusqueda, normalizarTexto } from '../texto.js';
 import { demorar, html, mensajeDeError, renderizar } from '../ui.js';
 
 let contador = 0;
 
-// "Gómez" y "gomez" coinciden
-export function normalizarTexto(texto) {
-    return String(texto ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-}
-
 // Arma un buscar() para una lista fija de opciones: coincide si cada palabra escrita
 // aparece en el texto o el detalle de la opción
 export function buscarEnLista(opciones) {
-    return async (texto) => {
-        const palabras = normalizarTexto(texto).split(/\s+/).filter(Boolean);
-        return opciones.filter((opcion) => {
-            const donde = normalizarTexto(`${opcion.texto} ${opcion.detalle ?? ''}`);
-            return palabras.every((palabra) => donde.includes(palabra));
-        });
-    };
+    return async (texto) => opciones.filter((opcion) => coincideBusqueda([opcion.texto, opcion.detalle ?? ''], texto));
 }
 
 /**

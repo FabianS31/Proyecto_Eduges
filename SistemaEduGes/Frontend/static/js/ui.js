@@ -6,7 +6,8 @@
 // ============================================================
 
 import { ApiError } from './api.js';
-import { aFecha } from './fechas.js';
+import { DIAS_AVISO_CUD } from './constantes.js';
+import { aFecha, diasEntre, hoyISO } from './fechas.js';
 
 // ============================================================
 // HTML seguro
@@ -70,6 +71,15 @@ const FORMATO_FECHA_LARGA = new Intl.DateTimeFormat('es-AR', {
     year: 'numeric',
 });
 
+// "2026-09-26" → "26/09/2026"
+export function formatearFecha(iso) {
+    if (!iso) {
+        return '—';
+    }
+    const [anio, mes, dia] = iso.slice(0, 10).split('-');
+    return `${dia}/${mes}/${anio}`;
+}
+
 // "2026-09-26" → "Sábado, 26 de septiembre de 2026"
 export function formatearFechaLarga(iso) {
     if (!iso) {
@@ -79,12 +89,68 @@ export function formatearFechaLarga(iso) {
     return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
+// Mail y teléfono como enlaces (abren el correo o el marcador del celular); "—" si no hay
+export function enlaceMail(mail) {
+    if (!mail) {
+        return html`<span class="text-muted">—</span>`;
+    }
+    return html`<a href="mailto:${mail}" class="link-secondary text-break">${mail}</a>`;
+}
+
+export function enlaceTelefono(telefono) {
+    if (!telefono) {
+        return html`<span class="text-muted">—</span>`;
+    }
+    return html`<a href="tel:${telefono.replace(/[^\d+]/g, '')}" class="link-secondary">${telefono}</a>`;
+}
+
 // { nombre: 'Lucas', apellido: 'Pérez' } → "Lucas Pérez" o "Pérez, Lucas"
 export function nombreCompleto(persona, { apellidoPrimero = false } = {}) {
     if (!persona) {
         return '—';
     }
     return apellidoPrimero ? `${persona.apellido}, ${persona.nombre}` : `${persona.nombre} ${persona.apellido}`;
+}
+
+// ============================================================
+// CUD (Certificado Único de Discapacidad)
+// Vencido, por vencer (dentro de DIAS_AVISO_CUD días) o vigente,
+// siempre con ícono y texto (no solo color).
+// ============================================================
+export const CUD = Object.freeze({ VENCIDO: 'vencido', POR_VENCER: 'por_vencer', VIGENTE: 'vigente' });
+
+export function estadoCud(vencimiento) {
+    const dias = diasEntre(hoyISO(), vencimiento);
+    if (dias < 0) {
+        return {
+            clave: CUD.VENCIDO,
+            dias,
+            texto: dias === -1 ? 'Venció ayer' : `Venció hace ${-dias} días`,
+            clase: 'badge-cud-vencido',
+            icono: 'bi-x-octagon',
+        };
+    }
+    if (dias <= DIAS_AVISO_CUD) {
+        let texto = `Vence en ${dias} días`;
+        if (dias === 0) {
+            texto = 'Vence hoy';
+        } else if (dias === 1) {
+            texto = 'Vence mañana';
+        }
+        return { clave: CUD.POR_VENCER, dias, texto, clase: 'badge-cud-alerta', icono: 'bi-exclamation-triangle' };
+    }
+    return {
+        clave: CUD.VIGENTE,
+        dias,
+        texto: `Vigente hasta ${formatearFecha(vencimiento)}`,
+        clase: 'badge-cud-vigente',
+        icono: 'bi-shield-check',
+    };
+}
+
+export function badgeCud(vencimiento) {
+    const cud = estadoCud(vencimiento);
+    return html`<span class="badge ${cud.clase}"><i class="bi ${cud.icono} me-1" aria-hidden="true"></i>${cud.texto}</span>`;
 }
 
 // ============================================================
@@ -258,7 +324,9 @@ export function mostrarErroresFormulario(formulario, error) {
         feedback.className = 'invalid-feedback';
         feedback.dataset.errorDeCampo = '';
         feedback.textContent = mensajes.join(' ');
-        campo.insertAdjacentElement('afterend', feedback);
+        // Si el campo está en un input-group (ej.: contraseña con botón "Mostrar"), el mensaje
+        // va debajo del grupo completo; si no, empujaría el botón a otro renglón
+        (campo.closest('.input-group') ?? campo).insertAdjacentElement('afterend', feedback);
     }
 
     if (sinCampo.length === 0 && Object.keys(error.erroresDeCampo).length === 0) {

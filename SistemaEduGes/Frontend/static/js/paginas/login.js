@@ -9,6 +9,7 @@
 
 import { ApiError } from '../api.js';
 import { CONFIG } from '../config.js';
+import { prepararMostrarPassword } from '../componentes/mostrar-password.js';
 import { auth } from '../endpoints.js';
 import {
     botonCargando,
@@ -143,6 +144,7 @@ async function ingresar(evento) {
 // ------------------------------------------------------------
 async function iniciar() {
     const formulario = $('form-login');
+    prepararMostrarPassword(formulario);
     formulario.addEventListener('submit', ingresar);
     formulario.addEventListener('input', (e) => e.target.classList.remove('is-invalid'));
 

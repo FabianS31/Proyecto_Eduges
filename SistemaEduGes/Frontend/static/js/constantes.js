@@ -18,6 +18,12 @@ export const PERMISO = Object.freeze({
     USUARIOS_ADMIN: 'usuarios.admin',
 });
 
+// IDs de la tabla "estados_pacientes"
+export const ESTADO_PACIENTE = Object.freeze({
+    ACTIVO: 1,
+    INACTIVO: 2,
+});
+
 // IDs de la tabla "estados_turnos"
 export const ESTADO_TURNO = Object.freeze({
     PENDIENTE: 1,

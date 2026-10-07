@@ -9,6 +9,7 @@
 // ============================================================
 
 import { ApiError } from './api.js';
+import { prepararMostrarPassword } from './componentes/mostrar-password.js';
 import { CONFIG } from './config.js';
 import { PERMISO } from './constantes.js';
 import { auth } from './endpoints.js';
@@ -155,6 +156,7 @@ function prepararCambioPassword() {
     if (!modal || !formulario) {
         return;
     }
+    prepararMostrarPassword(formulario);
     formulario.addEventListener('submit', cambiarPassword);
     formulario.addEventListener('input', (e) => e.target.classList.remove('is-invalid'));
     modal.addEventListener('shown.bs.modal', () => formulario.elements.password_actual.focus());

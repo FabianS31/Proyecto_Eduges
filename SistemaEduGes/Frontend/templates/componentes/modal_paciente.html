@@ -1,0 +1,87 @@
+<!-- ============================================================
+     Nuevo paciente (POST /api/pacientes/). Lo maneja static/js/componentes/formulario-paciente.js.
+     Si lo da de alta un profesional, el paciente queda asignado a él.
+     Los name de los campos son las claves de error de la API: cada error se muestra debajo de su campo.
+     El tutor se suma cuando la API lo reciba.
+     ============================================================ -->
+<div class="modal fade" id="modal-paciente" tabindex="-1" aria-labelledby="modal-paciente-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <form class="modal-content border-0 shadow" id="form-paciente" novalidate>
+            <div class="modal-header">
+                <h2 class="modal-title fs-6 fw-bold" id="modal-paciente-titulo">
+                    <i class="bi bi-person-plus me-1" aria-hidden="true"></i> Nuevo paciente
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="form-paciente-errores"></div>
+
+                <fieldset class="mb-4">
+                    <legend class="fs-6 fw-bold mb-3">Datos del paciente</legend>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="pac-nombre" class="form-label small fw-semibold">Nombre *</label>
+                            <input type="text" class="form-control" id="pac-nombre" name="nombre" maxlength="100" required autocomplete="off">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="pac-apellido" class="form-label small fw-semibold">Apellido *</label>
+                            <input type="text" class="form-control" id="pac-apellido" name="apellido" maxlength="100" required autocomplete="off">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="pac-dni" class="form-label small fw-semibold">DNI *</label>
+                            <input type="text" class="form-control" id="pac-dni" name="dni" maxlength="8" inputmode="numeric" required
+                                   autocomplete="off" aria-describedby="pac-dni-ayuda">
+                            <div class="form-text" id="pac-dni-ayuda">Sin puntos, 7 u 8 dígitos.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="pac-nacimiento" class="form-label small fw-semibold">Fecha de nacimiento *</label>
+                            <input type="date" class="form-control" id="pac-nacimiento" name="fecha_nacimiento" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="pac-mail" class="form-label small fw-semibold">Mail</label>
+                            <input type="email" class="form-control" id="pac-mail" name="mail" maxlength="50" autocomplete="off">
+                        </div>
+                        <div class="col-12">
+                            <label for="pac-direccion" class="form-label small fw-semibold">Dirección *</label>
+                            <input type="text" class="form-control" id="pac-direccion" name="direccion" maxlength="255" required autocomplete="off">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="mb-4">
+                    <legend class="fs-6 fw-bold mb-3">Obra social y CUD</legend>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="pac-obra-social" class="form-label small fw-semibold">Obra social *</label>
+                            <input type="text" class="form-control" id="pac-obra-social" name="obra_social" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="pac-afiliado" class="form-label small fw-semibold">Número de afiliado *</label>
+                            <input type="text" class="form-control" id="pac-afiliado" name="numero_afiliado" maxlength="20" required autocomplete="off">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="pac-cud-numero" class="form-label small fw-semibold">Número de CUD</label>
+                            <input type="text" class="form-control" id="pac-cud-numero" name="cud_numero" maxlength="20" autocomplete="off">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="pac-cud-vencimiento" class="form-label small fw-semibold">Vencimiento del CUD *</label>
+                            <input type="date" class="form-control" id="pac-cud-vencimiento" name="cud_vencimiento" required>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="pac-consentimiento" name="consentimiento" required>
+                    <label class="form-check-label small" for="pac-consentimiento">
+                        El tutor firmó el consentimiento informado para el tratamiento. *
+                    </label>
+                </div>
+                <p class="small text-muted mt-3 mb-0">* Campos obligatorios. El paciente queda asignado a vos.</p>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-paciente">Guardar paciente</button>
+            </div>
+        </form>
+    </div>
+</div>

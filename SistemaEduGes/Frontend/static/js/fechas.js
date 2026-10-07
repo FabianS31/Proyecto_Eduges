@@ -28,6 +28,14 @@ export function sumarDias(iso, dias) {
     return fechaISO(fecha);
 }
 
+// Años cumplidos a hoy: "2017-03-10" → 9
+export function edad(nacimiento) {
+    const [anio, mes, dia] = nacimiento.split('-').map(Number);
+    const hoy = new Date();
+    const yaCumplio = hoy.getMonth() + 1 > mes || (hoy.getMonth() + 1 === mes && hoy.getDate() >= dia);
+    return hoy.getFullYear() - anio - (yaCumplio ? 0 : 1);
+}
+
 // Días desde "desde" hasta "hasta" (negativo si "hasta" es anterior)
 export function diasEntre(desde, hasta) {
     const [a1, m1, d1] = desde.split('-').map(Number);

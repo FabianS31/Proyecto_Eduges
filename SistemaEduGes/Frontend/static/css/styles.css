@@ -233,10 +233,6 @@ select:focus-visible,
 .login-logo-side {
     width: 40px;
     height: 40px;
-    object-fit: contain;
-    border-radius: 8px;
-    background-color: rgba(255, 255, 255, 0.15);
-    padding: 4px;
 }
 
 .login-illustration {
@@ -400,7 +396,17 @@ select:focus-visible,
     overflow-wrap: anywhere;
 }
 
-#profesionales-cuerpo tr[data-profesional-id] {
+/* Celular: las insignias de estado pueden ocupar dos renglones,
+   así la tabla entra en la pantalla sin desplazarse de costado */
+@media (max-width: 575.98px) {
+    .table td .badge {
+        white-space: normal;
+        text-align: left;
+    }
+}
+
+#profesionales-cuerpo tr[data-profesional-id],
+#pacientes-cuerpo tr[data-paciente-id] {
     cursor: pointer;
 }
 
@@ -410,8 +416,51 @@ body:has(.offcanvas-end.show) #eduges-avisos {
     left: 0;
 }
 /* ============================================
+   Logo (static/img/Logo.png ya trae su cuadrado azul):
+   sin marco, con borde suave y sombra para que se despegue del fondo azul
+   ============================================ */
+.logo-barra,
+.login-logo-side {
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* ============================================
    Accesibilidad
    ============================================ */
+
+/* Contraste: el gris "secundario" de Bootstrap (#6c757d) no llega a 4,5:1 sobre
+   fondos grises claros (WCAG AA). Se usa el gris de texto de EduGes, más oscuro. */
+:root {
+    --bs-secondary-rgb: 82, 96, 109;
+    /* El azul de Bootstrap (#0d6efd) tampoco llega a 4,5:1 sobre gris claro:
+       se usa el azul institucional de EduGes */
+    --bs-primary-rgb: 11, 67, 121;
+}
+
+.btn-outline-secondary {
+    --bs-btn-color: var(--eduges-text-muted);
+    --bs-btn-border-color: var(--eduges-text-muted);
+    --bs-btn-hover-bg: var(--eduges-text-muted);
+    --bs-btn-hover-border-color: var(--eduges-text-muted);
+    --bs-btn-active-bg: var(--eduges-text-muted);
+    --bs-btn-active-border-color: var(--eduges-text-muted);
+    --bs-btn-disabled-color: var(--eduges-text-muted);
+    --bs-btn-disabled-border-color: var(--eduges-text-muted);
+}
+
+/* Tablas que se desplazan de costado: se pueden mover con el teclado (flechas) al tener el foco */
+.table-responsive:focus-visible {
+    outline: 3px solid var(--eduges-primary);
+    outline-offset: 2px;
+}
+
+/* El atributo hidden siempre oculta, aunque el elemento tenga una clase
+   de Bootstrap que fije el display (d-flex, d-grid...) */
+[hidden] {
+    display: none !important;
+}
 
 /* "Saltar al contenido": invisible hasta que llega el foco con Tab */
 .saltar-contenido {
@@ -437,6 +486,18 @@ body:has(.offcanvas-end.show) #eduges-avisos {
     outline: none;
 }
 
+/* Mensaje de error debajo de un input-group (ver mostrarErroresFormulario en ui.js) */
+.input-group:has(> .is-invalid) + .invalid-feedback {
+    display: block;
+}
+
+/* Botón "Mostrar" / "Ocultar" de las contraseñas (componentes/mostrar-password.js):
+   ancho fijo para que no salte al cambiar el texto */
+.boton-mostrar-password {
+    min-width: 6.5rem;
+    background-color: var(--eduges-surface);
+}
+
 /* En pantallas táctiles, todo lo que se toca mide al menos 44 px */
 @media (pointer: coarse) {
     .btn,
@@ -449,6 +510,14 @@ body:has(.offcanvas-end.show) #eduges-avisos {
     .form-check-input {
         width: 1.4em;
         height: 1.4em;
+    }
+
+    /* La X de cerrar paneles y modales: fácil de acertar con el dedo
+       (Bootstrap le pone otro relleno dentro de .modal-header y .offcanvas-header) */
+    .btn-close,
+    .modal-header .btn-close,
+    .offcanvas-header .btn-close {
+        padding: 0.9em;
     }
 }
 
@@ -542,6 +611,21 @@ body:has(.offcanvas-end.show) #eduges-avisos {
     z-index: 2;
 }
 
+/* Aviso de error del inicio: solo se ve si tiene contenido */
+#inicio-error:empty {
+    display: none;
+}
+
+/* Números del dashboard que llevan a otra pantalla */
+.metrica-enlace-texto {
+    color: var(--eduges-primary);
+}
+
+.metrica-enlace:hover .metrica-enlace-texto,
+.metrica-enlace:focus-visible .metrica-enlace-texto {
+    text-decoration: underline;
+}
+
 .dashboard-hora {
     min-width: 3.5rem;
     font-family: var(--eduges-font-display);
@@ -591,6 +675,13 @@ body:has(.offcanvas-end.show) #eduges-avisos {
     background-color: var(--eduges-danger-bg);
     border-color: var(--eduges-danger-border);
     color: var(--eduges-danger);
+}
+
+.badge-cud-vigente {
+    font-weight: 600;
+    border: 1px solid var(--eduges-success-border);
+    background-color: var(--eduges-success-bg);
+    color: var(--eduges-success);
 }
 
 .badge-cud-alerta {

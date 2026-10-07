@@ -52,7 +52,8 @@
         <span class="badge bg-light text-secondary border" id="profesionales-total" aria-live="polite">&nbsp;</span>
     </div>
 
-    <div class="table-responsive">
+    <!-- tabindex y role: si la tabla se desplaza de costado, se puede mover con el teclado -->
+    <div class="table-responsive" tabindex="0" role="region" aria-label="Tabla de profesionales">
         <table class="table table-hover align-middle mb-0" id="profesionales-tabla">
             <thead class="table-light small text-secondary">
                 <tr>
@@ -99,6 +100,56 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
     </div>
     <div class="offcanvas-body" id="ficha-cuerpo"></div>
+</div>
+<!-- Editar datos de un profesional (PATCH /api/profesionales/<id>/, solo SuperAdministrador).
+     Los name de los campos son las claves de error de la API: cada error se muestra debajo de su campo. -->
+<div class="modal fade" id="modal-profesional" tabindex="-1" aria-labelledby="modal-profesional-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0 shadow" id="form-profesional" novalidate>
+            <div class="modal-header">
+                <h2 class="modal-title fs-6 fw-bold" id="modal-profesional-titulo">
+                    <i class="bi bi-pencil me-1" aria-hidden="true"></i> Editar datos de <span id="modal-profesional-nombre"></span>
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="form-profesional-errores"></div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="prof-nombre" class="form-label small fw-semibold">Nombre *</label>
+                        <input type="text" class="form-control" id="prof-nombre" name="nombre" maxlength="100" required autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="prof-apellido" class="form-label small fw-semibold">Apellido *</label>
+                        <input type="text" class="form-control" id="prof-apellido" name="apellido" maxlength="100" required autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="prof-dni" class="form-label small fw-semibold">DNI *</label>
+                        <input type="text" class="form-control" id="prof-dni" name="dni" maxlength="8" inputmode="numeric" required
+                               autocomplete="off" aria-describedby="prof-dni-ayuda">
+                        <div class="form-text" id="prof-dni-ayuda">Sin puntos, 7 u 8 dígitos.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="prof-matricula" class="form-label small fw-semibold">Matrícula *</label>
+                        <input type="text" class="form-control" id="prof-matricula" name="matricula" maxlength="50" required autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="prof-contacto" class="form-label small fw-semibold">Teléfono</label>
+                        <input type="tel" class="form-control" id="prof-contacto" name="contacto" maxlength="50" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="prof-mail" class="form-label small fw-semibold">Mail</label>
+                        <input type="email" class="form-control" id="prof-mail" name="mail" maxlength="50" autocomplete="off">
+                    </div>
+                </div>
+                <p class="small text-muted mt-3 mb-0">* Campos obligatorios.</p>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-profesional">Guardar cambios</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}
 

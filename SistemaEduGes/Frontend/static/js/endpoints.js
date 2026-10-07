@@ -9,6 +9,7 @@
 // ============================================================
 
 import { api, ApiError } from './api.js';
+import { ESTADO_PACIENTE } from './constantes.js';
 
 // ------------------------------------------------------------
 // Autenticación — /api/auth/
@@ -39,10 +40,44 @@ export const auth = {
 export const profesionales = {
     // Array con todos los profesionales (sin paginación ni filtros en el servidor)
     listar: (opciones) => api.get('/profesionales/', opciones),
+
+    // Cambia solo los campos enviados y devuelve el profesional actualizado.
+    // Solo el SuperAdministrador tiene permiso (403 para el resto). 400 → errores por campo (ej.: matricula).
+    actualizar: (id, datos) => api.patch(`/profesionales/${id}/`, datos),
 };
 
 // ------------------------------------------------------------
-// Sin API todavía: pacientes, turnos y catálogos
+// Pacientes — /api/pacientes/
+// ------------------------------------------------------------
+// La API devuelve todos los pacientes juntos (sin paginación ni búsqueda en el servidor):
+// se piden una sola vez por página y se reutilizan (cantidad, CUD, buscador, listado).
+let pacientesEnMemoria = null;
+
+export const pacientes = {
+    // Un profesional recibe solo los pacientes con una asignación vigente con él;
+    // los administradores, todos. Ordenados por apellido y nombre:
+    // [{ id_paciente, nombre, apellido, dni, fecha_nacimiento, direccion, mail, consentimiento,
+    //    cud_numero, cud_vencimiento, obra_social, numero_afiliado, estado }]
+    // (obra_social y estado son IDs)
+    listar() {
+        pacientesEnMemoria ??= api.get('/pacientes/').catch((error) => {
+            pacientesEnMemoria = null;   // si falló, el próximo intento vuelve a pedirlos
+            throw error;
+        });
+        return pacientesEnMemoria;
+    },
+
+    // Alta: si la crea un profesional, el paciente queda asignado a él. El estado lo exige
+    // la API, así que todo paciente nuevo entra como Activo. 400 → errores por campo (ej.: dni).
+    async crear(datos) {
+        const creado = await api.post('/pacientes/', { ...datos, estado: ESTADO_PACIENTE.ACTIVO });
+        pacientesEnMemoria = null;
+        return creado;
+    },
+};
+
+// ------------------------------------------------------------
+// Sin API todavía: turnos y catálogos
 // Devuelven lo mismo que la API sin datos (listas vacías) y, al guardar, avisan
 // que no se puede. Cuando el backend tenga cada endpoint, se reemplaza el cuerpo
 // de la función por la llamada real (api.get / api.post) y las pantallas no cambian.
@@ -52,19 +87,6 @@ const sinDatos = async () => [];
 const sinApiParaGuardar = (que) => Promise.reject(new ApiError(501, {
     detail: `Todavía no se pueden guardar ${que}: falta la API en el servidor.`,
 }));
-
-export const pacientes = {
-    // Pacientes asignados al profesional logueado: [{ id, nombre, apellido, dni, cud_vencimiento }]
-    mios: sinDatos,
-
-    // Sugerencias del buscador: mismo formato que mios()
-    buscar: (texto, opciones) => sinDatos(texto, opciones),
-
-    // Pacientes del profesional con CUD vencido o por vencer: [{ id, nombre, apellido, cud_vencimiento }]
-    cudPorVencer: sinDatos,
-
-    crear: () => sinApiParaGuardar('pacientes'),
-};
 
 export const turnos = {
     // Turnos del profesional logueado en una fecha:

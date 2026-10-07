@@ -1,24 +1,129 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Pacientes | EduGes - Rincón Psi{% endblock %}
 
 {% block content %}
-<!-- Módulo Pacientes: queda vacío hasta que exista la API de pacientes en el backend. -->
+<!-- Esqueleto del módulo Pacientes: los datos los completa static/js/paginas/pacientes.js
+     con GET /api/pacientes/ (devuelve todos juntos: la búsqueda, el filtro y la paginación se hacen acá).
+     Un profesional ve solo sus pacientes; los administradores, todos. -->
 
 <!-- Cabecera -->
 <div class="d-flex justify-content-between align-items-start align-items-md-center flex-column flex-md-row gap-3 mb-4">
     <div>
         <h1 class="h4 fw-bold mb-1" style="color: var(--eduges-text-main);">Pacientes</h1>
         <p class="text-muted small mb-0">
-            <i class="bi bi-people me-1"></i> Pacientes del centro y vencimiento de su CUD
+            <i class="bi bi-people me-1" aria-hidden="true"></i> <span id="pacientes-subtitulo">&nbsp;</span>
         </p>
     </div>
+    <button type="button" class="btn btn-eduges btn-sm d-flex align-items-center gap-1" id="btn-nuevo-paciente" hidden>
+        <i class="bi bi-person-plus" aria-hidden="true"></i> Nuevo paciente
+    </button>
 </div>
 
-<div class="card-table shadow-sm">
-    <div class="text-center text-muted py-5 px-3">
-        <i class="bi bi-people fs-3 d-block mb-2 text-secondary" aria-hidden="true"></i>
-        No hay pacientes para mostrar.
+<!-- Aviso de CUD vencidos o por vencer (lo completa pacientes.js; no se muestra si no hay) -->
+<div id="aviso-cud" hidden></div>
+
+<!-- Búsqueda y filtros -->
+<form class="card-table shadow-sm p-3 mb-4" id="filtros-pacientes" role="search" aria-label="Buscar pacientes">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-5">
+            <label for="filtro-q" class="form-label small fw-semibold text-secondary mb-1">Buscar</label>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white"><i class="bi bi-search" aria-hidden="true"></i></span>
+                <input type="search" class="form-control" id="filtro-q" name="q" placeholder="Nombre, apellido o DNI" autocomplete="off">
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <label for="filtro-cud" class="form-label small fw-semibold text-secondary mb-1">CUD</label>
+            <select class="form-select form-select-sm" id="filtro-cud" name="cud">
+                <option value="">Todos</option>
+                <option value="alerta">Vencido o por vencer</option>
+                <option value="vencido">Vencido</option>
+                <option value="por_vencer">Por vencer (60 días)</option>
+                <option value="vigente">Vigente</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label for="filtro-orden" class="form-label small fw-semibold text-secondary mb-1">Ordenar por</label>
+            <select class="form-select form-select-sm" id="filtro-orden" name="orden">
+                <option value="apellido">Apellido</option>
+                <option value="cud">Vencimiento del CUD</option>
+                <option value="edad">Edad</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-2 d-grid">
+            <button type="reset" class="btn btn-sm btn-outline-secondary bg-white" id="btn-limpiar-filtros">
+                <i class="bi bi-x-lg me-1" aria-hidden="true"></i>Limpiar
+            </button>
+        </div>
     </div>
+</form>
+
+<!-- Listado -->
+<div class="card-table shadow-sm">
+    <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center gap-2">
+        <h2 class="h6 mb-0 fw-bold" style="color: var(--eduges-text-main);">
+            <i class="bi bi-people me-1 text-primary" aria-hidden="true"></i> <span id="pacientes-titulo-listado">Pacientes</span>
+        </h2>
+        <span class="badge bg-light text-secondary border" id="pacientes-total" aria-live="polite">&nbsp;</span>
+    </div>
+
+    <!-- tabindex y role: si la tabla se desplaza de costado, se puede mover con el teclado -->
+    <div class="table-responsive" tabindex="0" role="region" aria-label="Tabla de pacientes">
+        <table class="table table-hover align-middle mb-0" id="pacientes-tabla">
+            <caption class="visually-hidden">Listado de pacientes con DNI, edad y estado del CUD</caption>
+            <thead class="table-light small text-secondary">
+                <tr>
+                    <th scope="col">PACIENTE</th>
+                    <th scope="col" class="d-none d-md-table-cell">DNI</th>
+                    <th scope="col" class="d-none d-sm-table-cell">EDAD</th>
+                    <th scope="col">CUD</th>
+                    <th scope="col" class="text-end">FICHA</th>
+                </tr>
+            </thead>
+            <tbody class="small" id="pacientes-cuerpo">
+                <tr><td colspan="5" class="p-0 border-0">
+                    <div class="placeholder-glow p-3" aria-busy="true">
+                        <span class="placeholder col-7 mb-2 d-block rounded"></span>
+                        <span class="placeholder col-10 mb-2 d-block rounded"></span>
+                        <span class="placeholder col-5 mb-2 d-block rounded"></span>
+                        <span class="visually-hidden" role="status">Cargando…</span>
+                    </div>
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginación (solo si hay más de una página) -->
+    <nav class="p-3 border-top d-flex justify-content-between align-items-center gap-2 d-none" id="pacientes-paginacion" aria-label="Paginación de pacientes">
+        <span class="small text-muted" id="paginacion-texto"></span>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary bg-white" id="btn-pagina-anterior">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i> Anterior
+            </button>
+            <button type="button" class="btn btn-outline-secondary bg-white" id="btn-pagina-siguiente">
+                Siguiente <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            </button>
+        </div>
+    </nav>
 </div>
+
+<!-- Ficha del paciente (panel lateral) -->
+<div class="offcanvas offcanvas-end offcanvas-ficha" tabindex="-1" id="ficha-paciente" aria-labelledby="ficha-titulo">
+    <div class="offcanvas-header border-bottom">
+        <div>
+            <h2 class="offcanvas-title h5 mb-0" id="ficha-titulo">Ficha del paciente</h2>
+            <div class="small text-muted" id="ficha-subtitulo"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+    </div>
+    <div class="offcanvas-body" id="ficha-cuerpo"></div>
+</div>
+
+{% include "componentes/modal_paciente.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/paginas/pacientes.js' %}"></script>
 {% endblock %}

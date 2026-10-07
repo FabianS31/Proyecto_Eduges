@@ -24,7 +24,7 @@
 
             <!-- Marca con Logo -->
             <a class="navbar-brand d-flex align-items-center gap-2 fw-semibold" href="{% url 'home' %}">
-                <img src="{% static 'img/Logo.png' %}" alt="Logo" width="30" height="30" class="rounded bg-white p-1">
+                <img src="{% static 'img/Logo.png' %}" alt="Logo" width="34" height="34" class="logo-barra">
                 <span>EduGes <span class="fw-light text-white-50" style="font-size: 0.85rem;">| Rincón Psi</span></span>
             </a>
 
@@ -67,14 +67,15 @@
                             <span class="placeholder placeholder-xs d-block ms-auto" style="width: 90px;"></span>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1" title="Cambiar contraseña"
+                    <!-- Con texto visible siempre: un ícono solo no dice qué hace -->
+                    <button type="button" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1"
                             data-bs-toggle="modal" data-bs-target="#modal-cambiar-password">
-                        <i class="bi bi-key"></i>
-                        <span class="d-lg-none">Contraseña</span>
+                        <i class="bi bi-key" aria-hidden="true"></i>
+                        <span><span class="visually-hidden">Cambiar </span>Contraseña</span>
                     </button>
-                    <button type="button" id="btn-cerrar-sesion" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1" title="Cerrar sesión">
-                        <i class="bi bi-box-arrow-right"></i>
-                        <span class="d-lg-none">Salir</span>
+                    <button type="button" id="btn-cerrar-sesion" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1">
+                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                        <span>Salir</span>
                     </button>
                 </div>
             </div>
@@ -94,26 +95,26 @@
         <div class="modal-dialog modal-dialog-centered">
             <form class="modal-content border-0 shadow" id="form-cambiar-password" novalidate>
                 <div class="modal-header">
-                    <h5 class="modal-title fs-6 fw-bold" id="modal-cambiar-password-titulo">
+                    <h2 class="modal-title fs-6 fw-bold" id="modal-cambiar-password-titulo">
                         <i class="bi bi-key me-1" aria-hidden="true"></i> Cambiar contraseña
-                    </h5>
+                    </h2>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body p-4">
                     <div id="form-cambiar-password-errores"></div>
                     <div class="mb-3">
                         <label for="password-actual" class="form-label small fw-semibold">Contraseña actual</label>
-                        <input type="password" class="form-control" id="password-actual" name="password_actual" autocomplete="current-password" required>
+                        <input type="password" class="form-control" id="password-actual" name="password_actual" autocomplete="current-password" required data-mostrar-password>
                     </div>
                     <div class="mb-3">
                         <label for="password-nueva" class="form-label small fw-semibold">Contraseña nueva</label>
-                        <input type="password" class="form-control" id="password-nueva" name="password_nueva" autocomplete="new-password" required
+                        <input type="password" class="form-control" id="password-nueva" name="password_nueva" autocomplete="new-password" required data-mostrar-password
                                aria-describedby="password-nueva-ayuda">
                         <div class="form-text" id="password-nueva-ayuda">Mínimo 8 caracteres.</div>
                     </div>
                     <div>
                         <label for="password-confirmacion" class="form-label small fw-semibold">Repetí la contraseña nueva</label>
-                        <input type="password" class="form-control" id="password-confirmacion" name="password_confirmacion" autocomplete="new-password" required>
+                        <input type="password" class="form-control" id="password-confirmacion" name="password_confirmacion" autocomplete="new-password" required data-mostrar-password>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
