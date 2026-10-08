@@ -6,5 +6,7 @@ __pycache__/
 *$py.class
 *.sqlite3
 .env
+.env.desarrollo
+.env.main
 EntornoEduGes/
 cookies.txt

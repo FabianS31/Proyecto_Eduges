@@ -11,27 +11,153 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+import subprocess
 from pathlib import Path
 
 from dotenv import load_dotenv
 
+
+# ============================================================
 # PATHS
+# ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# VARIABLES DE ENTORNO (.env junto a manage.py)
 
-load_dotenv(BASE_DIR / '.env')
+# ============================================================
+# AMBIENTE
+# ============================================================
 
-# SECURITY
+def obtener_rama_git():
+    """Obtiene la rama Git actual del proyecto."""
+    try:
+        resultado = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
 
-SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
+        rama = resultado.stdout.strip()
 
-DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in (
+        if rama == 'HEAD':
+            raise RuntimeError(
+                'El repositorio está en estado detached HEAD. '
+                'No se puede determinar el ambiente de EduGes.'
+            )
+
+        return rama
+
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        raise RuntimeError(
+            'No se pudo determinar la rama Git actual. '
+            'EduGes no puede iniciar de forma segura.'
+        ) from exc
+
+
+RAMA_GIT = obtener_rama_git()
+
+
+AMBIENTES = {
+    'desarrollo': {
+        'archivo_env': '.env.desarrollo',
+        'base_datos': 'EduGes',
+        'debug': True,
+    },
+    'main': {
+        'archivo_env': '.env.main',
+        'base_datos': 'EduGes_Main',
+        'debug': False,
+    },
+}
+
+
+if RAMA_GIT not in AMBIENTES:
+    raise RuntimeError(
+        f'La rama Git "{RAMA_GIT}" no tiene un ambiente '
+        'configurado para EduGes.'
+    )
+
+
+AMBIENTE = AMBIENTES[RAMA_GIT]
+
+
+# ============================================================
+# VARIABLES DE ENTORNO
+# ============================================================
+
+load_dotenv(
+    BASE_DIR / AMBIENTE['archivo_env'],
+    override=True,
+)
+
+
+# ============================================================
+# VALIDACIÓN DE SEGURIDAD DEL AMBIENTE
+# ============================================================
+
+BASE_DE_DATOS_CONFIGURADA = os.getenv('DB_NAME')
+
+if BASE_DE_DATOS_CONFIGURADA != AMBIENTE['base_datos']:
+    raise RuntimeError(
+        '\n'
+        '============================================================\n'
+        '❌ CONFIGURACIÓN INSEGURA DE EDUGES\n'
+        '============================================================\n'
+        f'Rama Git:             {RAMA_GIT}\n'
+        f'Base configurada:     {BASE_DE_DATOS_CONFIGURADA}\n'
+        f'Base esperada:        {AMBIENTE["base_datos"]}\n'
+        '\n'
+        'Django no iniciará para evitar trabajar con la base incorrecta.\n'
+        '============================================================\n'
+    )
+
+
+DEBUG_CONFIGURADO = os.getenv(
+    'DJANGO_DEBUG',
+    'False',
+).lower() in (
     '1',
     'true',
     'yes',
 )
+
+if DEBUG_CONFIGURADO != AMBIENTE['debug']:
+    raise RuntimeError(
+        '\n'
+        '============================================================\n'
+        '❌ CONFIGURACIÓN INSEGURA DE EDUGES\n'
+        '============================================================\n'
+        f'Rama Git:             {RAMA_GIT}\n'
+        f'DJANGO_DEBUG:         {DEBUG_CONFIGURADO}\n'
+        f'DEBUG esperado:       {AMBIENTE["debug"]}\n'
+        '\n'
+        'La configuración de DEBUG no coincide con el ambiente.\n'
+        'Django no iniciará por seguridad.\n'
+        '============================================================\n'
+    )
+
+
+# ============================================================
+# INFORMACIÓN DEL AMBIENTE
+# ============================================================
+
+print('')
+print('============================================================')
+print(f'       EDUGES - AMBIENTE: {RAMA_GIT.upper()}')
+print(f'       BASE DE DATOS:     {BASE_DE_DATOS_CONFIGURADA}')
+print('============================================================')
+print('')
+
+
+# ============================================================
+# SECURITY
+# ============================================================
+
+SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
+
+DEBUG = DEBUG_CONFIGURADO
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -39,12 +165,15 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
+
+# ============================================================
 # APPLICATIONS
+# ============================================================
 
 INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sessions',
-    
+
     'rest_framework',
     'usuarios',
     'pacientes',
@@ -52,7 +181,10 @@ INSTALLED_APPS = [
     'turnos',
 ]
 
+
+# ============================================================
 # MIDDLEWARE
+# ============================================================
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -62,12 +194,18 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
+# ============================================================
 # URLS / WSGI
+# ============================================================
 
 ROOT_URLCONF = 'config.urls'
 WSGI_APPLICATION = 'config.wsgi.application'
 
+
+# ============================================================
 # TEMPLATES
+# ============================================================
 
 TEMPLATES = [
     {
@@ -85,10 +223,9 @@ TEMPLATES = [
     },
 ]
 
+
 # ============================================================
-
 # DATABASE
-
 # ============================================================
 
 DATABASES = {
@@ -102,7 +239,10 @@ DATABASES = {
     }
 }
 
+
+# ============================================================
 # DJANGO REST FRAMEWORK
+# ============================================================
 
 REST_FRAMEWORK = {
     'UNAUTHENTICATED_USER': None,
@@ -112,21 +252,31 @@ REST_FRAMEWORK = {
     ),
 }
 
+
+# ============================================================
 # INTERNATIONALIZATION
+# ============================================================
 
 LANGUAGE_CODE = 'es-ar'
 TIME_ZONE = 'America/Argentina/Buenos_Aires'
 USE_I18N = True
 USE_TZ = True
 
+
+# ============================================================
 # STATIC FILES
+# ============================================================
 
 STATIC_URL = 'static/'
+
 STATICFILES_DIRS = [
     BASE_DIR.parent / 'Frontend' / 'static',
 ]
 
+
+# ============================================================
 # EMAIL
+# ============================================================
 
 MAILERS = {
     'default': {
@@ -134,7 +284,17 @@ MAILERS = {
     },
 }
 
+
+# ============================================================
+# SESSION
+# ============================================================
+
 SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+
+
+# ============================================================
+# CACHE
+# ============================================================
 
 CACHES = {
     'default': {
