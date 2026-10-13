@@ -1,0 +1,691 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
+
+:root {
+    /* Paleta Institucional EduGes — SIN CAMBIOS de color */
+    --eduges-primary: #0B4379;
+    --eduges-primary-hover: #08325C;
+    --eduges-primary-light: #E8F0FE;
+
+    --eduges-bg: #F4F6F9;
+    --eduges-surface: #FFFFFF;
+    --eduges-border: #E2E8F0;
+
+    --eduges-text-main: #1C2733;
+    --eduges-text-muted: #52606D;
+
+    --eduges-success: #137333;
+    --eduges-success-bg: #E6F4EA;
+    --eduges-success-border: #CEEAD6;
+
+    --eduges-warning: #8A5A00;
+    --eduges-warning-bg: #FEF7E0;
+    --eduges-warning-border: #FEEFC3;
+
+    --eduges-danger: #B3261E;
+    --eduges-danger-bg: #FCE8E6;
+    --eduges-danger-border: #FAD2CF;
+
+    --eduges-info: #004085;
+    --eduges-info-bg: #CCE5FF;
+
+    /* Tipografía */
+    --eduges-font-display: 'Manrope', system-ui, sans-serif;
+    --eduges-font-body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    /* Nuevo: gradiente institucional derivado del mismo azul,
+       usado para dar profundidad sin sumar colores nuevos */
+    --eduges-gradient: linear-gradient(135deg, var(--eduges-primary) 0%, #1667B0 100%);
+
+    /* Nuevo: superficie "glass" para navbar/paneles flotantes */
+    --eduges-glass-bg: rgba(255, 255, 255, 0.78);
+    --eduges-glass-border: rgba(255, 255, 255, 0.6);
+
+    --eduges-radius-sm: 10px;
+    --eduges-radius-md: 14px;
+    --eduges-radius-lg: 20px;
+
+    --eduges-shadow-soft: 0 4px 20px rgba(11, 67, 121, 0.07);
+    --eduges-shadow-hover: 0 14px 34px rgba(11, 67, 121, 0.14);
+    --eduges-shadow-btn: 0 6px 16px rgba(11, 67, 121, 0.28);
+
+    --eduges-focus-ring: 0 0 0 3px rgba(11, 67, 121, 0.30);
+}
+
+/* ============================================
+   Base
+   ============================================ */
+
+html {
+    font-size: 17px; /* legible sin lupa */
+    scroll-behavior: smooth;
+}
+
+body {
+    background:
+        radial-gradient(1200px 500px at 100% -10%, rgba(11, 67, 121, 0.05), transparent),
+        var(--eduges-bg);
+    color: var(--eduges-text-main);
+    font-family: var(--eduges-font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--eduges-font-display);
+    color: var(--eduges-text-main);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.small, small {
+    font-size: 0.92rem !important;
+}
+
+.text-muted {
+    color: var(--eduges-text-muted) !important;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+.nav-link:focus-visible {
+    outline: 3px solid var(--eduges-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ============================================
+   Login
+   ============================================ */
+
+.card-login {
+    background-color: var(--eduges-surface);
+    border: 1px solid var(--eduges-border);
+    border-radius: var(--eduges-radius-lg);
+    box-shadow: var(--eduges-shadow-soft);
+}
+
+.login-logo {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    border-radius: var(--eduges-radius-sm);
+}
+
+.form-control-eduges {
+    border: 1.5px solid var(--eduges-border);
+    border-radius: var(--eduges-radius-sm);
+    padding: 0.85rem 1rem;
+    font-size: 1rem;
+    min-height: 48px;
+    color: var(--eduges-text-main);
+    background-color: #FAFCFE;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-control-eduges:focus {
+    background-color: #FFFFFF;
+    border-color: var(--eduges-primary);
+    box-shadow: var(--eduges-focus-ring);
+    outline: none;
+}
+
+.form-control-eduges::placeholder {
+    color: #8A95A3;
+}
+
+.btn-eduges {
+    background: var(--eduges-gradient);
+    border: 1px solid var(--eduges-primary);
+    color: #FFFFFF;
+    border-radius: var(--eduges-radius-sm);
+    padding: 0.75rem 1.3rem;
+    min-height: 44px;
+    font-weight: 700;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--eduges-shadow-btn);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.btn-eduges:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(11, 67, 121, 0.32);
+    color: #FFFFFF;
+}
+
+.btn-eduges:active {
+    transform: translateY(0);
+    filter: brightness(0.98);
+}
+
+.btn-eduges:disabled {
+    background: #9AAEC2;
+    border-color: #9AAEC2;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   Login con panel dividido — "aurora" sutil,
+   sigue siendo 100% tonos del azul institucional
+   ============================================ */
+
+.card-login-split {
+    background-color: var(--eduges-surface);
+    border: none;
+    border-radius: 24px;
+    box-shadow: 0 20px 50px rgba(11, 67, 121, 0.16);
+    overflow: hidden;
+}
+
+.login-side-panel {
+    position: relative;
+    background: var(--eduges-gradient);
+    min-height: 100%;
+    overflow: hidden;
+}
+
+.login-side-panel::before,
+.login-side-panel::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(50px);
+    pointer-events: none;
+}
+
+.login-side-panel::before {
+    width: 260px;
+    height: 260px;
+    background: rgba(255, 255, 255, 0.14);
+    top: -80px;
+    right: -60px;
+}
+
+.login-side-panel::after {
+    width: 220px;
+    height: 220px;
+    background: rgba(255, 255, 255, 0.08);
+    bottom: -70px;
+    left: -50px;
+}
+
+.login-logo-side,
+.login-illustration {
+    position: relative;
+    z-index: 1;
+}
+
+.login-logo-side {
+    width: 40px;
+    height: 40px;
+}
+
+.login-illustration {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+}
+
+@media (max-width: 767.98px) {
+    .login-side-panel {
+        padding-bottom: 1.5rem !important;
+    }
+    .login-illustration {
+        max-width: 150px;
+    }
+}
+
+/* ============================================
+   Dashboard — Navbar (glass, sticky)
+   ============================================ */
+
+.navbar-eduges {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    background: var(--eduges-gradient);
+    box-shadow: 0 2px 16px rgba(11, 67, 121, 0.18);
+}
+
+.navbar-eduges .nav-link {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0.65rem 1rem;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    border-radius: 10px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.navbar-eduges .nav-link:hover {
+    color: #FFFFFF;
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
+.navbar-eduges .nav-link.active {
+    color: #FFFFFF;
+    background-color: rgba(255, 255, 255, 0.22);
+    font-weight: 700;
+}
+
+/* ============================================
+   Dashboard — Métricas
+   ============================================ */
+
+.card-metric {
+    background: #FFFFFF;
+    border: 1px solid var(--eduges-border);
+    border-radius: var(--eduges-radius-md);
+    padding: 1.5rem;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card-metric:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--eduges-shadow-hover);
+}
+
+.metric-icon-box {
+    position: relative;
+    width: 54px;
+    height: 54px;
+    border-radius: var(--eduges-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Halo de color que hereda el color del ícono (currentColor),
+   así cada métrica queda diferenciada automáticamente sin
+   tener que tocar el HTML ni sumar clases nuevas */
+.metric-icon-box::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0.18;
+    z-index: -1;
+}
+
+/* ============================================
+   Dashboard — Tablas
+   ============================================ */
+
+.card-table {
+    background: #FFFFFF;
+    border: 1px solid var(--eduges-border);
+    border-radius: var(--eduges-radius-lg);
+    overflow: hidden;
+}
+
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+}
+
+.table > :not(caption) > * > * {
+    padding: 1rem 1.1rem;
+    border-bottom-color: #EEF2F6;
+    vertical-align: middle;
+}
+
+.table thead th {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--eduges-text-muted);
+    background-color: #FAFBFD;
+}
+
+.table-hover > tbody > tr:hover > * {
+    background-color: var(--eduges-primary-light);
+}
+
+/* ============================================
+   Permisos por rol (layout.js)
+   Los elementos con data-requiere-permiso no se muestran hasta
+   confirmar que el usuario tiene el permiso, así no "parpadean"
+   opciones que después desaparecen.
+   ============================================ */
+
+[data-requiere-permiso]:not(.permiso-concedido) {
+    display: none !important;
+}
+
+/* ============================================
+   Profesionales — ficha en panel lateral
+   ============================================ */
+
+.offcanvas-ficha {
+    --bs-offcanvas-width: 460px;
+}
+
+.ficha-dato dt {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--eduges-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.ficha-dato dd {
+    margin-bottom: 0.75rem;
+    /* Un mail o teléfono largo sin espacios no debe pisar la columna de al lado */
+    overflow-wrap: anywhere;
+}
+
+#profesionales-cuerpo td a {
+    overflow-wrap: anywhere;
+}
+
+/* Celular: las insignias de estado pueden ocupar dos renglones,
+   así la tabla entra en la pantalla sin desplazarse de costado */
+@media (max-width: 575.98px) {
+    .table td .badge {
+        white-space: normal;
+        text-align: left;
+    }
+}
+
+#profesionales-cuerpo tr[data-profesional-id],
+#pacientes-cuerpo tr[data-paciente-id] {
+    cursor: pointer;
+}
+
+/* Con un panel lateral abierto a la derecha, los avisos pasan a la izquierda para no taparlo */
+body:has(.offcanvas-end.show) #eduges-avisos {
+    right: auto !important;
+    left: 0;
+}
+/* ============================================
+   Logo (static/img/Logo.png ya trae su cuadrado azul):
+   sin marco, con borde suave y sombra para que se despegue del fondo azul
+   ============================================ */
+.logo-barra,
+.login-logo-side {
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* ============================================
+   Accesibilidad
+   ============================================ */
+
+/* Contraste: el gris "secundario" de Bootstrap (#6c757d) no llega a 4,5:1 sobre
+   fondos grises claros (WCAG AA). Se usa el gris de texto de EduGes, más oscuro. */
+:root {
+    --bs-secondary-rgb: 82, 96, 109;
+    /* El azul de Bootstrap (#0d6efd) tampoco llega a 4,5:1 sobre gris claro:
+       se usa el azul institucional de EduGes */
+    --bs-primary-rgb: 11, 67, 121;
+}
+
+.btn-outline-secondary {
+    --bs-btn-color: var(--eduges-text-muted);
+    --bs-btn-border-color: var(--eduges-text-muted);
+    --bs-btn-hover-bg: var(--eduges-text-muted);
+    --bs-btn-hover-border-color: var(--eduges-text-muted);
+    --bs-btn-active-bg: var(--eduges-text-muted);
+    --bs-btn-active-border-color: var(--eduges-text-muted);
+    --bs-btn-disabled-color: var(--eduges-text-muted);
+    --bs-btn-disabled-border-color: var(--eduges-text-muted);
+}
+
+/* Tablas que se desplazan de costado: se pueden mover con el teclado (flechas) al tener el foco */
+.table-responsive:focus-visible {
+    outline: 3px solid var(--eduges-primary);
+    outline-offset: 2px;
+}
+
+/* El atributo hidden siempre oculta, aunque el elemento tenga una clase
+   de Bootstrap que fije el display (d-flex, d-grid...) */
+[hidden] {
+    display: none !important;
+}
+
+/* "Saltar al contenido": invisible hasta que llega el foco con Tab */
+.saltar-contenido {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 2000;
+    padding: 0.6rem 1rem;
+    border-radius: var(--eduges-radius-sm);
+    background: var(--eduges-surface);
+    color: var(--eduges-primary);
+    font-weight: 700;
+    box-shadow: var(--eduges-shadow-hover);
+    transform: translateY(-200%);
+}
+
+.saltar-contenido:focus {
+    transform: none;
+}
+
+/* El destino del salto no muestra un borde al recibir el foco por código */
+#contenido:focus {
+    outline: none;
+}
+
+/* Mensaje de error debajo de un input-group (ver mostrarErroresFormulario en ui.js) */
+.input-group:has(> .is-invalid) + .invalid-feedback {
+    display: block;
+}
+
+/* Botón "Mostrar" / "Ocultar" de las contraseñas (componentes/mostrar-password.js):
+   ancho fijo para que no salte al cambiar el texto */
+.boton-mostrar-password {
+    min-width: 6.5rem;
+    background-color: var(--eduges-surface);
+}
+
+/* En pantallas táctiles, todo lo que se toca mide al menos 44 px */
+@media (pointer: coarse) {
+    .btn,
+    .form-control,
+    .form-select,
+    .list-group-item-action {
+        min-height: 44px;
+    }
+
+    .form-check-input {
+        width: 1.4em;
+        height: 1.4em;
+    }
+
+    /* La X de cerrar paneles y modales: fácil de acertar con el dedo
+       (Bootstrap le pone otro relleno dentro de .modal-header y .offcanvas-header) */
+    .btn-close,
+    .modal-header .btn-close,
+    .offcanvas-header .btn-close {
+        padding: 0.9em;
+    }
+}
+
+/* Quien pidió "reducir movimiento" en su sistema no ve animaciones */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ============================================
+   Campo con sugerencias (componentes/combobox.js)
+   ============================================ */
+
+.combobox {
+    position: relative;
+}
+
+.combobox-lista {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 1060;
+    max-height: 260px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    border-radius: var(--eduges-radius-sm);
+}
+
+.combobox-opcion {
+    cursor: pointer;
+}
+
+.combobox-opcion.activa {
+    background-color: var(--eduges-primary);
+    border-color: var(--eduges-primary);
+    color: #FFFFFF;
+}
+
+.combobox-detalle {
+    color: var(--eduges-text-muted);
+}
+
+.combobox-opcion.activa .combobox-detalle {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* ============================================
+   Dashboard del profesional
+   ============================================ */
+
+/* Celular: un bloque debajo del otro, en el orden del HTML
+   (próxima sesión, agenda, sin registrar, CUD, buscador).
+   Pantalla grande: buscador y agenda a la izquierda; próxima sesión,
+   sin registrar y CUD a la derecha. */
+.dashboard-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+}
+
+@media (min-width: 992px) {
+    .dashboard-grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        grid-template-areas:
+            "buscador proxima"
+            "agenda   registrar"
+            "agenda   cud";
+    }
+
+    .dashboard-agenda { grid-area: agenda; }
+    .dashboard-proxima { grid-area: proxima; }
+    .dashboard-registrar { grid-area: registrar; }
+    .dashboard-cud { grid-area: cud; }
+    .dashboard-buscador { grid-area: buscador; }
+}
+
+/* La tarjeta del buscador deja salir la lista de sugerencias
+   (.card-table recorta lo que sobresale) */
+.dashboard-buscador {
+    overflow: visible;
+    position: relative;
+    z-index: 2;
+}
+
+/* Aviso de error del inicio: solo se ve si tiene contenido */
+#inicio-error:empty {
+    display: none;
+}
+
+/* Números del dashboard que llevan a otra pantalla */
+.metrica-enlace-texto {
+    color: var(--eduges-primary);
+}
+
+.metrica-enlace:hover .metrica-enlace-texto,
+.metrica-enlace:focus-visible .metrica-enlace-texto {
+    text-decoration: underline;
+}
+
+.dashboard-hora {
+    min-width: 3.5rem;
+    font-family: var(--eduges-font-display);
+    font-weight: 700;
+    color: var(--eduges-primary);
+}
+
+.dashboard-hora-grande {
+    font-family: var(--eduges-font-display);
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--eduges-primary);
+}
+
+.min-w-0 {
+    min-width: 0;
+}
+
+/* Estados de turno y de CUD: color + ícono + texto (nunca solo color) */
+.badge-turno,
+.badge-cud-alerta,
+.badge-cud-vencido {
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.badge-turno-pendiente {
+    background-color: var(--eduges-warning-bg);
+    border-color: var(--eduges-warning-border);
+    color: var(--eduges-warning);
+}
+
+.badge-turno-confirmado {
+    background-color: var(--eduges-primary-light);
+    border-color: #C6DAFC;
+    color: var(--eduges-primary);
+}
+
+.badge-turno-realizado {
+    background-color: var(--eduges-success-bg);
+    border-color: var(--eduges-success-border);
+    color: var(--eduges-success);
+}
+
+.badge-turno-cancelado,
+.badge-cud-vencido {
+    background-color: var(--eduges-danger-bg);
+    border-color: var(--eduges-danger-border);
+    color: var(--eduges-danger);
+}
+
+.badge-cud-vigente {
+    font-weight: 600;
+    border: 1px solid var(--eduges-success-border);
+    background-color: var(--eduges-success-bg);
+    color: var(--eduges-success);
+}
+
+.badge-cud-alerta {
+    background-color: var(--eduges-warning-bg);
+    border-color: var(--eduges-warning-border);
+    color: var(--eduges-warning);
+}

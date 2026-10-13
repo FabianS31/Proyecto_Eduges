@@ -56,4 +56,9 @@ urlpatterns = [
         'api/pacientes/',
         include('APIs.pacientes.urls')
     ),
+
+    path(
+        'api/turnos/',
+        include('APIs.turnos.urls')
+    ),
 ]

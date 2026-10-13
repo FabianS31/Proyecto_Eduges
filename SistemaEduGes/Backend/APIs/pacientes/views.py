@@ -1,3 +1,4 @@
+
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -101,6 +102,73 @@ class PacienteListView(APIView):
 
     def post(self, request):
 
+        usuario = request.user
+
+        # Verificar que el usuario tenga un rol asignado.
+        if not usuario.rol:
+
+            return Response(
+                {
+                    'detail': (
+                        'El usuario no tiene un rol asignado.'
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        nombre_rol = usuario.rol.rol
+
+        # Verificar el estado del profesional antes del alta.
+        if nombre_rol == 'Profesional':
+
+            try:
+
+                profesional = Profesional.objects.get(
+                    usuario=usuario
+                )
+
+            except Profesional.DoesNotExist:
+
+                return Response(
+                    {
+                        'detail': (
+                            'El usuario autenticado no está '
+                            'vinculado a un profesional.'
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            if profesional.estado_profesional.estado != 'Activo':
+
+                return Response(
+                    {
+                        'detail': (
+                            'Tu cuenta profesional está inactiva. '
+                            'No tenés autorización para dar de '
+                            'alta pacientes. Comunicate con el '
+                            'administrador del sistema.'
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        elif nombre_rol not in [
+            'Administrador',
+            'SuperAdministrador'
+        ]:
+
+            return Response(
+                {
+                    'detail': (
+                        'El rol del usuario no tiene '
+                        'permiso para dar de alta pacientes.'
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Validar los datos del paciente.
         serializer = PacienteSerializer(
             data=request.data,
             context={
