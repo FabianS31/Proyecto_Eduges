@@ -104,7 +104,8 @@ class PacienteSerializer(serializers.ModelSerializer):
 
         if nombre_rol not in [
             'Administrador',
-            'Profesional'
+            'Profesional',
+            'SuperAdministrador'
         ]:
 
             raise serializers.ValidationError({
