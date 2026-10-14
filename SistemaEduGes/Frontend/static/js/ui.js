@@ -269,6 +269,67 @@ export function notificarError(error) {
 }
 
 // ============================================================
+// Confirmación antes de una acción que no se puede deshacer
+// (reemplaza a window.confirm, que bloquea la página y no se puede leer bien)
+//   if (await confirmar({ titulo: '¿Cancelar el turno?', mensaje: '…', peligro: true })) { … }
+// El foco arranca en "Volver": un Enter apurado no confirma una acción peligrosa.
+// ============================================================
+let contadorDialogos = 0;
+
+export function confirmar({
+    titulo = '¿Confirmás la acción?',
+    mensaje = '',
+    textoAceptar = 'Aceptar',
+    textoCancelar = 'Volver',
+    peligro = false,
+} = {}) {
+    return new Promise((resolver) => {
+        const idTitulo = `eduges-confirmar-${++contadorDialogos}`;
+        const dialogo = document.createElement('div');
+        dialogo.className = 'modal fade';
+        dialogo.tabIndex = -1;
+        dialogo.setAttribute('aria-labelledby', idTitulo);
+        dialogo.setAttribute('aria-hidden', 'true');
+        renderizar(dialogo, html`
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header border-0 pb-0">
+                        <h2 class="modal-title fs-6 fw-bold" id="${idTitulo}">${titulo}</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">${mensaje}</div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">${textoCancelar}</button>
+                        <button type="button" class="btn btn-sm ${peligro ? 'btn-danger' : 'btn-eduges'}" data-accion="aceptar">${textoAceptar}</button>
+                    </div>
+                </div>
+            </div>`);
+        document.body.append(dialogo);
+
+        // Al cerrar, el foco vuelve a donde estaba (Bootstrap solo lo hace con data-bs-toggle)
+        const focoAnterior = document.activeElement;
+        const modal = new window.bootstrap.Modal(dialogo);
+        let aceptado = false;
+        dialogo.addEventListener('shown.bs.modal', () => {
+            dialogo.querySelector('.modal-footer [data-bs-dismiss="modal"]')?.focus();
+        });
+        dialogo.querySelector('[data-accion="aceptar"]').addEventListener('click', () => {
+            aceptado = true;
+            modal.hide();
+        });
+        dialogo.addEventListener('hidden.bs.modal', () => {
+            modal.dispose();
+            dialogo.remove();
+            if (focoAnterior?.isConnected && focoAnterior.offsetParent !== null) {
+                focoAnterior.focus();
+            }
+            resolver(aceptado);
+        });
+        modal.show();
+    });
+}
+
+// ============================================================
 // Botones y formularios
 // ============================================================
 

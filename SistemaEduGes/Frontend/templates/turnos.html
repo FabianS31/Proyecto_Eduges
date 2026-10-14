@@ -1,24 +1,89 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Turnos y Agenda | EduGes - Rincón Psi{% endblock %}
 
 {% block content %}
-<!-- Módulo Turnos y Agenda: queda vacío hasta que exista la API de turnos en el backend. -->
+<!-- Módulo Turnos y Agenda: los datos los completa static/js/paginas/turnos.js con GET /api/turnos/
+     (devuelve todos juntos: el filtro por día, semana y profesional se hace acá).
+     Un profesional ve solo sus turnos; los administradores, los de todos. -->
 
 <!-- Cabecera -->
 <div class="d-flex justify-content-between align-items-start align-items-md-center flex-column flex-md-row gap-3 mb-4">
     <div>
         <h1 class="h4 fw-bold mb-1" style="color: var(--eduges-text-main);">Turnos y Agenda</h1>
         <p class="text-muted small mb-0">
-            <i class="bi bi-calendar3 me-1"></i> Agenda de sesiones del centro
+            <i class="bi bi-calendar3 me-1" aria-hidden="true"></i> <span id="turnos-subtitulo">&nbsp;</span>
         </p>
     </div>
+    <button type="button" class="btn btn-eduges d-flex align-items-center gap-1" id="btn-nuevo-turno" hidden>
+        <i class="bi bi-calendar-plus" aria-hidden="true"></i> Nuevo turno
+    </button>
 </div>
 
-<div class="card-table shadow-sm">
-    <div class="text-center text-muted py-5 px-3">
-        <i class="bi bi-calendar3 fs-3 d-block mb-2 text-secondary" aria-hidden="true"></i>
-        No hay turnos para mostrar.
+<!-- Qué se muestra: día o semana, profesional (solo administradores) y cancelados -->
+<form class="card-table shadow-sm p-3 mb-4" id="filtros-turnos" aria-label="Qué turnos mostrar">
+    <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-auto">
+            <span class="form-label small fw-semibold text-secondary mb-1 d-block" id="vista-etiqueta">Ver</span>
+            <div class="btn-group" role="group" aria-labelledby="vista-etiqueta">
+                <input type="radio" class="btn-check" name="vista" id="vista-dia" value="dia" checked>
+                <label class="btn btn-sm btn-outline-primary" for="vista-dia">
+                    <i class="bi bi-calendar-day me-1" aria-hidden="true"></i>Un día
+                </label>
+                <input type="radio" class="btn-check" name="vista" id="vista-semana" value="semana">
+                <label class="btn btn-sm btn-outline-primary" for="vista-semana">
+                    <i class="bi bi-calendar-week me-1" aria-hidden="true"></i>Una semana
+                </label>
+            </div>
+        </div>
+        <div class="col-12 col-md-4" id="filtro-profesional-campo" hidden>
+            <label for="filtro-profesional" class="form-label small fw-semibold text-secondary mb-1">Profesional</label>
+            <select class="form-select form-select-sm" id="filtro-profesional" name="profesional">
+                <option value="">Todos los profesionales</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-auto">
+            <div class="form-check mb-1">
+                <input class="form-check-input" type="checkbox" id="filtro-cancelados" name="cancelados">
+                <label class="form-check-label small" for="filtro-cancelados">Ocultar los turnos cancelados</label>
+            </div>
+        </div>
     </div>
-</div>
+</form>
+
+<!-- Agenda -->
+<section class="card-table shadow-sm" aria-labelledby="periodo-titulo">
+    <div class="p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h2 class="h6 mb-0 fw-bold" id="periodo-titulo">
+            <i class="bi bi-calendar3 me-1 text-primary" aria-hidden="true"></i>
+            <span id="periodo-texto">&nbsp;</span>
+        </h2>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-light text-secondary border" id="turnos-total" aria-live="polite">&nbsp;</span>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Cambiar el período">
+                <button type="button" class="btn btn-outline-secondary bg-white" id="btn-anterior">
+                    <i class="bi bi-chevron-left" aria-hidden="true"></i><span class="visually-hidden" id="btn-anterior-texto">Día anterior</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary bg-white" id="btn-hoy">Hoy</button>
+                <button type="button" class="btn btn-outline-secondary bg-white" id="btn-siguiente">
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i><span class="visually-hidden" id="btn-siguiente-texto">Día siguiente</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="turnos-cuerpo" aria-live="polite">
+        <div class="placeholder-glow p-3" aria-busy="true">
+            <span class="placeholder col-7 mb-2 d-block rounded"></span>
+            <span class="placeholder col-10 mb-2 d-block rounded"></span>
+            <span class="visually-hidden" role="status">Cargando…</span>
+        </div>
+    </div>
+</section>
+
+{% include "componentes/modales_turno.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/paginas/turnos.js' %}"></script>
 {% endblock %}

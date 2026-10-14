@@ -577,9 +577,9 @@ body:has(.offcanvas-end.show) #eduges-avisos {
    ============================================ */
 
 /* Celular: un bloque debajo del otro, en el orden del HTML
-   (próxima sesión, agenda, sin registrar, CUD, buscador).
-   Pantalla grande: buscador y agenda a la izquierda; próxima sesión,
-   sin registrar y CUD a la derecha. */
+   (próxima sesión, agenda, CUD, buscador).
+   Pantalla grande: buscador y agenda a la izquierda; próxima sesión
+   y CUD a la derecha. ("Sin registrar" queda oculto hasta que exista la API de sesiones.) */
 .dashboard-grid {
     display: grid;
     gap: 1.5rem;
@@ -592,13 +592,11 @@ body:has(.offcanvas-end.show) #eduges-avisos {
         grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
         grid-template-areas:
             "buscador proxima"
-            "agenda   registrar"
             "agenda   cud";
     }
 
     .dashboard-agenda { grid-area: agenda; }
     .dashboard-proxima { grid-area: proxima; }
-    .dashboard-registrar { grid-area: registrar; }
     .dashboard-cud { grid-area: cud; }
     .dashboard-buscador { grid-area: buscador; }
 }
@@ -688,4 +686,76 @@ body:has(.offcanvas-end.show) #eduges-avisos {
     background-color: var(--eduges-warning-bg);
     border-color: var(--eduges-warning-border);
     color: var(--eduges-warning);
+}
+
+/* ============================================
+   Calendario para elegir varias fechas (componentes/selector-fechas.js)
+   ============================================ */
+.selector-fechas {
+    border: 1px solid var(--eduges-border);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+}
+
+.selector-fechas-grilla {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.25rem;
+    text-align: center;
+}
+
+.selector-fechas-encabezado {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--eduges-text-muted);
+}
+
+/* Botones grandes: fáciles de tocar en celular y de ver */
+.selector-fechas-dia {
+    min-height: 2.5rem;
+    border: 1px solid var(--eduges-border);
+    border-radius: 0.375rem;
+    background-color: var(--eduges-surface);
+    color: var(--eduges-text-main);
+    font-weight: 600;
+}
+
+.selector-fechas-dia:hover:not(:disabled) {
+    border-color: var(--eduges-primary);
+}
+
+.selector-fechas-dia:focus-visible {
+    outline: 3px solid var(--eduges-primary);
+    outline-offset: 2px;
+}
+
+/* Marcado: color + borde grueso (no solo color) */
+.selector-fechas-dia.marcado {
+    background-color: var(--eduges-primary);
+    border: 2px solid var(--eduges-primary-hover);
+    color: #fff;
+}
+
+.selector-fechas-dia:disabled {
+    background-color: transparent;
+    border-color: transparent;
+    color: #9AA5B1;
+    text-decoration: line-through;
+}
+
+/* Error de las fechas (el contenedor lleva name="turnos", la clave de error de la API) */
+.is-invalid > .selector-fechas {
+    border: 2px solid var(--eduges-danger);
+}
+
+/* ============================================
+   Turnos: vista de una semana (un bloque por día)
+   ============================================ */
+.turnos-dia + .turnos-dia {
+    border-top: 1px solid var(--eduges-border);
+}
+
+/* Hoy: barra de color a la izquierda + etiqueta "Hoy" (no solo color) */
+.turnos-dia-hoy {
+    box-shadow: inset 4px 0 0 var(--eduges-primary);
 }

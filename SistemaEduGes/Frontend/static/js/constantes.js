@@ -24,13 +24,17 @@ export const ESTADO_PACIENTE = Object.freeze({
     INACTIVO: 2,
 });
 
-// IDs de la tabla "estados_turnos"
+// Estados de turno (tabla "estados_turnos"). La API de turnos devuelve el NOMBRE del estado.
 export const ESTADO_TURNO = Object.freeze({
-    PENDIENTE: 1,
-    CONFIRMADO: 2,
-    CANCELADO: 3,
-    REALIZADO: 4,
+    PENDIENTE: 'Pendiente',
+    CONFIRMADO: 'Confirmado',
+    CANCELADO: 'Cancelado',
+    REALIZADO: 'Realizado',
 });
+
+// Reglas de la API de turnos (APIs/turnos/services/turno_service.py)
+export const TURNO_DIAS_ANTICIPACION = 30;
+export const TURNO_DURACION_MINUTOS = 60;
 
 // Un CUD que vence dentro de estos días se muestra como "por vencer"
 export const DIAS_AVISO_CUD = 60;

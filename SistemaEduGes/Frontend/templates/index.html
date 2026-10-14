@@ -42,14 +42,15 @@
     <section aria-labelledby="resumen-titulo" class="mb-4">
         <h2 id="resumen-titulo" class="visually-hidden">Resumen de tu día</h2>
         <div class="row g-3">
-            <div class="col-6 col-xl-3">
+            <div class="col-12 col-md-4">
                 <div class="card-metric h-100">
                     <span class="text-muted small fw-semibold text-uppercase" id="metrica-hoy-titulo">Sesiones hoy</span>
                     <div class="h3 fw-bold mb-0 mt-1" id="metrica-hoy" aria-describedby="metrica-hoy-titulo">—</div>
                     <div class="text-muted small mt-1" id="metrica-hoy-detalle">&nbsp;</div>
                 </div>
             </div>
-            <div class="col-6 col-xl-3">
+            <!-- Oculto hasta que exista la API de sesiones (siempre mostraría 0) -->
+            <div class="col-12 col-md-4" hidden>
                 <div class="card-metric h-100">
                     <span class="text-muted small fw-semibold text-uppercase" id="metrica-registrar-titulo">Por registrar</span>
                     <div class="h3 fw-bold mb-0 mt-1" id="metrica-registrar" aria-describedby="metrica-registrar-titulo">—</div>
@@ -57,7 +58,7 @@
                 </div>
             </div>
             <!-- Estos dos llevan a Pacientes: el texto "Ver…" dice adónde, así no hace falta adivinar que se puede tocar -->
-            <div class="col-6 col-xl-3">
+            <div class="col-12 col-md-4">
                 <a href="{% url 'pacientes' %}" class="card-metric metrica-enlace h-100 d-block text-decoration-none">
                     <span class="text-muted small fw-semibold text-uppercase">Mis pacientes</span>
                     <span class="h3 fw-bold mb-0 mt-1 d-block text-dark" id="metrica-pacientes">—</span>
@@ -67,7 +68,7 @@
                     </span>
                 </a>
             </div>
-            <div class="col-6 col-xl-3">
+            <div class="col-12 col-md-4">
                 <a href="{% url 'pacientes' %}?cud=alerta&amp;orden=cud" class="card-metric metrica-enlace h-100 d-block text-decoration-none">
                     <span class="text-muted small fw-semibold text-uppercase">CUD a vencer</span>
                     <span class="h3 fw-bold mb-0 mt-1 d-block text-dark" id="metrica-cud">—</span>
@@ -115,7 +116,8 @@
         </section>
 
         <!-- Sesiones realizadas sin registro -->
-        <section class="card-table shadow-sm dashboard-registrar" aria-labelledby="registrar-titulo">
+        <!-- Oculto hasta que exista la API de sesiones: sin ella siempre diría "Tenés todas tus sesiones registradas" -->
+        <section class="card-table shadow-sm dashboard-registrar" aria-labelledby="registrar-titulo" hidden>
             <div class="p-3 border-bottom">
                 <h2 class="h6 mb-0 fw-bold" id="registrar-titulo">
                     <i class="bi bi-journal-text me-1 text-primary" aria-hidden="true"></i> Sesiones sin registrar
@@ -217,53 +219,7 @@
     </div>
 </div>
 
-<!-- ============================================================
-     Nuevo turno
-     Los name de los campos son las claves que va a usar la API para los errores,
-     así cada error se muestra debajo de su campo.
-     ============================================================ -->
-<div class="modal fade" id="modal-turno" tabindex="-1" aria-labelledby="modal-turno-titulo" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content border-0 shadow" id="form-turno" novalidate>
-            <div class="modal-header">
-                <h2 class="modal-title fs-6 fw-bold" id="modal-turno-titulo">
-                    <i class="bi bi-calendar-plus me-1" aria-hidden="true"></i> Nuevo turno
-                </h2>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body p-4">
-                <div id="form-turno-errores"></div>
-                <div class="mb-3">
-                    <label for="turno-paciente" class="form-label small fw-semibold">Paciente *</label>
-                    <input type="text" class="form-control" id="turno-paciente" name="paciente" required
-                           aria-describedby="turno-paciente-ayuda">
-                    <div class="form-text" id="turno-paciente-ayuda">Escribí el nombre o el DNI y elegí de la lista.</div>
-                </div>
-                <div class="row g-3">
-                    <div class="col-7">
-                        <label for="turno-fecha" class="form-label small fw-semibold">Fecha *</label>
-                        <input type="date" class="form-control" id="turno-fecha" name="fecha" required>
-                    </div>
-                    <div class="col-5">
-                        <label for="turno-hora" class="form-label small fw-semibold">Hora *</label>
-                        <input type="text" class="form-control" id="turno-hora" name="hora" required inputmode="numeric"
-                               placeholder="hh:mm" aria-describedby="turno-hora-ayuda">
-                        <div class="form-text" id="turno-hora-ayuda">Ej.: 9:30</div>
-                    </div>
-                </div>
-                <p class="small text-muted mt-3 mb-0">
-                    <i class="bi bi-person-badge me-1" aria-hidden="true"></i>Profesional: <strong id="turno-profesional"></strong>
-                </p>
-                <p class="small text-muted mt-2 mb-0">* Campos obligatorios.</p>
-            </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-turno">Agendar turno</button>
-            </div>
-        </form>
-    </div>
-</div>
-
+{% include "componentes/modales_turno.html" %}
 {% include "componentes/modal_paciente.html" %}
 {% endblock %}
 

@@ -1,7 +1,8 @@
 // ============================================================
 // EduGes - Módulo Pacientes (templates/pacientes.html)
 // Listado con búsqueda, filtro por estado del CUD, orden y paginación;
-// ficha en panel lateral; alta de pacientes (profesionales).
+// ficha en panel lateral (con sus turnos: agendar, reprogramar y cancelar);
+// alta de pacientes (profesionales).
 //
 // Endpoint: GET /api/pacientes/ → array con TODOS los pacientes que el usuario puede ver
 // (un profesional, solo los asignados a él; los administradores, todos). Como viene
@@ -22,6 +23,7 @@ import {
     prepararPaginacion,
     textoTotal,
 } from '../componentes/listado.js';
+import { estaActivo, itemTurno, obtenerTurnos, prepararTurnos, yaEmpezo } from '../componentes/turnos.js';
 import { ESTADO_PACIENTE, PERMISO } from '../constantes.js';
 import { pacientes } from '../endpoints.js';
 import { edad } from '../fechas.js';
@@ -57,6 +59,7 @@ const estado = {
     todos: [],                  // lo que devolvió la API, con el estado del CUD y la edad calculados
     filtros: leerFiltrosDeUrl(),
     fichaId: null,              // paciente con la ficha abierta
+    acciones: null,             // turnos: agendar, reprogramar y cancelar (componentes/turnos.js)
 };
 
 // ------------------------------------------------------------
@@ -278,8 +281,80 @@ function abrirFicha(id) {
             ${p.consentimiento
                 ? html`<i class="bi bi-check-circle-fill text-success me-1" aria-hidden="true"></i>Firmado`
                 : html`<i class="bi bi-exclamation-circle-fill text-danger me-1" aria-hidden="true"></i>Sin firmar`}
-        </p>`);
+        </p>
+
+        ${estado.acciones && html`
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4 mb-2">
+                <h3 class="h6 fw-bold mb-0" id="ficha-turnos-titulo">Turnos</h3>
+                ${puedeAgendar(p) && html`
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-accion="agendar-paciente">
+                        <i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>Agendar turno
+                    </button>`}
+            </div>
+            <div id="ficha-turnos" aria-live="polite"></div>`}`);
     panelFicha().show();
+    cargarTurnosFicha();
+}
+
+// ------------------------------------------------------------
+// Turnos del paciente en la ficha: próximos (con reprogramar y cancelar) y anteriores
+// ------------------------------------------------------------
+const ANTERIORES_A_MOSTRAR = 5;
+
+const puedeAgendar = (p) => p.estado === ESTADO_PACIENTE.ACTIVO && tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR);
+
+const listaTurnosFicha = (lista) => html`
+    <ul class="list-group mb-3">${lista.map((t) => itemTurno(t, { conPaciente: false, conProfesional: !esProfesional(estado.usuario) }))}</ul>`;
+
+async function cargarTurnosFicha() {
+    const contenedor = $('ficha-turnos');
+    const id = estado.fichaId;
+    if (!contenedor || !id) {
+        return;
+    }
+    renderizar(contenedor, bloqueCargando(2));
+    try {
+        const delPaciente = (await obtenerTurnos()).filter((t) => t.paciente_id === id);
+        if (estado.fichaId !== id) {
+            return;
+        }
+        const proximos = delPaciente.filter((t) => estaActivo(t) && !yaEmpezo(t));
+        // Los más recientes primero
+        const anteriores = delPaciente.filter((t) => !proximos.includes(t)).reverse();
+        const mostrados = anteriores.slice(0, ANTERIORES_A_MOSTRAR);
+        renderizar(contenedor, html`
+            <h4 class="small fw-semibold text-secondary mb-2">Próximos</h4>
+            ${proximos.length > 0
+                ? listaTurnosFicha(proximos)
+                : html`<p class="small text-muted mb-3">No tiene turnos próximos.</p>`}
+            ${anteriores.length > 0 && html`
+                <h4 class="small fw-semibold text-secondary mb-2">Anteriores y cancelados</h4>
+                ${listaTurnosFicha(mostrados)}
+                ${anteriores.length > mostrados.length
+                    && html`<p class="small text-muted mb-0">Se muestran los últimos ${mostrados.length} de ${anteriores.length}.</p>`}`}`);
+    } catch (error) {
+        if (estado.fichaId === id) {
+            mostrarError(contenedor, error, cargarTurnosFicha);
+        }
+    }
+}
+
+function prepararTurnosFicha() {
+    if (!tienePermiso(estado.usuario, PERMISO.TURNOS_VER)) {
+        return;
+    }
+    estado.acciones = prepararTurnos({
+        usuario: estado.usuario,
+        alCambiar: cargarTurnosFicha,
+        focoTrasCambio: () => $('ficha-turnos-titulo'),
+    });
+    estado.acciones.escuchar($('ficha-cuerpo'));
+    $('ficha-cuerpo').addEventListener('click', (evento) => {
+        const paciente = estado.todos.find((p) => p.id_paciente === estado.fichaId);
+        if (paciente && evento.target.closest('[data-accion="agendar-paciente"]')) {
+            estado.acciones.abrirNuevo({ paciente });
+        }
+    });
 }
 
 // ------------------------------------------------------------
@@ -394,6 +469,7 @@ async function iniciar() {
     }
 
     prepararAlta();
+    prepararTurnosFicha();
     if (await cargarListado() && fichaInicial) {
         abrirFicha(fichaInicial);
     }

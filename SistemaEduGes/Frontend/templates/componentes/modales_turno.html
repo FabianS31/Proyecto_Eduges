@@ -1,0 +1,111 @@
+{% comment %}
+    Modales de turnos: Nuevo turno (una fecha o varias) y Reprogramar.
+    Los maneja static/js/componentes/turnos.js. Se usan en Inicio, Turnos y la ficha del paciente.
+{% endcomment %}
+<!-- ============================================================
+     Nuevo turno
+     Los name de los campos son las claves que va a usar la API para los errores,
+     así cada error se muestra debajo de su campo.
+     ============================================================ -->
+<div class="modal fade" id="modal-turno" tabindex="-1" aria-labelledby="modal-turno-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0 shadow" id="form-turno" novalidate>
+            <div class="modal-header">
+                <h2 class="modal-title fs-6 fw-bold" id="modal-turno-titulo">
+                    <i class="bi bi-calendar-plus me-1" aria-hidden="true"></i> Nuevo turno
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="form-turno-errores"></div>
+                <div class="mb-3">
+                    <label for="turno-paciente" class="form-label small fw-semibold">Paciente *</label>
+                    <input type="text" class="form-control" id="turno-paciente" name="paciente" required
+                           aria-describedby="turno-paciente-ayuda">
+                    <div class="form-text" id="turno-paciente-ayuda">Escribí el nombre o el DNI y elegí de la lista.</div>
+                </div>
+                <fieldset class="mb-3">
+                    <legend class="form-label small fw-semibold mb-2">¿En cuántas fechas?</legend>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="modo" id="turno-modo-uno" value="uno" checked>
+                        <label class="btn btn-outline-primary" for="turno-modo-uno">
+                            <i class="bi bi-calendar-event me-1" aria-hidden="true"></i>Una fecha
+                        </label>
+                        <input type="radio" class="btn-check" name="modo" id="turno-modo-varios" value="varios">
+                        <label class="btn btn-outline-primary" for="turno-modo-varios">
+                            <i class="bi bi-calendar-week me-1" aria-hidden="true"></i>Varias fechas
+                        </label>
+                    </div>
+                </fieldset>
+                <div class="mb-3" id="turno-una-fecha">
+                    <label for="turno-fecha" class="form-label small fw-semibold">Fecha *</label>
+                    <input type="date" class="form-control" id="turno-fecha" name="fecha" required aria-describedby="turno-fecha-ayuda">
+                    <div class="form-text" id="turno-fecha-ayuda">Se pueden dar turnos hasta 30 días hacia adelante.</div>
+                </div>
+                <div class="mb-3" id="turno-varias-fechas" hidden>
+                    <span class="form-label small fw-semibold d-block">Fechas *</span>
+                    <!-- name="turnos": los errores de las fechas se muestran debajo del calendario -->
+                    <div id="turno-selector-fechas" name="turnos" tabindex="-1"></div>
+                </div>
+                <div class="mb-1">
+                    <label for="turno-hora" class="form-label small fw-semibold">Hora *</label>
+                    <input type="text" class="form-control" id="turno-hora" name="hora" required inputmode="numeric"
+                           placeholder="hh:mm" aria-describedby="turno-hora-ayuda">
+                    <div class="form-text" id="turno-hora-ayuda">Ej.: 9:30. Cada turno dura 1 hora.</div>
+                </div>
+                <!-- Profesional: si agenda un profesional, es él (texto fijo);
+                     si agenda un administrador, lo elige (campo con sugerencias) -->
+                <div class="mt-3" id="turno-profesional-campo" hidden>
+                    <label for="turno-profesional-elegir" class="form-label small fw-semibold">Profesional *</label>
+                    <input type="text" class="form-control" id="turno-profesional-elegir" name="profesional"
+                           aria-describedby="turno-profesional-ayuda">
+                    <div class="form-text" id="turno-profesional-ayuda">Escribí el nombre y elegí de la lista.</div>
+                </div>
+                <p class="small text-muted mt-3 mb-0" id="turno-profesional-fijo">
+                    <i class="bi bi-person-badge me-1" aria-hidden="true"></i>Profesional: <strong id="turno-profesional"></strong>
+                </p>
+                <p class="small text-muted mt-2 mb-0">* Campos obligatorios.</p>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-turno">Agendar turno</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================
+     Reprogramar turno (PATCH /api/turnos/<id>/): nueva fecha y hora
+     ============================================================ -->
+<div class="modal fade" id="modal-reprogramar" tabindex="-1" aria-labelledby="modal-reprogramar-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0 shadow" id="form-reprogramar" novalidate>
+            <div class="modal-header">
+                <h2 class="modal-title fs-6 fw-bold" id="modal-reprogramar-titulo">
+                    <i class="bi bi-calendar2-range me-1" aria-hidden="true"></i> Reprogramar turno
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="form-reprogramar-errores"></div>
+                <p class="mb-3" id="reprogramar-detalle"></p>
+                <div class="row g-3">
+                    <div class="col-7">
+                        <label for="reprogramar-fecha" class="form-label small fw-semibold">Nueva fecha *</label>
+                        <input type="date" class="form-control" id="reprogramar-fecha" name="fecha" required>
+                    </div>
+                    <div class="col-5">
+                        <label for="reprogramar-hora" class="form-label small fw-semibold">Nueva hora *</label>
+                        <input type="text" class="form-control" id="reprogramar-hora" name="hora" required inputmode="numeric"
+                               placeholder="hh:mm">
+                    </div>
+                </div>
+                <p class="small text-muted mt-3 mb-0">Se pueden dar turnos hasta 30 días hacia adelante. Cada turno dura 1 hora.</p>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Volver</button>
+                <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-reprogramar">Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+</div>

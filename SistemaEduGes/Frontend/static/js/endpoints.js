@@ -8,7 +8,7 @@
 // a request() (ej.: { signal } para cancelar una request).
 // ============================================================
 
-import { api, ApiError } from './api.js';
+import { api } from './api.js';
 import { ESTADO_PACIENTE } from './constantes.js';
 
 // ------------------------------------------------------------
@@ -77,27 +77,50 @@ export const pacientes = {
 };
 
 // ------------------------------------------------------------
-// Sin API todavía: turnos y catálogos
-// Devuelven lo mismo que la API sin datos (listas vacías) y, al guardar, avisan
-// que no se puede. Cuando el backend tenga cada endpoint, se reemplaza el cuerpo
-// de la función por la llamada real (api.get / api.post) y las pantallas no cambian.
+// Turnos — /api/turnos/
 // ------------------------------------------------------------
-const sinDatos = async () => [];
+// La API devuelve todos los turnos juntos (sin filtros por fecha en el servidor):
+// se piden una vez por página y se reutilizan; se vuelven a pedir después de un cambio.
+// Reglas que valida la API: hasta 30 días hacia adelante, nunca un horario pasado,
+// duración fija de 1 hora, sin superponerse con otro turno del profesional ni del paciente,
+// y solo con pacientes asignados al profesional.
+let turnosEnMemoria = null;
 
-const sinApiParaGuardar = (que) => Promise.reject(new ApiError(501, {
-    detail: `Todavía no se pueden guardar ${que}: falta la API en el servidor.`,
-}));
+async function cambiarTurnos(llamada) {
+    const resultado = await llamada();
+    turnosEnMemoria = null;
+    return resultado;
+}
 
 export const turnos = {
-    // Turnos del profesional logueado en una fecha:
-    // [{ id, fecha, hora, estado: { id, nombre }, paciente: { id, nombre, apellido }, registrado }]
-    delDia: (fecha, opciones) => sinDatos(fecha, opciones),
+    // Un profesional recibe solo sus turnos; los administradores, todos. Ordenados por fecha y hora:
+    // [{ id_turno, fecha, hora: "HH:MM:SS", paciente_id, profesional_id, estado: "Pendiente" }]
+    listar() {
+        turnosEnMemoria ??= api.get('/turnos/').catch((error) => {
+            turnosEnMemoria = null;
+            throw error;
+        });
+        return turnosEnMemoria;
+    },
 
-    // Turnos realizados del profesional que todavía no tienen registro de sesión: mismo formato
-    sinRegistrar: sinDatos,
+    // Un turno:    { paciente, fecha, hora }
+    // Varios (todas las fechas o ninguna): { paciente, turnos: [{ fecha, hora }, …] }
+    // Un administrador además indica { profesional }. 400 → errores por campo (fecha, hora, paciente, turnos).
+    crear: (datos) => cambiarTurnos(() => api.post('/turnos/', datos)),
 
-    crear: () => sinApiParaGuardar('turnos'),
+    // Solo turnos Pendientes o Confirmados, propios
+    reprogramar: (id, { fecha, hora }) => cambiarTurnos(() => api.patch(`/turnos/${id}/`, { fecha, hora })),
+
+    // No borra: lo pasa a Cancelado
+    cancelar: (id) => cambiarTurnos(() => api.delete(`/turnos/${id}/`)),
 };
+
+// ------------------------------------------------------------
+// Sin API todavía: catálogos
+// Devuelven lo mismo que la API sin datos (listas vacías). Cuando el backend tenga
+// cada endpoint, se reemplaza por la llamada real (api.get) y las pantallas no cambian.
+// ------------------------------------------------------------
+const sinDatos = async () => [];
 
 export const catalogos = {
     obrasSociales: sinDatos,   // [{ id, nombre }]
