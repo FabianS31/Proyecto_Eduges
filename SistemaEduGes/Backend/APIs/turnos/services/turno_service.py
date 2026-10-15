@@ -10,7 +10,7 @@ from turnos.models import Turno, EstadoTurno
 from pacientes.models.paciente_model import Paciente
 from profesionales.models.profesional_model import Profesional
 from profesionales.models.asignacion_model import (
-    AsignacionProfesional
+    AsignacionProfesional,
 )
 
 
@@ -29,6 +29,14 @@ class TurnoService:
         'Administrador',
         'SuperAdministrador',
     )
+
+    TRANSICIONES_PERMITIDAS = {
+        'Pendiente': ('Confirmado', 'Cancelado'),
+        'Confirmado': ('Cancelado', 'Ausente', 'Realizado'),
+        'Ausente': ('Realizado',),
+        'Realizado': (),
+        'Cancelado': (),
+    }
 
     # ---------------------------------------------------------
     # OBTENER PROFESIONAL DEL USUARIO
@@ -54,34 +62,27 @@ class TurnoService:
     # ---------------------------------------------------------
 
     @staticmethod
-    def obtener_estado_pendiente():
+    def obtener_estado(nombre_estado):
         try:
             return EstadoTurno.objects.get(
-                estado='Pendiente'
+                estado=nombre_estado
             )
 
         except EstadoTurno.DoesNotExist:
             raise serializers.ValidationError({
                 'estado': (
-                    'No existe el estado "Pendiente" '
+                    f'No existe el estado "{nombre_estado}" '
                     'en la base de datos.'
                 )
             })
 
-    @staticmethod
-    def obtener_estado_cancelado():
-        try:
-            return EstadoTurno.objects.get(
-                estado='Cancelado'
-            )
+    @classmethod
+    def obtener_estado_pendiente(cls):
+        return cls.obtener_estado('Pendiente')
 
-        except EstadoTurno.DoesNotExist:
-            raise serializers.ValidationError({
-                'estado': (
-                    'No existe el estado "Cancelado" '
-                    'en la base de datos.'
-                )
-            })
+    @classmethod
+    def obtener_estado_cancelado(cls):
+        return cls.obtener_estado('Cancelado')
 
     # ---------------------------------------------------------
     # VALIDAR ROLES
@@ -151,7 +152,7 @@ class TurnoService:
             })
 
     # ---------------------------------------------------------
-    # VALIDAR FECHA Y HORA
+    # VALIDAR FECHA Y HORA PARA CREAR O REPROGRAMAR
     # ---------------------------------------------------------
 
     @staticmethod
@@ -185,6 +186,28 @@ class TurnoService:
             })
 
     # ---------------------------------------------------------
+    # CALCULAR INICIO Y FIN DEL TURNO
+    # ---------------------------------------------------------
+
+    @classmethod
+    def obtener_inicio_turno(cls, turno):
+        fecha_hora = datetime.combine(
+            turno.fecha,
+            turno.hora.replace(tzinfo=None),
+        )
+
+        return timezone.make_aware(
+            fecha_hora,
+            timezone.get_current_timezone(),
+        )
+
+    @classmethod
+    def obtener_fin_turno(cls, turno):
+        return cls.obtener_inicio_turno(turno) + timedelta(
+            minutes=cls.DURACION_MINUTOS
+        )
+
+    # ---------------------------------------------------------
     # VALIDAR SOLAPAMIENTO CON OTROS TURNOS
     # ---------------------------------------------------------
 
@@ -196,7 +219,10 @@ class TurnoService:
         hora,
         excluir_turno_id=None,
     ):
-        inicio = datetime.combine(fecha, hora)
+        inicio = datetime.combine(
+            fecha,
+            hora.replace(tzinfo=None),
+        )
 
         fin = inicio + timedelta(
             minutes=TurnoService.DURACION_MINUTOS
@@ -219,7 +245,6 @@ class TurnoService:
             )
         )
 
-        # Al editar, no comparar el turno consigo mismo.
         if excluir_turno_id is not None:
             turnos_existentes = turnos_existentes.exclude(
                 pk=excluir_turno_id
@@ -228,7 +253,7 @@ class TurnoService:
         for turno in turnos_existentes:
             inicio_existente = datetime.combine(
                 turno.fecha,
-                turno.hora,
+                turno.hora.replace(tzinfo=None),
             )
 
             fin_existente = inicio_existente + timedelta(
@@ -272,7 +297,7 @@ class TurnoService:
 
             inicio_actual = datetime.combine(
                 turno_actual['fecha'],
-                turno_actual['hora'],
+                turno_actual['hora'].replace(tzinfo=None),
             )
 
             fin_actual = inicio_actual + timedelta(
@@ -281,7 +306,7 @@ class TurnoService:
 
             inicio_siguiente = datetime.combine(
                 siguiente_turno['fecha'],
-                siguiente_turno['hora'],
+                siguiente_turno['hora'].replace(tzinfo=None),
             )
 
             if inicio_siguiente < fin_actual:
@@ -293,7 +318,7 @@ class TurnoService:
                 })
 
     # ---------------------------------------------------------
-    # OBTENER TURNO PARA EDITAR O CANCELAR
+    # OBTENER TURNO BLOQUEADO PARA OPERACIONES
     # ---------------------------------------------------------
 
     @staticmethod
@@ -341,6 +366,11 @@ class TurnoService:
         usuario,
         nombre_rol,
     ):
+        # El SuperAdministrador puede gestionar cualquier turno.
+        if nombre_rol == 'SuperAdministrador':
+            return None
+
+        # Los administradores no están limitados a un profesional.
         if nombre_rol != 'Profesional':
             return None
 
@@ -361,6 +391,159 @@ class TurnoService:
             })
 
         return profesional_usuario
+
+    # ---------------------------------------------------------
+    # VALIDAR QUIÉN PUEDE MARCAR AUSENTE O REALIZADO
+    # ---------------------------------------------------------
+
+    @classmethod
+    def validar_permiso_asistencia(
+        cls,
+        *,
+        turno,
+        usuario,
+        nombre_rol,
+    ):
+        # El SuperAdministrador puede realizar todas las acciones.
+        if nombre_rol == 'SuperAdministrador':
+            return None
+
+        # Solo el profesional responsable puede registrar asistencia.
+        if nombre_rol != 'Profesional':
+            raise serializers.ValidationError({
+                'detail': (
+                    'Solo el profesional responsable del turno '
+                    'puede marcarlo como Ausente o Realizado.'
+                )
+            })
+
+        profesional_usuario = cls.obtener_profesional_usuario(
+            usuario
+        )
+
+        cls.validar_profesional_activo(
+            profesional_usuario
+        )
+
+        if turno.profesional_id != profesional_usuario.pk:
+            raise serializers.ValidationError({
+                'detail': (
+                    'No podés registrar la asistencia '
+                    'de un turno de otro profesional.'
+                )
+            })
+
+        return profesional_usuario
+
+    # ---------------------------------------------------------
+    # VALIDAR TRANSICIÓN DE ESTADO Y CONDICIONES HORARIAS
+    # ---------------------------------------------------------
+
+    @classmethod
+    def validar_transicion_estado(
+        cls,
+        *,
+        turno,
+        estado_nuevo,
+        usuario,
+        nombre_rol,
+    ):
+        estado_actual = turno.estado.estado
+        nombre_estado_nuevo = estado_nuevo.estado
+
+        estados_permitidos = cls.TRANSICIONES_PERMITIDAS.get(
+            estado_actual,
+            (),
+        )
+
+        if nombre_estado_nuevo not in estados_permitidos:
+            raise serializers.ValidationError({
+                'estado': (
+                    f'No se permite cambiar de '
+                    f'"{estado_actual}" a '
+                    f'"{nombre_estado_nuevo}".'
+                )
+            })
+
+        if nombre_estado_nuevo in ('Ausente', 'Realizado'):
+            cls.validar_permiso_asistencia(
+                turno=turno,
+                usuario=usuario,
+                nombre_rol=nombre_rol,
+            )
+        else:
+            cls.validar_acceso_turno(
+                turno=turno,
+                usuario=usuario,
+                nombre_rol=nombre_rol,
+            )
+
+        ahora = timezone.now()
+
+        if nombre_estado_nuevo == 'Ausente':
+            inicio_turno = cls.obtener_inicio_turno(turno)
+
+            if ahora < inicio_turno:
+                raise serializers.ValidationError({
+                    'estado': (
+                        'Solo se puede marcar Ausente '
+                        'desde la hora de inicio del turno.'
+                    )
+                })
+
+        if nombre_estado_nuevo == 'Realizado':
+            fin_turno = cls.obtener_fin_turno(turno)
+
+            if ahora < fin_turno:
+                raise serializers.ValidationError({
+                    'estado': (
+                        'Solo se puede marcar Realizado '
+                        'una vez finalizados los 60 minutos '
+                        'del turno.'
+                    )
+                })
+
+    # ---------------------------------------------------------
+    # CAMBIAR EL ESTADO DE UN TURNO
+    # ---------------------------------------------------------
+
+    @classmethod
+    @transaction.atomic
+    def cambiar_estado_turno(
+        cls,
+        *,
+        turno_id,
+        estado_id,
+        usuario,
+    ):
+        nombre_rol = cls.obtener_rol_autorizado(usuario)
+
+        turno = cls.obtener_turno_bloqueado(turno_id)
+
+        try:
+            estado_nuevo = EstadoTurno.objects.get(
+                pk=estado_id
+            )
+        except (
+            EstadoTurno.DoesNotExist,
+            ValueError,
+            TypeError,
+        ):
+            raise serializers.ValidationError({
+                'estado': 'El estado indicado no existe.'
+            })
+
+        cls.validar_transicion_estado(
+            turno=turno,
+            estado_nuevo=estado_nuevo,
+            usuario=usuario,
+            nombre_rol=nombre_rol,
+        )
+
+        turno.estado = estado_nuevo
+        turno.save(update_fields=['estado'])
+
+        return turno
 
     # ---------------------------------------------------------
     # CREAR UN TURNO
@@ -407,7 +590,6 @@ class TurnoService:
                 profesional = Profesional.objects.get(
                     pk=profesional_id
                 )
-
             except Profesional.DoesNotExist:
                 raise serializers.ValidationError({
                     'profesional': (
@@ -417,7 +599,6 @@ class TurnoService:
 
         try:
             paciente = Paciente.objects.get(pk=paciente_id)
-
         except Paciente.DoesNotExist:
             raise serializers.ValidationError({
                 'paciente': 'El paciente indicado no existe.'
@@ -493,9 +674,7 @@ class TurnoService:
     ):
         if not turnos:
             raise serializers.ValidationError({
-                'turnos': (
-                    'Debés indicar al menos un turno.'
-                )
+                'turnos': 'Debés indicar al menos un turno.'
             })
 
         nombre_rol = cls.obtener_rol_autorizado(usuario)
@@ -528,7 +707,6 @@ class TurnoService:
                 profesional = Profesional.objects.get(
                     pk=profesional_id
                 )
-
             except Profesional.DoesNotExist:
                 raise serializers.ValidationError({
                     'profesional': (
@@ -538,7 +716,6 @@ class TurnoService:
 
         try:
             paciente = Paciente.objects.get(pk=paciente_id)
-
         except Paciente.DoesNotExist:
             raise serializers.ValidationError({
                 'paciente': 'El paciente indicado no existe.'
@@ -578,7 +755,6 @@ class TurnoService:
                 paciente,
             )
 
-        # Validar todos los horarios antes de guardar.
         for turno in turnos:
             cls.validar_fecha_hora(
                 turno['fecha'],
@@ -592,7 +768,6 @@ class TurnoService:
                 turno['hora'],
             )
 
-        # Detectar conflictos entre los turnos solicitados.
         cls.validar_solapamiento_solicitado(turnos)
 
         estado_pendiente = cls.obtener_estado_pendiente()
@@ -641,7 +816,6 @@ class TurnoService:
             nombre_rol=nombre_rol,
         )
 
-        # Si no se envía otro profesional, conservar el actual.
         if profesional_id is None:
             profesional_id = turno.profesional_id
 
@@ -652,7 +826,6 @@ class TurnoService:
                 .select_related('estado_profesional')
                 .get(pk=profesional_id)
             )
-
         except Profesional.DoesNotExist:
             raise serializers.ValidationError({
                 'profesional': (
@@ -667,14 +840,11 @@ class TurnoService:
                 .select_related('estado')
                 .get(pk=paciente_id)
             )
-
         except Paciente.DoesNotExist:
             raise serializers.ValidationError({
                 'paciente': 'El paciente indicado no existe.'
             })
 
-        # Un profesional no puede trasladar el turno
-        # a otro profesional.
         if (
             nombre_rol == 'Profesional'
             and profesional.pk != turno.profesional_id
@@ -690,11 +860,6 @@ class TurnoService:
         cls.validar_paciente_activo(paciente)
         cls.validar_fecha_hora(fecha, hora)
 
-        # Si el usuario es profesional, debe seguir teniendo
-        # asignado al paciente.
-        #
-        # Para otros roles, comprobar la asignación cuando
-        # se cambia el paciente o el profesional.
         cambio_de_asignacion = (
             paciente.pk != turno.paciente_id
             or profesional.pk != turno.profesional_id
@@ -709,8 +874,6 @@ class TurnoService:
                 paciente,
             )
 
-        # Excluir el turno actual evita que colisione consigo
-        # mismo al comprobar su nuevo horario.
         cls.validar_solapamiento(
             profesional,
             paciente,

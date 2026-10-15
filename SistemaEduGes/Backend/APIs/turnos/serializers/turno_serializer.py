@@ -1,8 +1,27 @@
 
 from rest_framework import serializers
 
-from turnos.models import Turno
+from turnos.models import Turno, EstadoTurno
 from APIs.turnos.services.turno_service import TurnoService
+
+
+class EstadoTurnoSerializer(serializers.ModelSerializer):
+    ID_EstadoTurno = serializers.IntegerField(
+        source='id_estado_turno',
+        read_only=True,
+    )
+
+    Estado = serializers.CharField(
+        source='estado',
+        read_only=True,
+    )
+
+    class Meta:
+        model = EstadoTurno
+        fields = [
+            'ID_EstadoTurno',
+            'Estado',
+        ]
 
 
 class TurnoSerializer(serializers.ModelSerializer):
@@ -39,8 +58,7 @@ class TurnoSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
-    estado = serializers.CharField(
-        source='estado.estado',
+    estado = EstadoTurnoSerializer(
         read_only=True,
     )
 

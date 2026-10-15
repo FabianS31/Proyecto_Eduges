@@ -289,7 +289,16 @@ MAILERS = {
 # SESSION
 # ============================================================
 
-SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+
+# Duración máxima de una sesión: 20 minutos.
+SESSION_COOKIE_AGE = 20 * 60
+
+# La cookie debe caducar al cerrar el navegador.
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Actualizar la cookie cuando haya peticiones.
+SESSION_SAVE_EVERY_REQUEST = True
 
 
 # ============================================================

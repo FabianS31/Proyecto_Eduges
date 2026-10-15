@@ -41,8 +41,7 @@ class LoginView(APIView):
 
         usuario_nombre = serializer.validated_data['usuario']
         password = serializer.validated_data['password']
-        recordar = serializer.validated_data['recordar']
-
+        
         # Verificamos si el usuario ya alcanzó el límite
         # de intentos fallidos.
         if esta_bloqueado(usuario_nombre):
@@ -103,10 +102,9 @@ class LoginView(APIView):
         request.session.cycle_key()
         request.session['usuario_id'] = usuario.id_usuario
 
-        if recordar:
-            request.session.set_expiry(14 * 24 * 60 * 60)
-        else:
-            request.session.set_expiry(0)
+        # La sesión caduca al cerrar el navegador.
+        # La duración por inactividad se controla en la autenticación.
+        request.session.set_expiry(0)
 
         return Response(
             {

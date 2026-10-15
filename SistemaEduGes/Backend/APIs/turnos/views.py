@@ -6,17 +6,17 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
 
 from turnos.models import Turno
-from APIs.turnos.serializers.turno_serializer import TurnoSerializer
+from APIs.turnos.serializers.turno_serializer import (
+    TurnoSerializer,
+)
 from APIs.turnos.services.turno_service import TurnoService
 
 
 class TurnoListView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         usuario = request.user
-
         nombre_rol = getattr(
             getattr(usuario, 'rol', None),
             'rol',
@@ -27,10 +27,7 @@ class TurnoListView(APIView):
             'estado',
             'profesional',
             'paciente',
-        ).order_by(
-            'fecha',
-            'hora',
-        )
+        ).order_by('fecha', 'hora')
 
         if nombre_rol == 'Profesional':
             try:
@@ -76,19 +73,15 @@ class TurnoListView(APIView):
             context={'request': request},
         )
 
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(
+            raise_exception=True,
+        )
+
         resultado = serializer.save()
 
         if isinstance(resultado, list):
             respuesta = [
-                {
-                    'id_turno': turno.id_turno,
-                    'fecha': turno.fecha,
-                    'hora': turno.hora,
-                    'paciente': turno.paciente_id,
-                    'profesional': turno.profesional_id,
-                    'estado': turno.estado.estado,
-                }
+                TurnoSerializer(turno).data
                 for turno in resultado
             ]
 
@@ -101,20 +94,12 @@ class TurnoListView(APIView):
             )
 
         return Response(
-            {
-                'id_turno': resultado.id_turno,
-                'fecha': resultado.fecha,
-                'hora': resultado.hora,
-                'paciente': resultado.paciente_id,
-                'profesional': resultado.profesional_id,
-                'estado': resultado.estado.estado,
-            },
+            TurnoSerializer(resultado).data,
             status=status.HTTP_201_CREATED,
         )
 
 
 class TurnoDetailView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def obtener_turno(self, turno_id):
@@ -125,9 +110,8 @@ class TurnoDetailView(APIView):
                 'profesional__estado_profesional',
                 'paciente',
                 'paciente__estado',
-            ).get(
-                pk=turno_id,
-            )
+            ).get(pk=turno_id)
+
         except Turno.DoesNotExist:
             raise NotFound(
                 'El turno solicitado no existe.'
@@ -142,18 +126,14 @@ class TurnoDetailView(APIView):
             context={'request': request},
         )
 
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(
+            raise_exception=True,
+        )
+
         resultado = serializer.save()
 
         return Response(
-            {
-                'id_turno': resultado.id_turno,
-                'fecha': resultado.fecha,
-                'hora': resultado.hora,
-                'paciente': resultado.paciente_id,
-                'profesional': resultado.profesional_id,
-                'estado': resultado.estado.estado,
-            },
+            TurnoSerializer(resultado).data,
             status=status.HTTP_200_OK,
         )
 
@@ -167,18 +147,14 @@ class TurnoDetailView(APIView):
             context={'request': request},
         )
 
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(
+            raise_exception=True,
+        )
+
         resultado = serializer.save()
 
         return Response(
-            {
-                'id_turno': resultado.id_turno,
-                'fecha': resultado.fecha,
-                'hora': resultado.hora,
-                'paciente': resultado.paciente_id,
-                'profesional': resultado.profesional_id,
-                'estado': resultado.estado.estado,
-            },
+            TurnoSerializer(resultado).data,
             status=status.HTTP_200_OK,
         )
 
@@ -189,10 +165,49 @@ class TurnoDetailView(APIView):
         )
 
         return Response(
-            {
-                'id_turno': resultado.id_turno,
-                'estado': resultado.estado.estado,
-                'detail': 'El turno fue cancelado correctamente.',
-            },
+            TurnoSerializer(resultado).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class TurnoEstadoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, turno_id):
+        estado_id = request.data.get(
+            'ID_EstadoTurno',
+        )
+
+        if estado_id is None:
+            return Response(
+                {
+                    'ID_EstadoTurno': (
+                        'Este campo es obligatorio.'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            estado_id = int(estado_id)
+
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    'ID_EstadoTurno': (
+                        'Debe ser un identificador numérico.'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        resultado = TurnoService.cambiar_estado_turno(
+            turno_id=turno_id,
+            estado_id=estado_id,
+            usuario=request.user,
+        )
+
+        return Response(
+            TurnoSerializer(resultado).data,
             status=status.HTTP_200_OK,
         )
