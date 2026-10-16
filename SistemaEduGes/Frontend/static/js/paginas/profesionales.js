@@ -32,14 +32,14 @@ import {
     demorar,
     enlaceMail,
     enlaceTelefono,
-    filaCompleta,
     html,
+    icono,
+    iniciales,
     mostrarError,
     nombreCompleto,
     renderizar,
 } from '../ui.js';
 
-const COLUMNAS = 4;
 const TAMANIO_PAGINA = 10;
 const ORDENES = ['apellido', 'nombre', 'matricula'];
 
@@ -102,31 +102,43 @@ const esUsuarioActual = (p) => estado.usuario.profesional?.id === p.id_profesion
 // La API solo deja editar al SuperAdministrador (el único con usuarios.admin)
 const puedeEditar = () => esAdministrador(estado.usuario);
 
-function filaProfesional(p) {
+// "30123456" → "30.123.456" (más fácil de leer)
+const formatearDni = (dni) => String(dni ?? '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+function contacto(p) {
+    if (!p.contacto && !p.mail) {
+        return html`<span class="eg-empty-text">Sin datos de contacto</span>`;
+    }
     return html`
-        <tr data-profesional-id="${p.id_profesional}">
-            <td>
-                <div class="fw-semibold text-dark">
-                    ${nombreCompleto(p, { apellidoPrimero: true })}
-                    ${esUsuarioActual(p) && html`<span class="badge rounded-pill bg-primary-subtle text-primary-emphasis ms-1">Vos</span>`}
+        <div class="eg-contact">
+            ${p.contacto && html`<a href="tel:${p.contacto.replace(/[^\d+]/g, '')}">${icono('call')}${p.contacto}</a>`}
+            ${p.mail && html`<a href="mailto:${p.mail}">${icono('mail')}${p.mail}</a>`}
+        </div>`;
+}
+
+function filaProfesional(p) {
+    const yo = esUsuarioActual(p);
+    const especialidad = yo ? estado.usuario.profesional.especialidad?.nombre : null;
+    return html`
+        <div class="eg-table__row${yo ? ' is-me' : ''}" role="row" data-profesional-id="${p.id_profesional}">
+            <div class="eg-table__main" role="cell">
+                <div class="eg-avatar ${yo ? 'eg-avatar--solid' : ''}" aria-hidden="true">${iniciales(p)}</div>
+                <div>
+                    <div class="eg-table__name">
+                        ${nombreCompleto(p, { apellidoPrimero: true })}
+                        ${yo && html`<span class="eg-badge-me">Vos</span>`}
+                    </div>
+                    <div class="eg-table__meta">${especialidad ? `${especialidad} · ` : ''}Mat. ${p.matricula}</div>
                 </div>
-                <div class="text-muted small">Mat. ${p.matricula}</div>
-            </td>
-            <td class="d-none d-md-table-cell">${p.dni}</td>
-            <td class="d-none d-lg-table-cell">
-                ${p.contacto || p.mail
-                    ? html`
-                        ${p.contacto && html`<div><i class="bi bi-telephone me-1 text-secondary" aria-hidden="true"></i>${enlaceTelefono(p.contacto)}</div>`}
-                        ${p.mail && html`<div><i class="bi bi-envelope me-1 text-secondary" aria-hidden="true"></i>${enlaceMail(p.mail)}</div>`}`
-                    : html`<span class="text-muted">—</span>`}
-            </td>
-            <td class="text-end">
-                <button type="button" class="btn btn-sm btn-light border text-primary" data-accion="ver-ficha"
-                        aria-label="Ver ficha de ${nombreCompleto(p)}">
-                    <i class="bi bi-person-lines-fill" aria-hidden="true"></i><span class="d-none d-md-inline ms-1">Ver ficha</span>
+            </div>
+            <span class="eg-table__num" role="cell"><span class="visually-hidden">DNI </span>${formatearDni(p.dni)}</span>
+            <div role="cell">${contacto(p)}</div>
+            <div class="eg-table__action" role="cell">
+                <button type="button" class="eg-btn" data-accion="ver-ficha" aria-label="Ver ficha de ${nombreCompleto(p)}">
+                    ${icono('contact_page')}Ver ficha
                 </button>
-            </td>
-        </tr>`;
+            </div>
+        </div>`;
 }
 
 function mostrarListado() {
@@ -137,9 +149,8 @@ function mostrarListado() {
     const mensajeVacio = estado.filtros.q.trim()
         ? 'No hay profesionales que coincidan con la búsqueda.'
         : 'Todavía no hay profesionales cargados.';
-    renderizar($('profesionales-cuerpo'), resultado.items.length > 0
-        ? resultado.items.map(filaProfesional)
-        : filaCompleta(COLUMNAS, bloqueVacio(mensajeVacio, 'bi-person-x')));
+    renderizar($('profesionales-cuerpo'), resultado.items.map(filaProfesional));
+    renderizar($('profesionales-estado'), resultado.items.length > 0 ? '' : bloqueVacio(mensajeVacio, 'person_search'));
 
     $('profesionales-total').textContent = textoTotal(lista.length, estado.todos.length, ['profesional', 'profesionales']);
     mostrarPaginacion($('profesionales-paginacion'), resultado);
@@ -147,7 +158,8 @@ function mostrarListado() {
 }
 
 async function cargarListado() {
-    renderizar($('profesionales-cuerpo'), filaCompleta(COLUMNAS, bloqueCargando(3)));
+    renderizar($('profesionales-cuerpo'), '');
+    renderizar($('profesionales-estado'), bloqueCargando(3));
     try {
         estado.todos = await profesionales.listar();
         mostrarListado();
@@ -155,7 +167,7 @@ async function cargarListado() {
     } catch (error) {
         $('profesionales-total').textContent = '';
         $('profesionales-paginacion').classList.add('d-none');
-        mostrarError($('profesionales-cuerpo'), error, () => cargarListado(), { colspan: COLUMNAS });
+        mostrarError($('profesionales-estado'), error, () => cargarListado());
         return false;
     }
 }
@@ -163,7 +175,7 @@ async function cargarListado() {
 // ------------------------------------------------------------
 // Ficha (con los datos del listado: la API no tiene detalle aparte)
 // ------------------------------------------------------------
-const panelFicha = () => window.bootstrap.Offcanvas.getOrCreateInstance($('ficha-profesional'));
+const panelFicha = () => window.bootstrap.Modal.getOrCreateInstance($('ficha-profesional'));
 
 function abrirFicha(id) {
     const p = estado.todos.find((prof) => prof.id_profesional === id);
@@ -173,7 +185,7 @@ function abrirFicha(id) {
     if (!p) {
         $('ficha-titulo').textContent = 'Ficha del profesional';
         $('ficha-subtitulo').textContent = '';
-        renderizar($('ficha-cuerpo'), bloqueVacio('No se encontró este profesional.', 'bi-person-x'));
+        renderizar($('ficha-cuerpo'), bloqueVacio('No se encontró este profesional.', 'person_search'));
         panelFicha().show();
         return;
     }
@@ -184,22 +196,32 @@ function abrirFicha(id) {
     $('ficha-subtitulo').textContent = especialidad ?? `Matrícula ${p.matricula}`;
 
     renderizar($('ficha-cuerpo'), html`
-        ${esUsuarioActual(p) && html`
-            <div class="alert alert-primary py-2 small mb-3">
-                <i class="bi bi-person-check me-1" aria-hidden="true"></i>Este es tu perfil.
-            </div>`}
-        ${puedeEditar() && html`
-            <div class="d-flex justify-content-end mb-3">
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-accion="editar">
-                    <i class="bi bi-pencil me-1" aria-hidden="true"></i>Editar datos
-                </button>
-            </div>`}
-        <dl class="ficha-dato row g-0 mb-0">
-            <div class="col-6"><dt>Matrícula</dt><dd>${p.matricula}</dd></div>
-            <div class="col-6"><dt>DNI</dt><dd>${p.dni}</dd></div>
-            <div class="col-12"><dt>Teléfono</dt><dd>${enlaceTelefono(p.contacto)}</dd></div>
-            <div class="col-12"><dt>Mail</dt><dd>${enlaceMail(p.mail)}</dd></div>
-        </dl>`);
+        <div class="eg-ficha eg-ficha--una">
+            <div class="eg-ficha__datos">
+                ${(esUsuarioActual(p) || puedeEditar()) && html`
+                    <div class="eg-ficha__chips">
+                        ${esUsuarioActual(p) && html`<span class="eg-chip eg-chip--info">${icono('person_check')}Este es tu perfil</span>`}
+                        ${puedeEditar() && html`
+                            <button type="button" class="eg-btn ms-auto" data-accion="editar">
+                                ${icono('edit')}Editar datos
+                            </button>`}
+                    </div>`}
+                <section class="eg-ficha__bloque" aria-labelledby="ficha-datos-titulo">
+                    <h3 id="ficha-datos-titulo">${icono('badge')}Datos profesionales</h3>
+                    <dl class="ficha-dato row g-0">
+                        <div class="col-6"><dt>Matrícula</dt><dd>${p.matricula}</dd></div>
+                        <div class="col-6"><dt>DNI</dt><dd>${p.dni}</dd></div>
+                    </dl>
+                </section>
+                <section class="eg-ficha__bloque" aria-labelledby="ficha-contacto-titulo">
+                    <h3 id="ficha-contacto-titulo">${icono('contact_phone')}Contacto</h3>
+                    <dl class="ficha-dato row g-0">
+                        <div class="col-12 col-sm-6"><dt>Teléfono</dt><dd>${enlaceTelefono(p.contacto)}</dd></div>
+                        <div class="col-12 col-sm-6"><dt>Mail</dt><dd>${enlaceMail(p.mail)}</dd></div>
+                    </dl>
+                </section>
+            </div>
+        </div>`);
     panelFicha().show();
 }
 
@@ -285,7 +307,7 @@ function prepararEdicion() {
 
 function abrirEdicion() {
     estado.editandoId = estado.fichaId;
-    $('ficha-profesional').addEventListener('hidden.bs.offcanvas', () => modalEdicion().show(), { once: true });
+    $('ficha-profesional').addEventListener('hidden.bs.modal', () => modalEdicion().show(), { once: true });
     panelFicha().hide();
 }
 
@@ -326,7 +348,7 @@ function prepararEventos() {
         if (evento.target.closest('a')) {
             return;
         }
-        const fila = evento.target.closest('tr[data-profesional-id]');
+        const fila = evento.target.closest('[data-profesional-id]');
         if (fila) {
             abrirFicha(Number(fila.dataset.profesionalId));
         }
@@ -338,14 +360,17 @@ function prepararEventos() {
         }
     });
 
-    $('ficha-profesional').addEventListener('hidden.bs.offcanvas', () => {
+    $('ficha-profesional').addEventListener('hidden.bs.modal', (evento) => {
+        if (evento.target !== $('ficha-profesional')) {
+            return;
+        }
         const id = estado.fichaId;
         estado.fichaId = null;
         guardarEstadoEnUrl();
-        // El panel se abre por código: Bootstrap no devuelve el foco solo.
+        // La ficha se abre por código: Bootstrap no devuelve el foco solo.
         // Si se cerró para editar, el foco lo toma el modal.
         if (estado.editandoId === null) {
-            document.querySelector(`tr[data-profesional-id="${id}"] [data-accion="ver-ficha"]`)?.focus();
+            document.querySelector(`[data-profesional-id="${id}"] [data-accion="ver-ficha"]`)?.focus();
         }
     });
 }
@@ -363,14 +388,13 @@ async function iniciar() {
     } catch (error) {
         // 401: api.js ya redirige al login
         if (error.status !== 401) {
-            mostrarError($('profesionales-cuerpo'), error, () => window.location.reload(), { colspan: COLUMNAS });
+            mostrarError($('profesionales-estado'), error, () => window.location.reload());
         }
         return;
     }
 
     if (!tienePermiso(estado.usuario, PERMISO.PROFESIONALES_VER)) {
-        renderizar($('profesionales-cuerpo'),
-            filaCompleta(COLUMNAS, bloqueVacio('No tenés acceso al listado de profesionales.', 'bi-lock')));
+        renderizar($('profesionales-estado'), bloqueVacio('No tenés acceso al listado de profesionales.', 'lock'));
         return;
     }
 

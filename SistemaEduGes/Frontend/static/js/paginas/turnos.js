@@ -1,7 +1,7 @@
 // ============================================================
 // EduGes - Módulo Turnos y Agenda (templates/turnos.html)
-// Agenda de un día o de una semana (de lunes a domingo), con nuevo turno,
-// reprogramar y cancelar (componentes/turnos.js).
+// Agenda de un día (con las acciones de cada turno) o de una semana (de lunes a domingo,
+// cada turno abre su día), con nuevo turno, reprogramar, cancelar y estados (componentes/turnos.js).
 //
 // Endpoint: GET /api/turnos/ → todos los turnos que el usuario puede ver (un profesional,
 // los suyos; los administradores, los de todos). Viene todo junto: el filtro por día,
@@ -12,18 +12,25 @@
 
 import { enteroDeUrl, guardarEnUrl, leerUrl } from '../componentes/listado.js';
 import {
+    actualizarConLaHora,
+    claseTurno,
     conMayuscula,
     diaEnTexto,
+    estaCancelado,
     fechaMaximaTurno,
-    itemTurno,
+    formatearHora,
+    listaTurnos,
+    nombrePaciente,
+    nombreProfesional,
     obtenerTurnos,
     prepararTurnos,
+    proximaDeHoy,
 } from '../componentes/turnos.js';
-import { ESTADO_TURNO, PERMISO } from '../constantes.js';
+import { PERMISO } from '../constantes.js';
 import { profesionales } from '../endpoints.js';
 import { aFecha, hoyISO, sumarDias } from '../fechas.js';
 import { esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
-import { bloqueCargando, bloqueVacio, html, mostrarError, nombreCompleto, renderizar } from '../ui.js';
+import { bloqueCargando, bloqueVacio, html, icono, mostrarError, nombreCompleto, renderizar } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -105,18 +112,17 @@ const deTodos = () => !esProfesional(estado.usuario);
 
 const cantidadTurnos = (n) => (n === 1 ? '1 turno' : `${n} turnos`);
 
-function botonAgendar(fecha, { chico = false } = {}) {
+function botonAgendar(fecha, { enlace = false } = {}) {
     const sePuede = fecha >= hoyISO() && fecha <= fechaMaximaTurno() && tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR);
     if (!sePuede) {
         return null;
     }
-    return html`<button type="button" class="btn btn-sm ${chico ? 'btn-link px-0' : 'btn-outline-primary mt-3'}"
+    return html`<button type="button" class="eg-btn ${enlace ? 'eg-btn--link' : ''}"
             data-accion="agendar" data-fecha="${fecha}" aria-label="Agendar un turno el ${diaEnTexto(fecha)}">
-        <i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>Agendar un turno</button>`;
+        ${icono('add_circle')}Agendar${enlace ? '' : ' un turno'}</button>`;
 }
 
-const listaTurnos = (lista) => html`
-    <ul class="list-group list-group-flush">${lista.map((t) => itemTurno(t, { conProfesional: deTodos() && !estado.filtros.profesional }))}</ul>`;
+const conProfesional = () => deTodos() && !estado.filtros.profesional;
 
 function mensajeVacio(fecha) {
     const pasado = fecha < hoyISO();
@@ -126,38 +132,43 @@ function mensajeVacio(fecha) {
     return pasado ? 'No tuviste turnos ese día.' : 'No tenés turnos ese día.';
 }
 
-function vistaDia(fecha, lista) {
-    if (lista.length > 0) {
-        return listaTurnos(lista);
+function vistaDia(fecha, lista, proxima) {
+    if (lista.length === 0) {
+        return bloqueVacio(mensajeVacio(fecha), 'event_busy', botonAgendar(fecha));
     }
+    return html`<div class="eg-card__body">${listaTurnos(lista, { proxima, conProfesional: conProfesional() })}</div>`;
+}
+
+const FORMATO_DIA_SEMANA = new Intl.DateTimeFormat('es-AR', { weekday: 'long' });
+
+// La semana: una columna por día. Cada turno es un botón que abre ese día (ahí están sus acciones).
+function vistaSemana(dias, lista, proxima) {
     return html`
-        <div class="text-center text-muted py-4 px-3">
-            <i class="bi bi-calendar-x fs-3 d-block mb-2 text-secondary" aria-hidden="true"></i>
-            <p class="mb-0">${mensajeVacio(fecha)}</p>
-            ${botonAgendar(fecha)}
-        </div>`;
+        <div class="eg-week">${dias.map((fecha) => {
+            const delDia = lista.filter((t) => t.fecha === fecha);
+            const esHoy = fecha === hoyISO();
+            const nombreDia = FORMATO_DIA_SEMANA.format(aFecha(fecha));
+            return html`
+                <section class="eg-week__day${esHoy ? ' is-today' : ''}" aria-label="${diaEnTexto(fecha)}${esHoy ? ' (hoy)' : ''}">
+                    <h3 class="eg-week__head">
+                        <span class="eg-week__name">${nombreDia.charAt(0).toUpperCase()}${nombreDia.slice(1)}${esHoy ? ' · Hoy' : ''}</span>
+                        <span class="eg-week__num">${aFecha(fecha).getDate()}</span>
+                    </h3>
+                    ${delDia.map((t) => html`
+                        <button type="button" class="eg-slot ${claseTurno(t, { esProxima: t === proxima })}" data-ir-a-dia="${fecha}"
+                                aria-label="${formatearHora(t.hora)}, ${nombrePaciente(t)}, ${t.estado?.Estado ?? ''}. Ver el día">
+                            <span class="eg-slot__time">${formatearHora(t.hora)}</span>
+                            <span class="eg-slot__name">${nombrePaciente(t, { apellidoPrimero: true })}</span>
+                            <span class="eg-slot__estado">${t === proxima ? 'Próxima · ' : ''}${t.estado?.Estado ?? ''}${conProfesional() ? ` · ${nombreProfesional(t)}` : ''}</span>
+                        </button>`)}
+                    ${delDia.length === 0 && html`<span class="eg-week__empty">Sin turnos</span>`}
+                    ${botonAgendar(fecha, { enlace: true })}
+                </section>`;
+        })}</div>`;
 }
 
-// La semana: un bloque por día, con su título, aunque no tenga turnos
-function vistaSemana(dias, lista) {
-    return dias.map((fecha) => {
-        const delDia = lista.filter((t) => t.fecha === fecha);
-        const esHoy = fecha === hoyISO();
-        return html`
-            <div class="turnos-dia${esHoy ? ' turnos-dia-hoy' : ''}">
-                <h3 class="h6 fw-bold mb-0 px-3 pt-3 pb-2 d-flex align-items-center gap-2 flex-wrap">
-                    ${conMayuscula(diaEnTexto(fecha))}
-                    ${esHoy && html`<span class="badge bg-primary">Hoy</span>`}
-                    <span class="small text-muted fw-normal">· ${delDia.length > 0 ? cantidadTurnos(delDia.length) : 'Sin turnos'}</span>
-                </h3>
-                ${delDia.length > 0
-                    ? listaTurnos(delDia)
-                    : html`<div class="px-3 pb-3">${botonAgendar(fecha, { chico: true })}</div>`}
-            </div>`;
-    });
-}
-
-async function mostrarTurnos() {
+// silencioso: sin el "cargando" (para la actualización automática con la hora)
+async function mostrarTurnos({ silencioso = false } = {}) {
     const pedido = ++estado.pedido;
     const { vista, profesional, ocultarCancelados } = estado.filtros;
     const dias = diasDelPeriodo();
@@ -168,7 +179,9 @@ async function mostrarTurnos() {
     $('btn-siguiente-texto').textContent = esDia ? 'Día siguiente' : 'Semana siguiente';
     $('btn-hoy').disabled = dias.includes(hoyISO());
     guardarEstadoEnUrl();
-    renderizar($('turnos-cuerpo'), bloqueCargando(3));
+    if (!silencioso) {
+        renderizar($('turnos-cuerpo'), bloqueCargando(3));
+    }
 
     try {
         const todos = await obtenerTurnos();
@@ -178,15 +191,16 @@ async function mostrarTurnos() {
         const lista = todos
             .filter((t) => dias.includes(t.fecha))
             .filter((t) => !profesional || t.profesional_id === profesional)
-            .filter((t) => !ocultarCancelados || t.estado !== ESTADO_TURNO.CANCELADO);
+            .filter((t) => !ocultarCancelados || !estaCancelado(t));
+        const proxima = proximaDeHoy(lista);
         $('turnos-total').textContent = cantidadTurnos(lista.length);
-        renderizar($('turnos-cuerpo'), esDia ? vistaDia(dias[0], lista) : vistaSemana(dias, lista));
+        renderizar($('turnos-cuerpo'), esDia ? vistaDia(dias[0], lista, proxima) : vistaSemana(dias, lista, proxima));
     } catch (error) {
         if (pedido !== estado.pedido) {
             return;
         }
         $('turnos-total').textContent = '';
-        mostrarError($('turnos-cuerpo'), error, mostrarTurnos);
+        mostrarError($('turnos-cuerpo'), error, () => mostrarTurnos());
     }
 }
 
@@ -240,6 +254,12 @@ function prepararEventos() {
     $('btn-anterior').addEventListener('click', () => cambiarPeriodo(-1));
     $('btn-siguiente').addEventListener('click', () => cambiarPeriodo(1));
     $('btn-hoy').addEventListener('click', () => cambiarPeriodo(0));
+    $('turnos-cuerpo').addEventListener('click', (evento) => {
+        const turno = evento.target.closest('[data-ir-a-dia]');
+        if (turno) {
+            irADia(turno.dataset.irADia);
+        }
+    });
 }
 
 function prepararAcciones() {
@@ -266,6 +286,16 @@ function prepararAcciones() {
     });
 }
 
+// Semana: tocar un turno abre ese día, con las acciones de cada turno
+async function irADia(fecha) {
+    estado.filtros.vista = 'dia';
+    estado.filtros.fecha = fecha;
+    $('vista-dia').checked = true;
+    await mostrarTurnos();
+    $('periodo-titulo').tabIndex = -1;
+    $('periodo-titulo').focus();
+}
+
 // ------------------------------------------------------------
 // Inicio
 // ------------------------------------------------------------
@@ -284,7 +314,7 @@ async function iniciar() {
 
     if (!tienePermiso(estado.usuario, PERMISO.TURNOS_VER)) {
         $('turnos-subtitulo').textContent = '';
-        renderizar($('turnos-cuerpo'), bloqueVacio('No tenés acceso a los turnos.', 'bi-lock'));
+        renderizar($('turnos-cuerpo'), bloqueVacio('No tenés acceso a los turnos.', 'lock'));
         return;
     }
 
@@ -292,6 +322,11 @@ async function iniciar() {
     prepararAcciones();
     await prepararFiltroProfesional();
     mostrarTurnos();
+    // Con la pantalla abierta, se actualiza sola cuando un turno empieza o termina
+    actualizarConLaHora({
+        zonas: () => [$('turnos-cuerpo')],
+        redibujar: () => mostrarTurnos({ silencioso: true }),
+    });
 }
 
 iniciar();

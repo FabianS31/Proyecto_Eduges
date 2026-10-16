@@ -14,8 +14,8 @@ import { html, renderizar } from '../ui.js';
 function actualizar(boton, input, visible) {
     input.type = visible ? 'text' : 'password';
     renderizar(boton, visible
-        ? html`<i class="bi bi-eye-slash me-1" aria-hidden="true"></i>Ocultar<span class="visually-hidden"> contraseña</span>`
-        : html`<i class="bi bi-eye me-1" aria-hidden="true"></i>Mostrar<span class="visually-hidden"> contraseña</span>`);
+        ? html`<span class="ms ms-chico" aria-hidden="true">visibility_off</span>Ocultar<span class="visually-hidden"> contraseña</span>`
+        : html`<span class="ms ms-chico" aria-hidden="true">visibility</span>Mostrar<span class="visually-hidden"> contraseña</span>`);
 }
 
 function agregarBoton(input) {

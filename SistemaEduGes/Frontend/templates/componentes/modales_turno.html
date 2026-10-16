@@ -12,7 +12,7 @@
         <form class="modal-content border-0 shadow" id="form-turno" novalidate>
             <div class="modal-header">
                 <h2 class="modal-title fs-6 fw-bold" id="modal-turno-titulo">
-                    <i class="bi bi-calendar-plus me-1" aria-hidden="true"></i> Nuevo turno
+                    <span class="ms" aria-hidden="true">add_circle</span>Nuevo turno
                 </h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
@@ -29,11 +29,11 @@
                     <div class="btn-group w-100" role="group">
                         <input type="radio" class="btn-check" name="modo" id="turno-modo-uno" value="uno" checked>
                         <label class="btn btn-outline-primary" for="turno-modo-uno">
-                            <i class="bi bi-calendar-event me-1" aria-hidden="true"></i>Una fecha
+                            <span class="ms" aria-hidden="true">event</span>Una fecha
                         </label>
                         <input type="radio" class="btn-check" name="modo" id="turno-modo-varios" value="varios">
                         <label class="btn btn-outline-primary" for="turno-modo-varios">
-                            <i class="bi bi-calendar-week me-1" aria-hidden="true"></i>Varias fechas
+                            <span class="ms" aria-hidden="true">date_range</span>Varias fechas
                         </label>
                     </div>
                 </fieldset>
@@ -62,7 +62,7 @@
                     <div class="form-text" id="turno-profesional-ayuda">Escribí el nombre y elegí de la lista.</div>
                 </div>
                 <p class="small text-muted mt-3 mb-0" id="turno-profesional-fijo">
-                    <i class="bi bi-person-badge me-1" aria-hidden="true"></i>Profesional: <strong id="turno-profesional"></strong>
+                    <span class="ms align-middle me-1" aria-hidden="true">badge</span>Profesional: <strong id="turno-profesional"></strong>
                 </p>
                 <p class="small text-muted mt-2 mb-0">* Campos obligatorios.</p>
             </div>
@@ -82,7 +82,7 @@
         <form class="modal-content border-0 shadow" id="form-reprogramar" novalidate>
             <div class="modal-header">
                 <h2 class="modal-title fs-6 fw-bold" id="modal-reprogramar-titulo">
-                    <i class="bi bi-calendar2-range me-1" aria-hidden="true"></i> Reprogramar turno
+                    <span class="ms" aria-hidden="true">event_repeat</span>Reprogramar turno
                 </h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>

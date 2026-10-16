@@ -6,8 +6,8 @@
 // ============================================================
 
 import { ApiError } from './api.js';
-import { DIAS_AVISO_CUD } from './constantes.js';
-import { aFecha, diasEntre, hoyISO } from './fechas.js';
+import { MESES_AVISO_CUD } from './constantes.js';
+import { aFecha, diasEntre, hoyISO, sumarMeses } from './fechas.js';
 
 // ============================================================
 // HTML seguro
@@ -112,6 +112,17 @@ export function nombreCompleto(persona, { apellidoPrimero = false } = {}) {
     return apellidoPrimero ? `${persona.apellido}, ${persona.nombre}` : `${persona.nombre} ${persona.apellido}`;
 }
 
+// { nombre: 'Lucas', apellido: 'Pérez' } → "LP" (para los avatares)
+export function iniciales(persona) {
+    const primera = (texto) => String(texto ?? '').trim().charAt(0).toUpperCase();
+    return `${primera(persona?.nombre)}${primera(persona?.apellido)}` || '?';
+}
+
+// Ícono de Material Symbols (decorativo: el texto de al lado dice qué es)
+export function icono(nombre, clase = '') {
+    return html`<span class="ms ${clase}" aria-hidden="true">${nombre}</span>`;
+}
+
 // ============================================================
 // CUD (Certificado Único de Discapacidad)
 // Vencido, por vencer (dentro de DIAS_AVISO_CUD días) o vigente,
@@ -121,36 +132,52 @@ export const CUD = Object.freeze({ VENCIDO: 'vencido', POR_VENCER: 'por_vencer',
 
 export function estadoCud(vencimiento) {
     const dias = diasEntre(hoyISO(), vencimiento);
+    const fecha = formatearFecha(vencimiento);
     if (dias < 0) {
         return {
             clave: CUD.VENCIDO,
             dias,
             texto: dias === -1 ? 'Venció ayer' : `Venció hace ${-dias} días`,
-            clase: 'badge-cud-vencido',
-            icono: 'bi-x-octagon',
+            corto: 'Vencido',
+            fecha: `Venció el ${fecha}`,
+            clase: 'eg-chip--err',
+            icono: 'error',
         };
     }
-    if (dias <= DIAS_AVISO_CUD) {
+    if (vencimiento <= sumarMeses(hoyISO(), MESES_AVISO_CUD)) {
         let texto = `Vence en ${dias} días`;
         if (dias === 0) {
             texto = 'Vence hoy';
         } else if (dias === 1) {
             texto = 'Vence mañana';
         }
-        return { clave: CUD.POR_VENCER, dias, texto, clase: 'badge-cud-alerta', icono: 'bi-exclamation-triangle' };
+        return { clave: CUD.POR_VENCER, dias, texto, corto: 'Por vencer', fecha: `Vence el ${fecha}`, clase: 'eg-chip--warn', icono: 'schedule' };
     }
     return {
         clave: CUD.VIGENTE,
         dias,
-        texto: `Vigente hasta ${formatearFecha(vencimiento)}`,
-        clase: 'badge-cud-vigente',
-        icono: 'bi-shield-check',
+        texto: `Vigente hasta ${fecha}`,
+        corto: 'Vigente',
+        fecha: `Hasta el ${fecha}`,
+        clase: 'eg-chip--ok',
+        icono: 'verified',
     };
 }
 
+// "Vence en 12 días", con color, ícono y texto (nunca solo color)
 export function badgeCud(vencimiento) {
     const cud = estadoCud(vencimiento);
-    return html`<span class="badge ${cud.clase}"><i class="bi ${cud.icono} me-1" aria-hidden="true"></i>${cud.texto}</span>`;
+    return html`<span class="eg-chip ${cud.clase}">${icono(cud.icono)}${cud.texto}</span>`;
+}
+
+// Para las tablas: "Por vencer" y debajo "Vence el 02/12/2026"
+export function celdaCud(vencimiento) {
+    const cud = estadoCud(vencimiento);
+    return html`
+        <div class="eg-cud">
+            <span class="eg-chip ${cud.clase}">${icono(cud.icono)}${cud.corto}</span>
+            <span class="eg-cud__date">${cud.fecha}</span>
+        </div>`;
 }
 
 // ============================================================
@@ -161,34 +188,29 @@ export function bloqueCargando(lineas = 3) {
     const filas = Array.from({ length: lineas }, (_, i) =>
         html`<span class="placeholder ${anchos[i % anchos.length]} mb-2 d-block rounded"></span>`);
     return html`
-        <div class="placeholder-glow p-3" aria-busy="true">
+        <div class="placeholder-glow eg-cargando" aria-busy="true">
             ${filas}
             <span class="visually-hidden" role="status">Cargando…</span>
         </div>`;
 }
 
-export function bloqueVacio(mensaje, icono = 'bi-inbox') {
+// nombreIcono: de Material Symbols (ej.: 'person_search'). accion: un botón opcional debajo.
+export function bloqueVacio(mensaje, nombreIcono = 'inbox', accion = null) {
     return html`
-        <div class="text-center text-muted py-4 px-3">
-            <i class="bi ${icono} fs-3 d-block mb-2 text-secondary" aria-hidden="true"></i>
-            ${mensaje}
+        <div class="eg-empty eg-empty--compact">
+            <div class="eg-empty__icon">${icono(nombreIcono)}</div>
+            <span class="eg-empty__text">${mensaje}</span>
+            ${accion}
         </div>`;
 }
 
 export function bloqueError(mensaje) {
     return html`
-        <div class="text-center py-4 px-3" role="alert">
-            <i class="bi bi-exclamation-triangle fs-3 d-block mb-2 text-danger" aria-hidden="true"></i>
-            <div class="small text-danger mb-2">${mensaje}</div>
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-accion="reintentar">
-                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Reintentar
-            </button>
+        <div class="eg-empty eg-empty--compact" role="alert">
+            <div class="eg-empty__icon eg-empty__icon--error">${icono('error')}</div>
+            <span class="eg-error__text">${mensaje}</span>
+            <button type="button" class="eg-btn" data-accion="reintentar">${icono('refresh')}Reintentar</button>
         </div>`;
-}
-
-// Para mostrar un estado dentro de un <tbody>
-export function filaCompleta(colspan, contenido) {
-    return html`<tr><td colspan="${colspan}" class="p-0 border-0">${contenido}</td></tr>`;
 }
 
 // Texto para mostrar al usuario a partir de cualquier error.
@@ -205,12 +227,12 @@ export function mensajeDeError(error) {
 }
 
 // Muestra el error en el contenedor con un botón "Reintentar" que llama a reintentar()
-export function mostrarError(contenedor, error, reintentar, { colspan } = {}) {
+export function mostrarError(contenedor, error, reintentar) {
     const mensaje = mensajeDeError(error);
     if (mensaje === null) {
         return;
     }
-    renderizar(contenedor, colspan ? filaCompleta(colspan, bloqueError(mensaje)) : bloqueError(mensaje));
+    renderizar(contenedor, bloqueError(mensaje));
     const boton = contenedor.querySelector('[data-accion="reintentar"]');
     if (boton && reintentar) {
         boton.addEventListener('click', reintentar, { once: true });
@@ -221,9 +243,9 @@ export function mostrarError(contenedor, error, reintentar, { colspan } = {}) {
 // Avisos (toasts)
 // ============================================================
 const ESTILO_AVISO = {
-    exito: { clase: 'text-bg-success', icono: 'bi-check-circle-fill', duracion: 4000 },
-    info: { clase: 'text-bg-primary', icono: 'bi-info-circle-fill', duracion: 4000 },
-    error: { clase: 'text-bg-danger', icono: 'bi-exclamation-triangle-fill', duracion: 8000 },
+    exito: { clase: 'text-bg-success', icono: 'check_circle', duracion: 4000 },
+    info: { clase: 'text-bg-primary', icono: 'info', duracion: 4000 },
+    error: { clase: 'text-bg-danger', icono: 'warning', duracion: 8000 },
 };
 
 function contenedorDeAvisos() {
@@ -246,7 +268,7 @@ export function notificar(mensaje, tipo = 'exito') {
     aviso.setAttribute('aria-live', tipo === 'error' ? 'assertive' : 'polite');
     renderizar(aviso, html`
         <div class="d-flex">
-            <div class="toast-body"><i class="bi ${estilo.icono} me-2" aria-hidden="true"></i>${mensaje}</div>
+            <div class="toast-body">${icono(estilo.icono)}${mensaje}</div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
         </div>`);
 
@@ -320,7 +342,7 @@ export function confirmar({
         dialogo.addEventListener('hidden.bs.modal', () => {
             modal.dispose();
             dialogo.remove();
-            if (focoAnterior?.isConnected && focoAnterior.offsetParent !== null) {
+            if (focoAnterior?.isConnected && focoAnterior.checkVisibility()) {
                 focoAnterior.focus();
             }
             resolver(aceptado);

@@ -178,6 +178,12 @@ export async function request(metodo, ruta, opciones = {}) {
 
     const datos = await leerCuerpo(respuesta);
 
+    // Cada respuesta con la sesión vigente reinicia el contador de inactividad del servidor
+    // (lo usa sesion.js para avisar antes de que se cierre)
+    if (respuesta.status !== 401) {
+        window.dispatchEvent(new CustomEvent('eduges:respuesta'));
+    }
+
     if (!respuesta.ok) {
         if (respuesta.status === 401 && redirigirSi401) {
             redirigirAlLogin();

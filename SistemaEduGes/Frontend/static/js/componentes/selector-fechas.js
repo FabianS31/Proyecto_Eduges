@@ -60,11 +60,11 @@ export function crearSelectorFechas(contenedor, { desde, hasta, alCambiar = () =
             <div class="selector-fechas" role="group" aria-labelledby="${id}-mes">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-mover="-1" ${hayAnterior ? '' : 'disabled'}>
-                        <i class="bi bi-chevron-left" aria-hidden="true"></i><span class="visually-hidden">Mes anterior</span>
+                        <span class="ms" aria-hidden="true">chevron_left</span><span class="visually-hidden">Mes anterior</span>
                     </button>
                     <span class="fw-semibold" id="${id}-mes" aria-live="polite">${nombreMes}</span>
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-mover="1" ${haySiguiente ? '' : 'disabled'}>
-                        <i class="bi bi-chevron-right" aria-hidden="true"></i><span class="visually-hidden">Mes siguiente</span>
+                        <span class="ms" aria-hidden="true">chevron_right</span><span class="visually-hidden">Mes siguiente</span>
                     </button>
                 </div>
                 <div class="selector-fechas-grilla">

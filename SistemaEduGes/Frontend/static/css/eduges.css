@@ -1,0 +1,609 @@
+/* =========================================================
+   EduGes · Rincón Psi — Diseño de las pantallas internas (base.html)
+   Diseño nuevo (Claude Design, 16/10/2026) adaptado al sistema:
+   se carga después de Bootstrap y styles.css, que siguen dando estilo
+   a modales, formularios, sugerencias (combobox), avisos y al login.
+   Fuentes e íconos (en base.html): Figtree y Material Symbols Rounded.
+   Íconos: <span class="ms" aria-hidden="true">home</span>
+   ========================================================= */
+
+:root {
+  --eg-primary: #1f5fae;
+  --eg-primary-hover: #174f94;
+  --eg-primary-soft: #e8f0fb;
+  --eg-primary-tint: #eef4fc;
+  --eg-ink: #16233a;
+  --eg-ink-2: #3b4a63;
+  --eg-muted: #5d6a81;   /* original #66738a: no llegaba a 4.5:1 sobre los fondos grisáceos y celestes */
+  --eg-faint: #626e84;   /* original #8a96aa: no llegaba al contraste mínimo (4.5:1) */
+  --eg-bg: #f4f6f9;
+  --eg-surface: #ffffff;
+  --eg-surface-2: #f8fafc;
+  --eg-border: #e3e8ef;
+  --eg-border-soft: #eef1f5;
+  --eg-border-input: #c9d4e3;
+  --eg-dark: #16233a;
+  --eg-dark-2: #2b3d5c;
+  --eg-dark-text: #b7c6dd;
+
+  --eg-ok-bg: #e6f4ee;   --eg-ok: #1e7a52;
+  --eg-warn-bg: #fff4e0; --eg-warn: #8a4b0f;  --eg-warn-icon: #b8641a; --eg-warn-soft: #fdf0e1;
+  --eg-err-bg: #fde8e6;  --eg-err: #a3281c;   --eg-err-bar: #e7a59d;
+  --eg-neutral-bg: #eef1f5; --eg-neutral: #4d5a70;
+
+  --eg-r-sm: 10px;
+  --eg-r: 12px;
+  --eg-r-md: 14px;
+  --eg-r-lg: 18px;
+  --eg-pad-x: clamp(16px, 4vw, 32px);
+  --eg-font: 'Figtree', system-ui, -apple-system, sans-serif;
+}
+
+/* ---------- Base ---------- */
+[hidden] { display: none !important; }
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--eg-bg); color: var(--eg-ink); font-family: var(--eg-font); font-size: 16px; -webkit-font-smoothing: antialiased; }
+a { color: var(--eg-primary); text-decoration: none; }
+a:hover { color: var(--eg-primary-hover); text-decoration: underline; }
+button, input, select { font-family: inherit; }
+h1, h2 { margin: 0; }
+.ms { font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal; font-size: 24px; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; font-feature-settings: 'liga'; }
+
+.eg-app { min-height: 100vh; display: flex; flex-direction: column; }
+.eg-container { max-width: 1360px; width: 100%; margin: 0 auto; padding-left: var(--eg-pad-x); padding-right: var(--eg-pad-x); }
+.eg-main { flex: 1; padding-top: clamp(20px, 4vw, 36px); padding-bottom: 48px; display: flex; flex-direction: column; gap: 28px; }
+
+/* ---------- Header ---------- */
+/* <header class="eg-header"><div class="eg-container eg-header__inner">
+     .eg-brand · nav.eg-nav · .eg-user </div></header> */
+.eg-header { background: var(--eg-surface); border-bottom: 1px solid var(--eg-border); position: sticky; top: 0; z-index: 50; }
+.eg-header__inner { min-height: 76px; padding-top: 12px; padding-bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+
+.eg-brand { display: flex; align-items: center; gap: 12px; }
+.eg-brand__logo { width: 40px; height: 40px; border-radius: var(--eg-r); background: var(--eg-primary); color: #fff; display: flex; align-items: center; justify-content: center; }
+.eg-brand__text { display: flex; flex-direction: column; line-height: 1.1; }
+.eg-brand__name { font-weight: 800; font-size: 19px; letter-spacing: -0.01em; }
+.eg-brand__sub { font-size: 13px; color: var(--eg-muted); }
+
+.eg-nav { order: 2; flex: 1 1 540px; min-width: 0; display: flex; gap: 6px; justify-content: safe center; overflow-x: auto; scrollbar-width: none; }
+.eg-nav::-webkit-scrollbar { display: none; }
+.eg-nav__item { flex-shrink: 0; white-space: nowrap; display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--eg-r-sm); border: none; background: transparent; color: var(--eg-ink-2); font-weight: 600; font-size: 16px; cursor: pointer; text-decoration: none; }
+.eg-nav__item .ms { font-size: 22px; }
+.eg-nav__item:hover { background: #f1f4f8; color: var(--eg-ink); text-decoration: none; }
+.eg-nav__item.is-active, .eg-nav__item[aria-current="page"] { background: var(--eg-primary-soft); color: var(--eg-primary); font-weight: 700; }
+
+.eg-user { order: 3; margin-left: auto; justify-content: flex-end; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.eg-user__info { display: flex; align-items: center; gap: 12px; padding: 6px 14px 6px 0; }
+.eg-user__name { font-weight: 700; font-size: 15px; display: block; line-height: 1.2; }
+.eg-user__role { font-size: 13px; color: var(--eg-muted); display: block; line-height: 1.2; }
+
+/* ---------- Avatares ---------- */
+.eg-avatar { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: var(--eg-neutral-bg); color: var(--eg-ink-2); font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+.eg-avatar--sm { width: 36px; height: 36px; }
+.eg-avatar--lg { width: 56px; height: 56px; font-size: 19px; font-weight: 800; }
+.eg-avatar--blue { background: #dbe7f7; color: var(--eg-primary); }
+.eg-avatar--solid { background: var(--eg-primary); color: #fff; }
+
+/* ---------- Botones ---------- */
+.eg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: var(--eg-r); border: 1px solid var(--eg-border-input); background: var(--eg-surface); color: var(--eg-primary); font-weight: 600; font-size: 15px; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background .15s; }
+.eg-btn:hover { background: var(--eg-primary-tint); text-decoration: none; }
+.eg-btn .ms { font-size: 20px; }
+.eg-btn--lg { height: 56px; padding: 0 24px; border-radius: var(--eg-r-md); font-size: 17px; gap: 10px; }
+.eg-btn--lg .ms { font-size: 24px; }
+.eg-btn--primary { background: var(--eg-primary); border-color: var(--eg-primary); color: #fff; font-weight: 700; box-shadow: 0 6px 16px -6px rgba(31,95,174,.55); }
+.eg-btn--primary:hover { background: var(--eg-primary-hover); color: #fff; }
+.eg-btn--secondary { border-width: 1.5px; color: var(--eg-ink); }
+.eg-btn--secondary:hover { background: #f1f4f8; }
+.eg-btn--ghost { border-color: var(--eg-border); color: var(--eg-ink-2); }
+.eg-btn--ghost:hover { background: #f1f4f8; }
+.eg-btn--danger { border-color: var(--eg-border); color: var(--eg-err); }
+.eg-btn--danger:hover { background: #fdf1f0; }
+.eg-btn--icon { width: 44px; padding: 0; border-color: var(--eg-border); color: var(--eg-ink-2); }
+.eg-btn--link { height: auto; padding: 0; border: none; background: none; font-weight: 700; }
+.eg-btn--link:hover { background: none; text-decoration: underline; }
+.eg-btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+.eg-day-nav { display: flex; align-items: center; gap: 8px; }
+.eg-day-nav .eg-btn--today { background: var(--eg-bg); border-color: var(--eg-border); color: var(--eg-ink); font-weight: 700; padding: 0 18px; }
+
+/* ---------- Encabezado de página ---------- */
+.eg-page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.eg-page-head__text { display: flex; flex-direction: column; gap: 6px; }
+.eg-eyebrow { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 500; color: var(--eg-muted); }
+.eg-eyebrow .ms { font-size: 20px; }
+.eg-title { font-size: clamp(26px, 6vw, 34px); font-weight: 800; letter-spacing: -0.02em; }
+.eg-lead { font-size: 17px; color: var(--eg-ink-2); }
+
+/* ---------- Tarjetas ---------- */
+.eg-card { background: var(--eg-surface); border: 1px solid var(--eg-border); border-radius: var(--eg-r-lg); overflow: hidden; }
+.eg-card__head { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--eg-border-soft); }
+.eg-card__title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.eg-card__title .ms { font-size: 26px; color: var(--eg-primary); }
+.eg-card__title h2 { font-size: 21px; font-weight: 700; }
+.eg-card__body { padding: 8px 12px 12px; }
+.eg-card--dark { background: var(--eg-dark); border: none; color: #fff; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+
+.eg-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 20px; align-items: start; }
+.eg-stack { display: flex; flex-direction: column; gap: 20px; }
+
+/* ---------- Estadísticas ---------- */
+.eg-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.eg-stat { background: var(--eg-surface); border: 1px solid var(--eg-border); border-radius: var(--eg-r-lg); padding: 24px; display: flex; gap: 18px; align-items: flex-start; }
+.eg-stat__icon { flex-shrink: 0; width: 52px; height: 52px; border-radius: var(--eg-r-md); display: flex; align-items: center; justify-content: center; background: var(--eg-primary-soft); color: var(--eg-primary); }
+.eg-stat__icon .ms { font-size: 28px; }
+.eg-stat__icon--green { background: var(--eg-ok-bg); color: var(--eg-ok); }
+.eg-stat__icon--orange { background: var(--eg-warn-soft); color: var(--eg-warn-icon); }
+.eg-stat__body { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.eg-stat__label { font-size: 15px; font-weight: 600; color: var(--eg-ink-2); }
+.eg-stat__value { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.eg-stat__sub { font-size: 15px; color: var(--eg-muted); }
+.eg-stat__link { margin-top: 10px; display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: 15px; }
+
+/* ---------- Buscador destacado (Inicio) ---------- */
+.eg-search-hero { background: var(--eg-surface); border: 1px solid var(--eg-border); border-radius: var(--eg-r-lg); padding: 20px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.eg-search-hero > .ms { font-size: 28px; color: var(--eg-primary); }
+.eg-search-hero__field { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+.eg-search-hero__label { font-size: 13px; font-weight: 700; color: var(--eg-muted); text-transform: uppercase; letter-spacing: .06em; }
+.eg-search-hero input { border: none; outline: none; background: transparent; padding: 4px 0; font-size: 19px; font-weight: 500; color: var(--eg-ink); }
+.eg-hint { font-size: 14px; color: var(--eg-muted); border: 1px solid var(--eg-border); border-radius: 8px; padding: 6px 10px; }
+
+/* ---------- Filtros / formularios ---------- */
+.eg-filters { background: var(--eg-surface); border: 1px solid var(--eg-border); border-radius: var(--eg-r-lg); padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; align-items: end; }
+.eg-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.eg-field--full { grid-column: 1 / -1; }
+.eg-label { font-size: 15px; font-weight: 700; color: var(--eg-ink-2); }
+.eg-input, .eg-select { height: 52px; padding: 0 12px; border: 1.5px solid var(--eg-border-input); border-radius: var(--eg-r); background: var(--eg-surface); font-size: 17px; font-weight: 500; color: var(--eg-ink); width: 100%; }
+.eg-input:focus, .eg-select:focus, .eg-input-icon:focus-within { outline: none; border-color: var(--eg-primary); box-shadow: 0 0 0 3px rgba(31,95,174,.18); }
+.eg-input-icon { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 14px; border: 1.5px solid var(--eg-border-input); border-radius: var(--eg-r); background: var(--eg-surface); }
+.eg-input-icon .ms { color: var(--eg-muted); }
+.eg-input-icon input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-size: 17px; font-weight: 500; color: var(--eg-ink); }
+.eg-filters .eg-btn { height: 52px; border-width: 1.5px; color: var(--eg-ink-2); font-size: 16px; }
+
+/* ---------- Toolbar agenda ---------- */
+.eg-toolbar { background: var(--eg-surface); border: 1px solid var(--eg-border); border-radius: var(--eg-r-lg); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.eg-toolbar__group { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+.eg-segmented { flex-shrink: 0; display: flex; gap: 4px; padding: 4px; background: var(--eg-neutral-bg); border-radius: var(--eg-r-md); }
+.eg-segmented button { height: 44px; padding: 0 18px; border: none; border-radius: var(--eg-r-sm); background: transparent; color: var(--eg-ink-2); font-weight: 700; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.eg-segmented button .ms { font-size: 20px; }
+.eg-segmented button.is-active { background: #fff; color: var(--eg-primary); box-shadow: 0 1px 3px rgba(22,35,58,.15); }
+
+/* Interruptor: <label class="eg-switch"><input type="checkbox"><span class="eg-switch__track"></span>Ocultar turnos cancelados</label> */
+.eg-switch { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px 0 10px; border: 1px solid var(--eg-border); border-radius: var(--eg-r); background: #fff; font-weight: 600; font-size: 16px; cursor: pointer; user-select: none; }
+.eg-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.eg-switch__track { position: relative; width: 40px; height: 24px; border-radius: 999px; background: var(--eg-border-input); transition: background .15s; }
+.eg-switch__track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: left .15s; }
+.eg-switch input:checked + .eg-switch__track { background: var(--eg-primary); }
+.eg-switch input:checked + .eg-switch__track::after { left: 19px; }
+.eg-switch input:focus-visible + .eg-switch__track { box-shadow: 0 0 0 3px rgba(31,95,174,.25); }
+
+/* ---------- Chips / badges ---------- */
+.eg-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 14px; font-weight: 700; background: var(--eg-neutral-bg); color: var(--eg-neutral); white-space: nowrap; }
+.eg-chip .ms { font-size: 18px; }
+.eg-chip--count { padding: 5px 12px; color: var(--eg-ink-2); }
+.eg-chip--primary { background: var(--eg-primary); color: #fff; }
+.eg-chip--ok { background: var(--eg-ok-bg); color: var(--eg-ok); }
+.eg-chip--warn { background: var(--eg-warn-bg); color: var(--eg-warn); }
+.eg-chip--err { background: var(--eg-err-bg); color: var(--eg-err); }
+.eg-chip--dark { background: var(--eg-dark-2); color: #fff; }
+.eg-badge-me { font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: var(--eg-primary); color: #fff; }
+
+/* ---------- Turnos (lista del día) ---------- */
+/* <div class="eg-turno is-next"> .eg-turno__time · .eg-turno__bar · .eg-turno__info · .eg-turno__actions </div>
+   Estados: is-done · is-next · is-pending · is-cancelled */
+.eg-turno { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; padding: 16px 12px; border-radius: var(--eg-r-md); --bar: #9fb9dc; }
+.eg-turno__time { width: 64px; flex-shrink: 0; display: flex; flex-direction: column; }
+.eg-turno__hour { font-size: 20px; font-weight: 800; }
+.eg-turno__dur { font-size: 14px; color: var(--eg-muted); }
+.eg-turno__bar { width: 4px; height: 44px; flex-shrink: 0; border-radius: 4px; background: var(--bar); }
+.eg-turno__info { flex: 1 1 180px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.eg-turno__name { font-size: 18px; font-weight: 700; }
+.eg-turno__detail { font-size: 15px; color: var(--eg-muted); }
+.eg-turno__actions { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.eg-turno.is-done { --bar: #cfd8e3; }
+.eg-turno.is-done .eg-turno__hour { color: var(--eg-faint); }
+.eg-turno.is-done .eg-turno__name { color: var(--eg-muted); }
+.eg-turno.is-next { --bar: var(--eg-primary); background: var(--eg-primary-tint); }
+.eg-turno.is-next .eg-turno__hour { color: var(--eg-primary); }
+.eg-turno.is-cancelled { --bar: var(--eg-err-bar); }
+.eg-turno.is-cancelled .eg-turno__hour { color: var(--eg-err); text-decoration: line-through; }
+.eg-turno.is-cancelled .eg-turno__name { color: var(--eg-muted); }
+
+/* ---------- Agenda semanal ---------- */
+.eg-week { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1px; background: var(--eg-border-soft); }
+.eg-week__day { background: #fff; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-height: 160px; }
+.eg-week__day.is-today { background: #fbfcfe; }
+.eg-week__head { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 6px; }
+.eg-week__name { font-size: 15px; font-weight: 700; color: var(--eg-ink-2); }
+.eg-week__num { font-size: 24px; font-weight: 800; }
+.eg-week__day.is-today .eg-week__num { color: var(--eg-primary); }
+.eg-week__empty { font-size: 14px; color: var(--eg-faint); }
+.eg-slot { border-radius: var(--eg-r); padding: 10px 12px; border-left: 4px solid #9fb9dc; background: #f1f5fb; display: flex; flex-direction: column; gap: 2px; cursor: pointer; }
+.eg-slot__time { font-size: 14px; font-weight: 800; color: var(--eg-ink-2); }
+.eg-slot__name { font-size: 15px; font-weight: 600; color: var(--eg-ink); }
+.eg-slot.is-done { background: var(--eg-bg); border-color: #cfd8e3; }
+.eg-slot.is-done .eg-slot__time { color: var(--eg-muted); }
+.eg-slot.is-next { background: var(--eg-primary-soft); border-color: var(--eg-primary); }
+.eg-slot.is-next .eg-slot__time { color: var(--eg-primary); }
+.eg-slot.is-cancelled { background: #fdf1f0; border-color: var(--eg-err-bar); }
+.eg-slot.is-cancelled .eg-slot__time { color: var(--eg-err); }
+.eg-slot.is-cancelled .eg-slot__name { text-decoration: line-through; }
+
+.eg-legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; color: var(--eg-ink-2); }
+.eg-legend span { display: flex; align-items: center; gap: 6px; }
+.eg-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+/* ---------- Tablas (Pacientes / Profesionales) ---------- */
+/* Se adaptan solas: en celular cada fila pasa a ser una tarjeta.
+   <div class="eg-table eg-table--pacientes">
+     <div class="eg-table__head"><span>Paciente</span><span>DNI</span><span>Edad</span><span>CUD</span><span>Ficha</span></div>
+     <div class="eg-table__row"><div class="eg-table__main">…</div><span>…</span><span>…</span><div>…</div><div class="eg-table__action">…</div></div>
+   </div> */
+.eg-table__head, .eg-table__row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 16px; padding: 0 24px; }
+.eg-table__head { height: 46px; overflow: hidden; align-content: flex-start; line-height: 46px; background: var(--eg-surface-2); border-bottom: 1px solid var(--eg-border-soft); font-size: 13px; font-weight: 700; color: var(--eg-muted); text-transform: uppercase; letter-spacing: .06em; }
+.eg-table__row { row-gap: 12px; padding-top: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--eg-border-soft); font-size: 16px; color: var(--eg-ink-2); }
+.eg-table__row:hover { background: var(--eg-surface-2); }
+.eg-table__row.is-me { background: #f6f9fe; }
+.eg-table__main { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.eg-table__name { font-size: 17px; font-weight: 700; color: var(--eg-ink); display: flex; align-items: center; gap: 8px; }
+.eg-table__meta { font-size: 14px; color: var(--eg-muted); }
+.eg-table__num { font-variant-numeric: tabular-nums; }
+.eg-table__action { display: flex; justify-content: flex-end; }
+.eg-table__head > :last-child { text-align: right; }
+
+.eg-table--pacientes :is(.eg-table__head, .eg-table__row) > :nth-child(1) { flex: 2.2 1 260px; }
+.eg-table--pacientes :is(.eg-table__head, .eg-table__row) > :nth-child(2) { flex: 1 1 110px; }
+.eg-table--pacientes :is(.eg-table__head, .eg-table__row) > :nth-child(3) { flex: .8 1 80px; }
+.eg-table--pacientes :is(.eg-table__head, .eg-table__row) > :nth-child(4) { flex: 1.4 1 150px; }
+.eg-table--pacientes :is(.eg-table__head, .eg-table__row) > :nth-child(5) { flex: 1 0 130px; }
+
+.eg-table--pros :is(.eg-table__head, .eg-table__row) > :nth-child(1) { flex: 2 1 260px; }
+.eg-table--pros :is(.eg-table__head, .eg-table__row) > :nth-child(2) { flex: 1 1 110px; }
+.eg-table--pros :is(.eg-table__head, .eg-table__row) > :nth-child(3) { flex: 2.2 1 220px; }
+.eg-table--pros :is(.eg-table__head, .eg-table__row) > :nth-child(4) { flex: 1 0 130px; }
+
+.eg-cud { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.eg-cud__date { font-size: 13px; color: var(--eg-muted); }
+.eg-contact { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.eg-contact a { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.eg-contact .ms { font-size: 19px; }
+.eg-empty-text { font-size: 15px; color: var(--eg-faint); font-style: italic; }
+
+/* ---------- Listas simples (CUD por vencer) ---------- */
+.eg-list-item { display: flex; align-items: center; gap: 14px; padding: 14px 12px; }
+.eg-list-item__text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.eg-list-item__title { font-size: 17px; font-weight: 700; }
+.eg-list-item__sub { font-size: 14px; color: var(--eg-muted); }
+
+/* ---------- Próxima sesión ---------- */
+.eg-next__top { display: flex; align-items: center; justify-content: space-between; }
+.eg-next__label { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--eg-dark-text); }
+.eg-next__who { display: flex; align-items: center; gap: 16px; }
+.eg-next__name { font-size: 22px; font-weight: 800; display: block; }
+.eg-next__when { font-size: 15px; color: var(--eg-dark-text); display: block; }
+.eg-next__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.eg-next__actions .eg-btn { height: 50px; font-size: 16px; }
+.eg-next__actions .eg-btn--white { flex: 1; min-width: 140px; background: #fff; border-color: #fff; color: var(--eg-ink); font-weight: 700; }
+.eg-next__actions .eg-btn--outline-light { background: transparent; border-color: #3a4e70; color: #fff; }
+.eg-next__actions .eg-btn--outline-light:hover { background: rgba(255,255,255,.06); }
+
+/* ---------- Estado vacío ---------- */
+.eg-empty { padding: 48px 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.eg-empty__icon { width: 64px; height: 64px; border-radius: 50%; background: var(--eg-primary-tint); color: var(--eg-primary); display: flex; align-items: center; justify-content: center; }
+.eg-empty__icon .ms { font-size: 32px; }
+.eg-empty__title { font-size: 19px; font-weight: 700; }
+.eg-empty__text { font-size: 16px; color: var(--eg-muted); }
+
+/* ---------- Footer ---------- */
+.eg-footer { border-top: 1px solid var(--eg-border); background: var(--eg-surface); }
+.eg-footer__inner { padding-top: 20px; padding-bottom: 20px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; color: var(--eg-muted); }
+.eg-footer b { color: var(--eg-ink-2); }
+
+/* ---------- Celular ---------- */
+@media (max-width: 640px) {
+  .eg-main { gap: 20px; }
+  .eg-user__role { display: none; }
+  .eg-user .eg-btn { flex: 1; }
+  .eg-page-head .eg-btn-group, .eg-page-head > .eg-btn { width: 100%; }
+  .eg-page-head .eg-btn--lg { flex: 1; }
+  .eg-card__head { padding: 16px; }
+  .eg-table__head, .eg-table__row { padding-left: 16px; padding-right: 16px; }
+  .eg-table__action .eg-btn { width: 100%; }
+  .eg-stat { padding: 20px; }
+  .eg-stat__value { font-size: 34px; }
+  .eg-hint { display: none; }
+  .eg-toolbar, .eg-toolbar__group, .eg-segmented { width: 100%; }
+  .eg-segmented button { flex: 1; justify-content: center; }
+  .eg-switch { width: 100%; }
+}
+
+
+
+/* =========================================================
+   Integración con el sistema (lo que la maqueta no traía)
+   ========================================================= */
+
+/* Logo de EduGes (imagen) en lugar del ícono de la maqueta */
+.eg-brand { color: inherit; text-decoration: none; }
+.eg-brand:hover { color: inherit; text-decoration: none; }
+.eg-brand__logo { overflow: hidden; background: transparent; }
+.eg-brand__logo img { width: 40px; height: 40px; object-fit: contain; display: block; }
+
+/* Foco del teclado siempre visible (la maqueta no lo marcaba) */
+.eg-btn:focus-visible, .eg-nav__item:focus-visible, .eg-slot:focus-visible,
+.eg-segmented button:focus-visible, .eg-stat__link:focus-visible, .eg-table__row button:focus-visible {
+  outline: 3px solid var(--eg-primary); outline-offset: 2px;
+}
+.eg-switch:focus-within { border-color: var(--eg-primary); box-shadow: 0 0 0 3px rgba(31,95,174,.25); }
+.eg-search-hero:focus-within { border-color: var(--eg-primary); box-shadow: 0 0 0 3px rgba(31,95,174,.18); }
+.eg-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Botones del encabezado: siempre con texto (Contraseña, Salir) */
+.eg-user .eg-btn { height: 40px; }
+
+/* Selector "Un día / Una semana": botones con aria-pressed */
+.eg-segmented button[aria-pressed="true"] { background: #fff; color: var(--eg-primary); box-shadow: 0 1px 3px rgba(22,35,58,.15); }
+
+/* Buscador del Inicio: el campo con sugerencias (combobox) ocupa todo el ancho */
+.eg-search-hero__field .combobox { width: 100%; }
+.eg-search-hero__field input { width: 100%; }
+.eg-search-hero { position: relative; z-index: 5; }
+
+/* Chip de estado "Confirmado" e información */
+.eg-chip--info { background: var(--eg-primary-soft); color: var(--eg-primary); }
+
+/* Turnos: la duración y el detalle; acciones con texto */
+.eg-turno__actions .eg-btn { height: 40px; padding: 0 14px; font-size: 15px; }
+.eg-turno__actions .eg-btn--danger { border-color: #f0c7c2; }
+.eg-btn--ok { color: var(--eg-ok); border-color: #b9dccb; }
+.eg-btn--ok:hover { background: var(--eg-ok-bg); }
+.eg-turno.is-absent { --bar: #cfd8e3; }
+
+/* Agenda semanal: cada turno es un botón que abre ese día */
+button.eg-slot { width: 100%; text-align: left; border-top: none; border-right: none; border-bottom: none; font: inherit; color: inherit; }
+.eg-slot:hover { filter: brightness(.97); }
+.eg-slot__estado { font-size: 13px; color: var(--eg-muted); }
+.eg-slot.is-cancelled .eg-slot__estado { text-decoration: none; color: var(--eg-err); }
+.eg-week__day .eg-btn--link { font-size: 14px; justify-content: flex-start; }
+
+/* Estados de un bloque: cargando, vacío, error */
+.eg-empty--compact { padding: 28px 16px; }
+.eg-cargando { padding: 20px 24px; }
+.eg-error__text { color: var(--eg-err); font-size: 16px; }
+
+/* Avisos dentro de la página (CUD vencidos, etc.) */
+.eg-alert { border-radius: var(--eg-r-lg); padding: 18px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; border: 1px solid; }
+.eg-alert--warn { background: var(--eg-warn-bg); border-color: #f3d9b0; color: var(--eg-warn); }
+.eg-alert__icon { font-size: 28px; color: var(--eg-warn-icon); }
+.eg-alert__text { flex: 1 1 260px; color: var(--eg-ink); }
+.eg-alert__title { display: block; font-weight: 700; font-size: 17px; }
+
+/* Paginación de las tablas */
+.eg-paginacion { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 24px; border-top: 1px solid var(--eg-border-soft); font-size: 15px; color: var(--eg-muted); }
+
+/* Filas de las tablas: se puede tocar toda la fila para abrir la ficha */
+.eg-table__row[data-paciente-id], .eg-table__row[data-profesional-id] { cursor: pointer; }
+
+/* =========================================================
+   Fichas (pacientes y profesionales): recuadro grande en el medio.
+   Paciente: datos a la izquierda, turnos a la derecha (en pantallas chicas, uno debajo del otro).
+   ========================================================= */
+.modal-ficha .modal-header { padding: 22px 28px; align-items: flex-start; }
+.modal-ficha .modal-title { font-size: 26px !important; font-weight: 800 !important; letter-spacing: -0.01em; }
+.eg-ficha__sub { font-size: 16px; color: var(--eg-muted); margin-top: 4px; }
+.modal-ficha .modal-body { padding: 0 !important; }
+.eg-ficha { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); min-height: 100%; }
+.eg-ficha--una { grid-template-columns: minmax(0, 1fr); }
+.eg-ficha__datos { padding: 24px 28px; display: flex; flex-direction: column; gap: 24px; }
+.eg-ficha__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.eg-ficha__bloque h3, .eg-ficha__turnos-head h3 {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 12px;
+  font-size: 18px !important; font-weight: 700 !important; color: var(--eg-ink);
+}
+.eg-ficha__bloque h3 .ms, .eg-ficha__turnos-head h3 .ms { color: var(--eg-primary); font-size: 22px; }
+.modal-ficha .ficha-dato dt { font-size: 13px; font-weight: 700; color: var(--eg-muted); letter-spacing: .05em; }
+.modal-ficha .ficha-dato dd { font-size: 17px; color: var(--eg-ink); margin-bottom: 14px; }
+.eg-ficha__turnos { padding: 24px 28px; background: var(--eg-surface-2); border-left: 1px solid var(--eg-border-soft); }
+.eg-ficha__turnos-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.eg-ficha__turnos-head h3 { margin: 0; }
+.eg-ficha__subtitulo { font-size: 14px; font-weight: 700; color: var(--eg-muted); text-transform: uppercase; letter-spacing: .05em; margin: 16px 0 8px; }
+.eg-ficha__vacio { font-size: 16px; color: var(--eg-muted); margin: 0 0 8px; }
+.eg-lista-ficha { background: var(--eg-surface); border: 1px solid var(--eg-border); border-radius: var(--eg-r-md); padding: 4px; margin-bottom: 8px; }
+.eg-lista-ficha .eg-turno { padding: 14px 12px; }
+.eg-lista-ficha .eg-turno__actions { margin-left: 0; justify-content: flex-start; width: 100%; }
+
+@media (max-width: 991.98px) {
+  .eg-ficha { grid-template-columns: minmax(0, 1fr); }
+  .eg-ficha__turnos { border-left: none; border-top: 1px solid var(--eg-border-soft); }
+  .modal-ficha .modal-header, .eg-ficha__datos, .eg-ficha__turnos { padding-left: 18px; padding-right: 18px; }
+  .modal-ficha .modal-title { font-size: 22px !important; }
+}
+
+/* Modales y formularios de Bootstrap con la paleta nueva */
+:root {
+  --eduges-primary: var(--eg-primary);
+  --eduges-primary-hover: var(--eg-primary-hover);
+  --eduges-primary-light: var(--eg-primary-soft);
+  --eduges-text-main: var(--eg-ink);
+  --eduges-font-display: var(--eg-font);
+}
+.modal-content { border-radius: var(--eg-r-lg); }
+.btn-eduges, .btn-eduges:hover, .btn-eduges:focus-visible, .btn-eduges:first-child:active, .btn-eduges.active {
+  background: var(--eg-primary); border-color: var(--eg-primary); color: #fff; border-radius: var(--eg-r);
+}
+.btn-eduges:hover { background: var(--eg-primary-hover); }
+.btn:hover { text-decoration: none; }
+
+/* La barra de "Saltar al contenido" queda por encima del encabezado fijo */
+.saltar-contenido { z-index: 60; }
+
+/* Listas de turnos y de pacientes (ul sin viñetas) */
+.eg-lista-turnos, .eg-lista { list-style: none; margin: 0; padding: 0; }
+.eg-list-item__title { color: var(--eg-ink); }
+.eg-list-item__title:hover { color: var(--eg-primary); }
+
+/* Pie de una tarjeta (ej.: "Ver agenda completa") */
+.eg-card__foot { padding: 12px 24px 18px; border-top: 1px solid var(--eg-border-soft); }
+.eg-icono-warn { color: var(--eg-warn-icon) !important; }
+.eg-section-title { font-size: 19px; font-weight: 700; }
+
+/* Accesos rápidos del Inicio del administrador: la tarjeta entera es un enlace */
+.eg-stat--enlace { color: var(--eg-ink); align-items: center; }
+.eg-stat--enlace:hover { color: var(--eg-ink); text-decoration: none; border-color: var(--eg-primary); background: var(--eg-primary-tint); }
+.eg-stat--enlace:focus-visible { outline: 3px solid var(--eg-primary); outline-offset: 2px; }
+.eg-stat__titulo { font-size: 18px; font-weight: 700; }
+
+/* Próxima sesión sin turnos */
+.eg-next__vacio { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 17px; color: var(--eg-dark-text); }
+.eg-card--dark h2 { margin: 0; }
+.eg-card--dark .eg-chip--info { background: var(--eg-dark-2); color: #fff; }
+.eg-card--dark .eg-chip--warn { background: #4a3b22; color: #ffe2b3; }
+
+/* "Un día / Una semana" con botones de opción (radio): se elige uno solo */
+.eg-segmented input { position: absolute; opacity: 0; pointer-events: none; }
+.eg-segmented label { height: 44px; padding: 0 18px; border-radius: var(--eg-r-sm); color: var(--eg-ink-2); font-weight: 700; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0; }
+.eg-segmented label .ms { font-size: 20px; }
+.eg-segmented input:checked + label { background: #fff; color: var(--eg-primary); box-shadow: 0 1px 3px rgba(22,35,58,.15); }
+.eg-segmented input:focus-visible + label { outline: 3px solid var(--eg-primary); outline-offset: 2px; }
+.eg-select--toolbar { height: 44px; width: auto; min-width: 220px; font-size: 16px; }
+
+/* Agenda semanal: el título de cada día es un h3 */
+.eg-week__head { margin: 0; }
+
+@media (max-width: 640px) {
+  .eg-segmented label { flex: 1; justify-content: center; white-space: nowrap; padding: 0 10px; }
+  .eg-select--toolbar { width: 100%; min-width: 0; }
+  .eg-toolbar__group { width: 100%; }
+  .eg-card__foot { padding: 12px 16px 16px; }
+}
+
+/* Celular: el menú no se desliza de costado (muchos no se dan cuenta de que hay más):
+   los cuatro botones se ven siempre, en dos columnas */
+@media (max-width: 640px) {
+  .eg-nav { flex-basis: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; overflow: visible; }
+  .eg-nav__item { justify-content: center; padding: 10px 8px; font-size: 15px; white-space: normal; text-align: center; }
+  .eg-list-item { flex-wrap: wrap; }
+  .eg-list-item__text { flex: 1 1 160px; }
+  .eg-list-item .eg-chip { margin-left: 58px; }
+}
+
+/* =========================================================
+   "Más acciones" de cada turno (Reprogramar, Cancelar)
+   ========================================================= */
+.eg-mas { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; }
+.eg-mas > summary { list-style: none; }
+.eg-mas > summary::-webkit-details-marker { display: none; }
+.eg-mas__flecha { font-size: 20px !important; transition: transform .15s; }
+.eg-mas[open] .eg-mas__flecha { transform: rotate(180deg); }
+.eg-mas[open] > summary { background: var(--eg-primary-tint); border-color: var(--eg-primary); }
+.eg-mas > summary:focus-visible { outline: 3px solid var(--eg-primary); outline-offset: 2px; }
+.eg-mas__opciones { display: flex; flex-wrap: wrap; gap: 10px; }
+.eg-turno__actions .eg-mas summary { height: 40px; padding: 0 14px; font-size: 15px; }
+
+/* =========================================================
+   Modales, formularios y avisos de Bootstrap con el diseño nuevo
+   (Nuevo turno, Reprogramar, Nuevo paciente, Contraseña, confirmaciones…)
+   ========================================================= */
+.modal-content { border: none; border-radius: var(--eg-r-lg); font-family: var(--eg-font); color: var(--eg-ink); }
+.modal-header { padding: 20px 24px; border-bottom: 1px solid var(--eg-border-soft); }
+.modal-title { font-size: 20px !important; font-weight: 700 !important; display: flex; align-items: center; gap: 8px; }
+.modal-title .ms { color: var(--eg-primary); }
+.modal-body { padding: 24px !important; font-size: 16px; }
+.modal-footer { background: var(--eg-surface-2) !important; padding: 16px 24px; border-top: 1px solid var(--eg-border-soft); gap: 10px; }
+.modal-footer > * { margin: 0; }
+
+.form-label, .modal .form-label { font-size: 15px !important; font-weight: 700 !important; color: var(--eg-ink-2); }
+.form-control, .form-select {
+  min-height: 48px; border: 1.5px solid var(--eg-border-input); border-radius: var(--eg-r);
+  font-size: 16px; color: var(--eg-ink); font-family: var(--eg-font);
+}
+textarea.form-control { min-height: 96px; }
+.form-control:focus, .form-select:focus { border-color: var(--eg-primary); box-shadow: 0 0 0 3px rgba(31,95,174,.18); }
+.form-text { font-size: 14px; color: var(--eg-muted); }
+.form-check-label { font-size: 16px; }
+.invalid-feedback { font-size: 14px; font-weight: 600; }
+.input-group > .form-control { min-height: 48px; }
+
+/* Botones de Bootstrap (en modales y avisos): mismo tamaño y forma que .eg-btn */
+.modal .btn, .toast .btn:not(.btn-close) {
+  min-height: 44px; padding: 0 18px; border-radius: var(--eg-r); font-weight: 600; font-size: 15px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-outline-secondary { --bs-btn-color: var(--eg-ink-2); --bs-btn-border-color: var(--eg-border-input); --bs-btn-bg: #fff;
+  --bs-btn-hover-color: var(--eg-ink); --bs-btn-hover-bg: #f1f4f8; --bs-btn-hover-border-color: var(--eg-border-input);
+  --bs-btn-active-color: var(--eg-ink); --bs-btn-active-bg: #e7ebf1; --bs-btn-active-border-color: var(--eg-border-input); }
+.btn-outline-primary { --bs-btn-color: var(--eg-primary); --bs-btn-border-color: var(--eg-border-input);
+  --bs-btn-hover-color: var(--eg-primary); --bs-btn-hover-bg: var(--eg-primary-tint); --bs-btn-hover-border-color: var(--eg-primary);
+  --bs-btn-active-color: #fff; --bs-btn-active-bg: var(--eg-primary); --bs-btn-active-border-color: var(--eg-primary); }
+.btn-danger { --bs-btn-bg: var(--eg-err); --bs-btn-border-color: var(--eg-err); --bs-btn-hover-bg: #8a2117; --bs-btn-hover-border-color: #8a2117; }
+.btn-check:focus-visible + .btn { outline: 3px solid var(--eg-primary); outline-offset: 2px; box-shadow: none; }
+
+/* Avisos de error dentro de los formularios */
+.modal .alert, .eg-main .alert { border-radius: var(--eg-r); font-size: 15px; }
+
+/* Avisos flotantes (toasts) */
+.toast { border-radius: var(--eg-r); font-family: var(--eg-font); font-size: 15px; }
+.toast-body { display: flex; align-items: center; gap: 8px; padding: 14px 16px; }
+.text-bg-success { background-color: var(--eg-ok) !important; }
+.text-bg-primary { background-color: var(--eg-primary) !important; }
+.text-bg-danger { background-color: var(--eg-err) !important; }
+
+
+/* Lista de sugerencias (combobox) */
+.combobox-lista { border-radius: var(--eg-r); font-family: var(--eg-font); }
+.combobox-opcion { font-size: 16px; padding: 12px 14px; }
+
+/* =========================================================
+   Celular: encabezado, números y acciones más compactos
+   ========================================================= */
+@media (max-width: 640px) {
+  /* Encabezado: logo y botones (Contraseña, Salir) en una fila; el menú debajo, en 2 columnas */
+  .eg-header__inner { min-height: 0; padding-top: 10px; padding-bottom: 10px; gap: 10px; }
+  .eg-brand { order: 1; gap: 8px; }
+  .eg-brand__logo, .eg-brand__logo img { width: 34px; height: 34px; }
+  .eg-brand__name { font-size: 17px; }
+  .eg-user { order: 2; flex-wrap: nowrap; gap: 6px; }
+  .eg-user__info { display: none; }
+  .eg-user .eg-btn { flex: none; height: 38px; padding: 0 10px; font-size: 14px; gap: 4px; }
+  .eg-user .eg-btn .ms { font-size: 18px; }
+  .eg-nav { order: 3; gap: 4px; }
+  .eg-nav__item { padding: 8px 6px; min-height: 42px; font-size: 14px; gap: 6px; }
+  .eg-nav__item .ms { font-size: 20px; }
+
+  /* Botones de la cabecera (Nuevo paciente / Nuevo turno) uno al lado del otro */
+  .eg-page-head { gap: 16px; }
+  .eg-page-head .eg-btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .eg-page-head .eg-btn--lg { height: 52px; padding: 0 10px; font-size: 16px; gap: 6px; }
+
+  /* Inicio del profesional: los tres números en una sola fila, para llegar rápido a la agenda */
+  #vista-profesional, #centro { gap: 20px !important; }
+  #vista-profesional .eg-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  #centro .eg-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  :is(#vista-profesional, #centro) .eg-stat { padding: 14px 10px; flex-direction: column; gap: 4px; }
+  :is(#vista-profesional, #centro) :is(.eg-stat__icon, .eg-stat__sub) { display: none; }
+  :is(#vista-profesional, #centro) .eg-stat__label { font-size: 13px; line-height: 1.25; }
+  :is(#vista-profesional, #centro) .eg-stat__value { font-size: 28px; }
+  :is(#vista-profesional, #centro) .eg-stat__link { margin-top: 4px; font-size: 14px; }
+  :is(#vista-profesional, #centro) .eg-stat__link .ms { display: none; }
+  .eg-search-hero { padding: 14px 16px; gap: 12px; }
+  .eg-search-hero input { font-size: 17px; }
+
+  /* Turnos: las acciones ocupan todo el ancho, alineadas a la izquierda */
+  .eg-turno__actions, .eg-mas { justify-content: flex-start; margin-left: 0; width: 100%; }
+
+  /* Modales: botones grandes, uno al lado del otro */
+  .modal-body { padding: 18px !important; }
+  .modal-footer .btn { flex: 1; }
+}
+
+/* Enlaces de texto ("Ver agenda", "Ver todos", "Agendar", teléfonos, mails, nombres):
+   área de toque de 40 px de alto, fácil de acertar con el dedo, sin cambiar cómo se ven */
+.eg-btn--link, .eg-stat__link, .eg-list-item__title { min-height: 40px; display: inline-flex; align-items: center; }
+.eg-contact a { min-height: 40px; }
+.eg-stat__link { margin-top: 4px; }
+
+/* Nota chica en el encabezado de una tarjeta (ej.: "Hoy y mañana") */
+.eg-card__nota { font-size: 14px; color: var(--eg-muted); }
+#centro-confirmar-titulo:focus-visible { outline: 3px solid var(--eg-primary); outline-offset: 4px; border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.eg-empty__icon--error { background: var(--eg-err-bg); color: var(--eg-err); }

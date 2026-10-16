@@ -24,7 +24,7 @@ export function mostrarErroresDelFormulario(formulario, contenedorErrores, error
     renderizar(contenedorErrores, generales.length > 0
         ? html`
             <div class="alert alert-danger py-2 small mb-3 d-flex align-items-start gap-2" role="alert">
-                <i class="bi bi-exclamation-circle-fill mt-1" aria-hidden="true"></i>
+                <span class="ms" aria-hidden="true">error</span>
                 <span>${generales.join(' ')}</span>
             </div>`
         : '');
@@ -58,7 +58,7 @@ export function prepararModal({ modal, formulario, contenedorErrores, comboboxes
         renderizar(contenedorErrores, '');
         // Si quien lo abrió ya no está en pantalla (ej.: la ficha que se cerró para editar),
         // el foco lo maneja la pantalla
-        if (abiertoDesde?.isConnected && abiertoDesde.offsetParent !== null) {
+        if (abiertoDesde?.isConnected && abiertoDesde.checkVisibility()) {
             abiertoDesde.focus();
         }
         abiertoDesde = null;

@@ -8,83 +8,67 @@
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Estilos Propios -->
+    <!-- Tipografía e íconos del diseño nuevo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@24,500,0" rel="stylesheet">
+    <!-- Estilos Propios: styles.css (modales, formularios, sugerencias) y eduges.css (diseño de las pantallas) -->
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/eduges.css' %}">
 </head>
-<body class="d-flex flex-column min-vh-100">
+<body>
+<div class="eg-app">
 
     <!-- Para quien navega con teclado o lector de pantalla: salta el menú -->
     <a href="#contenido" class="saltar-contenido">Saltar al contenido</a>
 
-    <!-- Navbar Superior -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-eduges sticky-top" aria-label="Menú principal">
-        <div class="container-fluid px-lg-4">
-
-            <!-- Marca con Logo -->
-            <a class="navbar-brand d-flex align-items-center gap-2 fw-semibold" href="{% url 'home' %}">
-                <img src="{% static 'img/Logo.png' %}" alt="Logo" width="34" height="34" class="logo-barra">
-                <span>EduGes <span class="fw-light text-white-50" style="font-size: 0.85rem;">| Rincón Psi</span></span>
+    <!-- Encabezado: logo, menú y usuario.
+         data-requiere-permiso: el ítem solo se muestra si el usuario tiene ese permiso (lo resuelve layout.js). -->
+    <header class="eg-header">
+        <div class="eg-container eg-header__inner">
+            <a class="eg-brand" href="{% url 'home' %}">
+                <span class="eg-brand__logo"><img src="{% static 'img/Logo.png' %}" alt="" width="40" height="40"></span>
+                <span class="eg-brand__text">
+                    <span class="eg-brand__name">EduGes</span>
+                    <span class="eg-brand__sub">Rincón Psi</span>
+                </span>
             </a>
 
-            <!-- Botón Hamburguesa Móvil -->
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navPrincipal" aria-controls="navPrincipal" aria-expanded="false" aria-label="Abrir menú">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <nav class="eg-nav" aria-label="Menú principal">
+                {% with actual=request.resolver_match.url_name %}
+                <a href="{% url 'home' %}" class="eg-nav__item" data-requiere-permiso="dashboard.ver" {% if actual == 'home' %}aria-current="page"{% endif %}>
+                    <span class="ms" aria-hidden="true">home</span>Inicio
+                </a>
+                <a href="{% url 'turnos' %}" class="eg-nav__item" data-requiere-permiso="turnos.ver" {% if actual == 'turnos' %}aria-current="page"{% endif %}>
+                    <span class="ms" aria-hidden="true">calendar_month</span>Turnos y Agenda
+                </a>
+                <a href="{% url 'pacientes' %}" class="eg-nav__item" data-requiere-permiso="pacientes.ver" {% if actual == 'pacientes' %}aria-current="page"{% endif %}>
+                    <span class="ms" aria-hidden="true">groups</span>Pacientes
+                </a>
+                <a href="{% url 'profesionales' %}" class="eg-nav__item" data-requiere-permiso="profesionales.ver" {% if actual == 'profesionales' %}aria-current="page"{% endif %}>
+                    <span class="ms" aria-hidden="true">badge</span>Profesionales
+                </a>
+                {% endwith %}
+            </nav>
 
-            <!-- Links de Navegación
-                 data-requiere-permiso: el ítem solo se muestra si el usuario tiene ese permiso (lo resuelve layout.js). -->
-            <div class="collapse navbar-collapse" id="navPrincipal">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
-                    <li class="nav-item" data-requiere-permiso="dashboard.ver">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}" {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>
-                            <i class="bi bi-grid-1x2-fill me-1"></i> Inicio
-                        </a>
-                    </li>
-                    <li class="nav-item" data-requiere-permiso="turnos.ver">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'turnos' %}active{% endif %}" href="{% url 'turnos' %}" {% if request.resolver_match.url_name == 'turnos' %}aria-current="page"{% endif %}>
-                            <i class="bi bi-calendar3 me-1"></i> Turnos & Agenda
-                        </a>
-                    </li>
-                    <li class="nav-item" data-requiere-permiso="pacientes.ver">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'pacientes' %}active{% endif %}" href="{% url 'pacientes' %}" {% if request.resolver_match.url_name == 'pacientes' %}aria-current="page"{% endif %}>
-                            <i class="bi bi-people me-1"></i> Pacientes (CUD)
-                        </a>
-                    </li>
-                    <li class="nav-item" data-requiere-permiso="profesionales.ver">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'profesionales' %}active{% endif %}" href="{% url 'profesionales' %}" {% if request.resolver_match.url_name == 'profesionales' %}aria-current="page"{% endif %}>
-                            <i class="bi bi-person-badge me-1"></i> Profesionales
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Usuario Logueado y Cierre de Sesión (datos de /api/auth/me/) -->
-                <div class="d-flex align-items-center gap-3 pt-2 pt-lg-0 border-top border-lg-0 border-white-50">
-                    <div class="text-white text-end d-none d-sm-block" id="usuario-actual">
-                        <div class="placeholder-glow" aria-hidden="true">
-                            <span class="placeholder col-12 d-block mb-1" style="width: 120px;"></span>
-                            <span class="placeholder placeholder-xs d-block ms-auto" style="width: 90px;"></span>
-                        </div>
-                    </div>
-                    <!-- Con texto visible siempre: un ícono solo no dice qué hace -->
-                    <button type="button" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1"
-                            data-bs-toggle="modal" data-bs-target="#modal-cambiar-password">
-                        <i class="bi bi-key" aria-hidden="true"></i>
-                        <span><span class="visually-hidden">Cambiar </span>Contraseña</span>
-                    </button>
-                    <button type="button" id="btn-cerrar-sesion" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1">
-                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
-                        <span>Salir</span>
-                    </button>
+            <!-- Usuario logueado (datos de /api/auth/me/) y botones con texto visible -->
+            <div class="eg-user">
+                <div class="eg-user__info" id="usuario-actual">
+                    <div class="eg-avatar eg-avatar--sm eg-avatar--blue" aria-hidden="true"></div>
+                    <div><span class="eg-user__name">&nbsp;</span><span class="eg-user__role">&nbsp;</span></div>
                 </div>
+                <button type="button" class="eg-btn eg-btn--ghost" data-bs-toggle="modal" data-bs-target="#modal-cambiar-password">
+                    <span class="ms" aria-hidden="true">key</span><span><span class="visually-hidden">Cambiar </span>Contraseña</span>
+                </button>
+                <button type="button" id="btn-cerrar-sesion" class="eg-btn eg-btn--danger">
+                    <span class="ms" aria-hidden="true">logout</span><span>Salir</span>
+                </button>
             </div>
-
         </div>
-    </nav>
+    </header>
 
-    <!-- Contenido Inyectado -->
-    <main class="container-fluid px-lg-4 py-4 flex-grow-1" id="contenido" tabindex="-1">
+    <!-- Contenido de cada pantalla -->
+    <main class="eg-container eg-main" id="contenido" tabindex="-1">
         {% block content %}{% endblock %}
     </main>
 
@@ -96,7 +80,7 @@
             <form class="modal-content border-0 shadow" id="form-cambiar-password" novalidate>
                 <div class="modal-header">
                     <h2 class="modal-title fs-6 fw-bold" id="modal-cambiar-password-titulo">
-                        <i class="bi bi-key me-1" aria-hidden="true"></i> Cambiar contraseña
+                        <span class="ms" aria-hidden="true">key</span>Cambiar contraseña
                     </h2>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
@@ -125,12 +109,12 @@
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="py-3 text-center text-muted small mt-auto border-top bg-white">
-        <div class="container-fluid">
-            EduGes &copy; 2026 — Sistema de Gestión · <strong>Rincón Psi</strong>
+    <footer class="eg-footer">
+        <div class="eg-container eg-footer__inner">
+            <span>EduGes &copy; 2026 — Sistema de Gestión · <b>Rincón Psi</b></span>
         </div>
     </footer>
+</div>
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

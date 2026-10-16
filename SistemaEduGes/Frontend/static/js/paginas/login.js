@@ -100,7 +100,6 @@ async function ingresar(evento) {
 
     const usuario = formulario.elements.usuario.value.trim();
     const password = formulario.elements.password.value;
-    const recordar = formulario.elements.recordar.checked;
     mostrarAlerta('');
 
     const errores = {};
@@ -121,7 +120,7 @@ async function ingresar(evento) {
 
     try {
         await auth.csrf();
-        await auth.login(usuario, password, recordar);
+        await auth.login(usuario, password);
         irAlDestino(); // el botón queda en "Ingresando…" hasta que cambia la página
     } catch (error) {
         botonCargando(boton, false);
@@ -149,7 +148,10 @@ async function iniciar() {
     formulario.addEventListener('input', (e) => e.target.classList.remove('is-invalid'));
 
     // Se llegó acá desde otra página (sesión no iniciada o vencida): se explica por qué
-    if (new URLSearchParams(window.location.search).has('next')) {
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.get('motivo') === 'inactividad') {
+        mostrarAlerta('Tu sesión se cerró porque pasaron 20 minutos sin uso. Ingresá de nuevo para continuar donde estabas.', 'info');
+    } else if (parametros.has('next')) {
         mostrarAlerta('Tu sesión no está iniciada o expiró. Ingresá para continuar.', 'info');
     }
 

@@ -1,8 +1,8 @@
 // ============================================================
 // EduGes - Layout común (base.html)
 // Carga el usuario logueado, lo muestra en la barra superior,
-// aplica los permisos a los elementos marcados y maneja el cambio de contraseña
-// y el cierre de sesión.
+// aplica los permisos a los elementos marcados y maneja el cambio de contraseña,
+// el cierre de sesión y el aviso de cierre por inactividad (sesion.js).
 //
 // Las páginas que necesitan el usuario lo piden con obtenerUsuario():
 // la request a /api/auth/me/ se hace una sola vez por página.
@@ -13,9 +13,11 @@ import { prepararMostrarPassword } from './componentes/mostrar-password.js';
 import { CONFIG } from './config.js';
 import { PERMISO } from './constantes.js';
 import { auth } from './endpoints.js';
+import { iniciarControlDeSesion } from './sesion.js';
 import {
     botonCargando,
     html,
+    iniciales,
     limpiarErroresFormulario,
     mostrarErroresFormulario,
     nombreCompleto,
@@ -65,9 +67,10 @@ function mostrarUsuario(usuario) {
     }
     const nombre = usuario.profesional ? nombreCompleto(usuario.profesional) : usuario.usuario;
     const detalle = usuario.profesional?.especialidad?.nombre ?? usuario.rol.nombre;
+    const letras = usuario.profesional ? iniciales(usuario.profesional) : usuario.usuario.slice(0, 2).toUpperCase();
     renderizar(contenedor, html`
-        <div class="small fw-semibold">${nombre}</div>
-        <div class="text-white-50" style="font-size: 0.75rem;">${detalle}</div>`);
+        <div class="eg-avatar eg-avatar--sm eg-avatar--blue" aria-hidden="true">${letras}</div>
+        <div><span class="eg-user__name">${nombre}</span><span class="eg-user__role">${detalle}</span></div>`);
 }
 
 async function cerrarSesion(boton) {
@@ -97,7 +100,7 @@ function mostrarErroresPassword(formulario, error) {
     renderizar(document.getElementById('form-cambiar-password-errores'), generales.length > 0
         ? html`
             <div class="alert alert-danger py-2 small mb-3 d-flex align-items-center gap-2" role="alert">
-                <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                <span class="ms" aria-hidden="true">error</span>
                 <span>${generales.join(' ')}</span>
             </div>`
         : '');
@@ -168,7 +171,54 @@ function prepararCambioPassword() {
     });
 }
 
+// ------------------------------------------------------------
+// Un modal encima de otro (ej.: "Agendar turno" o "¿Cancelar el turno?" desde la ficha del paciente).
+// Bootstrap no lo resuelve solo: cada modal nuevo y su fondo oscuro van por encima del anterior,
+// y al cerrar el de arriba, el de abajo vuelve a retener el foco del teclado y la página
+// sigue sin desplazarse por detrás.
+// ------------------------------------------------------------
+const Z_MODAL = 1055;
+
+function prepararModalesApilados() {
+    document.addEventListener('show.bs.modal', (evento) => {
+        const abiertos = document.querySelectorAll('.modal.show').length;
+        const z = Z_MODAL + abiertos * 20;
+        evento.target.style.zIndex = z;
+        if (abiertos > 0) {
+            // El fondo oscuro de este modal se agrega justo después de este evento
+            setTimeout(() => {
+                const fondos = document.querySelectorAll('.modal-backdrop');
+                const fondo = fondos[fondos.length - 1];
+                if (fondo) {
+                    fondo.style.zIndex = z - 5;
+                }
+            });
+        }
+    });
+    document.addEventListener('hidden.bs.modal', () => {
+        const abiertos = [...document.querySelectorAll('.modal.show')];
+        if (abiertos.length === 0) {
+            return;
+        }
+        document.body.classList.add('modal-open');
+        document.body.style.overflow = 'hidden';
+        const deArriba = abiertos.reduce((a, b) => (Number(b.style.zIndex || Z_MODAL) > Number(a.style.zIndex || Z_MODAL) ? b : a));
+        // El modal que se cerró ya devolvió el foco al botón que lo abrió (dentro del de abajo).
+        // Al reactivar la "trampa de foco" de Bootstrap 5.3 (_focustrap: mantiene el Tab dentro
+        // del modal), Bootstrap mueve el foco al modal entero: se lo devolvemos a ese botón.
+        // (el modal que se cerró se la había desactivado sin avisarle: por eso se reinicia)
+        const foco = document.activeElement;
+        const trampa = window.bootstrap.Modal.getInstance(deArriba)?._focustrap;
+        trampa?.deactivate();
+        trampa?.activate();
+        if (foco && foco !== document.body && deArriba.contains(foco)) {
+            foco.focus();
+        }
+    });
+}
+
 async function iniciar() {
+    prepararModalesApilados();
     const botonSalir = document.getElementById('btn-cerrar-sesion');
     botonSalir?.addEventListener('click', () => cerrarSesion(botonSalir));
     prepararCambioPassword();
@@ -177,12 +227,13 @@ async function iniciar() {
         const usuario = await obtenerUsuario();
         mostrarUsuario(usuario);
         aplicarPermisos(usuario);
+        iniciarControlDeSesion({ salir: () => cerrarSesion(botonSalir) });
     } catch (error) {
         // Un 401 ya redirigió al login desde api.js
         if (error.status !== 401) {
             const contenedor = document.getElementById('usuario-actual');
             if (contenedor) {
-                renderizar(contenedor, html`<div class="small text-white-50">Sin conexión</div>`);
+                renderizar(contenedor, html`<span class="eg-user__role">Sin conexión</span>`);
             }
             notificarError(error);
         }

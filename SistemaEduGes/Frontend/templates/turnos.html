@@ -9,77 +9,74 @@
      Un profesional ve solo sus turnos; los administradores, los de todos. -->
 
 <!-- Cabecera -->
-<div class="d-flex justify-content-between align-items-start align-items-md-center flex-column flex-md-row gap-3 mb-4">
-    <div>
-        <h1 class="h4 fw-bold mb-1" style="color: var(--eduges-text-main);">Turnos y Agenda</h1>
-        <p class="text-muted small mb-0">
-            <i class="bi bi-calendar3 me-1" aria-hidden="true"></i> <span id="turnos-subtitulo">&nbsp;</span>
-        </p>
+<div class="eg-page-head">
+    <div class="eg-page-head__text">
+        <span class="eg-eyebrow"><span class="ms" aria-hidden="true">calendar_month</span><span id="turnos-subtitulo">&nbsp;</span></span>
+        <h1 class="eg-title">Turnos y Agenda</h1>
     </div>
-    <button type="button" class="btn btn-eduges d-flex align-items-center gap-1" id="btn-nuevo-turno" hidden>
-        <i class="bi bi-calendar-plus" aria-hidden="true"></i> Nuevo turno
+    <button type="button" class="eg-btn eg-btn--lg eg-btn--primary" id="btn-nuevo-turno" hidden>
+        <span class="ms" aria-hidden="true">add_circle</span>Nuevo turno
     </button>
 </div>
 
 <!-- Qué se muestra: día o semana, profesional (solo administradores) y cancelados -->
-<form class="card-table shadow-sm p-3 mb-4" id="filtros-turnos" aria-label="Qué turnos mostrar">
-    <div class="row g-3 align-items-end">
-        <div class="col-12 col-md-auto">
-            <span class="form-label small fw-semibold text-secondary mb-1 d-block" id="vista-etiqueta">Ver</span>
-            <div class="btn-group" role="group" aria-labelledby="vista-etiqueta">
-                <input type="radio" class="btn-check" name="vista" id="vista-dia" value="dia" checked>
-                <label class="btn btn-sm btn-outline-primary" for="vista-dia">
-                    <i class="bi bi-calendar-day me-1" aria-hidden="true"></i>Un día
-                </label>
-                <input type="radio" class="btn-check" name="vista" id="vista-semana" value="semana">
-                <label class="btn btn-sm btn-outline-primary" for="vista-semana">
-                    <i class="bi bi-calendar-week me-1" aria-hidden="true"></i>Una semana
-                </label>
-            </div>
-        </div>
-        <div class="col-12 col-md-4" id="filtro-profesional-campo" hidden>
-            <label for="filtro-profesional" class="form-label small fw-semibold text-secondary mb-1">Profesional</label>
-            <select class="form-select form-select-sm" id="filtro-profesional" name="profesional">
-                <option value="">Todos los profesionales</option>
-            </select>
-        </div>
-        <div class="col-12 col-md-auto">
-            <div class="form-check mb-1">
-                <input class="form-check-input" type="checkbox" id="filtro-cancelados" name="cancelados">
-                <label class="form-check-label small" for="filtro-cancelados">Ocultar los turnos cancelados</label>
-            </div>
+<form class="eg-toolbar" id="filtros-turnos" aria-label="Qué turnos mostrar">
+    <div class="eg-toolbar__group">
+        <span class="eg-label" id="vista-etiqueta">Ver por</span>
+        <div class="eg-segmented" role="radiogroup" aria-labelledby="vista-etiqueta">
+            <input type="radio" name="vista" id="vista-dia" value="dia" checked>
+            <label for="vista-dia"><span class="ms" aria-hidden="true">calendar_view_day</span>Un día</label>
+            <input type="radio" name="vista" id="vista-semana" value="semana">
+            <label for="vista-semana"><span class="ms" aria-hidden="true">calendar_view_week</span>Una semana</label>
         </div>
     </div>
+    <div class="eg-toolbar__group" id="filtro-profesional-campo" hidden>
+        <label for="filtro-profesional" class="eg-label">Profesional</label>
+        <select class="eg-select eg-select--toolbar" id="filtro-profesional" name="profesional">
+            <option value="">Todos los profesionales</option>
+        </select>
+    </div>
+    <label class="eg-switch">
+        <input type="checkbox" id="filtro-cancelados" name="cancelados">
+        <span class="eg-switch__track" aria-hidden="true"></span>
+        Ocultar turnos cancelados
+    </label>
 </form>
 
 <!-- Agenda -->
-<section class="card-table shadow-sm" aria-labelledby="periodo-titulo">
-    <div class="p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h2 class="h6 mb-0 fw-bold" id="periodo-titulo">
-            <i class="bi bi-calendar3 me-1 text-primary" aria-hidden="true"></i>
-            <span id="periodo-texto">&nbsp;</span>
-        </h2>
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-light text-secondary border" id="turnos-total" aria-live="polite">&nbsp;</span>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Cambiar el período">
-                <button type="button" class="btn btn-outline-secondary bg-white" id="btn-anterior">
-                    <i class="bi bi-chevron-left" aria-hidden="true"></i><span class="visually-hidden" id="btn-anterior-texto">Día anterior</span>
-                </button>
-                <button type="button" class="btn btn-outline-secondary bg-white" id="btn-hoy">Hoy</button>
-                <button type="button" class="btn btn-outline-secondary bg-white" id="btn-siguiente">
-                    <i class="bi bi-chevron-right" aria-hidden="true"></i><span class="visually-hidden" id="btn-siguiente-texto">Día siguiente</span>
-                </button>
-            </div>
+<section class="eg-card" aria-labelledby="periodo-titulo">
+    <div class="eg-card__head">
+        <div class="eg-card__title">
+            <span class="ms" aria-hidden="true">event_note</span>
+            <h2 id="periodo-titulo"><span id="periodo-texto">&nbsp;</span></h2>
+            <span class="eg-chip eg-chip--count" id="turnos-total" aria-live="polite">&nbsp;</span>
+        </div>
+        <div class="eg-day-nav" role="group" aria-label="Cambiar el período">
+            <button type="button" class="eg-btn eg-btn--icon" id="btn-anterior">
+                <span class="ms" aria-hidden="true">chevron_left</span><span class="visually-hidden" id="btn-anterior-texto">Día anterior</span>
+            </button>
+            <button type="button" class="eg-btn eg-btn--today" id="btn-hoy">Hoy</button>
+            <button type="button" class="eg-btn eg-btn--icon" id="btn-siguiente">
+                <span class="ms" aria-hidden="true">chevron_right</span><span class="visually-hidden" id="btn-siguiente-texto">Día siguiente</span>
+            </button>
         </div>
     </div>
     <div id="turnos-cuerpo" aria-live="polite">
-        <div class="placeholder-glow p-3" aria-busy="true">
+        <div class="placeholder-glow eg-cargando" aria-busy="true">
             <span class="placeholder col-7 mb-2 d-block rounded"></span>
             <span class="placeholder col-10 mb-2 d-block rounded"></span>
             <span class="visually-hidden" role="status">Cargando…</span>
         </div>
     </div>
 </section>
+
+<!-- Referencia de colores (cada turno también dice su estado con texto) -->
+<div class="eg-legend" aria-hidden="true">
+    <span><i style="background:#1f5fae"></i>Próxima</span>
+    <span><i style="background:#9fb9dc"></i>Pendiente o confirmado</span>
+    <span><i style="background:#cfd8e3"></i>Realizado o ausente</span>
+    <span><i style="background:#e7a59d"></i>Cancelado</span>
+</div>
 
 {% include "componentes/modales_turno.html" %}
 {% endblock %}

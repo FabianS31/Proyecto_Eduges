@@ -172,6 +172,16 @@ select:focus-visible,
     filter: brightness(0.98);
 }
 
+/* Bootstrap le pone a .btn con foco o presionado el color de texto del cuerpo (casi negro):
+   sobre el azul no se leía. Se mantiene el texto blanco y el fondo propio. */
+.btn-eduges:focus-visible,
+.btn-eduges:first-child:active,
+.btn-eduges.active {
+    background: var(--eduges-gradient);
+    border-color: var(--eduges-primary);
+    color: #FFFFFF;
+}
+
 .btn-eduges:disabled {
     background: #9AAEC2;
     border-color: #9AAEC2;
@@ -251,115 +261,6 @@ select:focus-visible,
 }
 
 /* ============================================
-   Dashboard — Navbar (glass, sticky)
-   ============================================ */
-
-.navbar-eduges {
-    position: sticky;
-    top: 0;
-    z-index: 1030;
-    background: var(--eduges-gradient);
-    box-shadow: 0 2px 16px rgba(11, 67, 121, 0.18);
-}
-
-.navbar-eduges .nav-link {
-    color: rgba(255, 255, 255, 0.88);
-    font-size: 1rem;
-    font-weight: 500;
-    padding: 0.65rem 1rem;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    border-radius: 10px;
-    transition: background-color 0.2s, color 0.2s;
-}
-
-.navbar-eduges .nav-link:hover {
-    color: #FFFFFF;
-    background-color: rgba(255, 255, 255, 0.14);
-}
-
-.navbar-eduges .nav-link.active {
-    color: #FFFFFF;
-    background-color: rgba(255, 255, 255, 0.22);
-    font-weight: 700;
-}
-
-/* ============================================
-   Dashboard — Métricas
-   ============================================ */
-
-.card-metric {
-    background: #FFFFFF;
-    border: 1px solid var(--eduges-border);
-    border-radius: var(--eduges-radius-md);
-    padding: 1.5rem;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
-.card-metric:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--eduges-shadow-hover);
-}
-
-.metric-icon-box {
-    position: relative;
-    width: 54px;
-    height: 54px;
-    border-radius: var(--eduges-radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-/* Halo de color que hereda el color del ícono (currentColor),
-   así cada métrica queda diferenciada automáticamente sin
-   tener que tocar el HTML ni sumar clases nuevas */
-.metric-icon-box::after {
-    content: '';
-    position: absolute;
-    inset: -6px;
-    border-radius: inherit;
-    background: currentColor;
-    opacity: 0.18;
-    z-index: -1;
-}
-
-/* ============================================
-   Dashboard — Tablas
-   ============================================ */
-
-.card-table {
-    background: #FFFFFF;
-    border: 1px solid var(--eduges-border);
-    border-radius: var(--eduges-radius-lg);
-    overflow: hidden;
-}
-
-.table-responsive {
-    -webkit-overflow-scrolling: touch;
-}
-
-.table > :not(caption) > * > * {
-    padding: 1rem 1.1rem;
-    border-bottom-color: #EEF2F6;
-    vertical-align: middle;
-}
-
-.table thead th {
-    font-size: 0.82rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    color: var(--eduges-text-muted);
-    background-color: #FAFBFD;
-}
-
-.table-hover > tbody > tr:hover > * {
-    background-color: var(--eduges-primary-light);
-}
-
-/* ============================================
    Permisos por rol (layout.js)
    Los elementos con data-requiere-permiso no se muestran hasta
    confirmar que el usuario tiene el permiso, así no "parpadean"
@@ -371,12 +272,8 @@ select:focus-visible,
 }
 
 /* ============================================
-   Profesionales — ficha en panel lateral
+   Fichas (pacientes y profesionales)
    ============================================ */
-
-.offcanvas-ficha {
-    --bs-offcanvas-width: 460px;
-}
 
 .ficha-dato dt {
     font-size: 0.78rem;
@@ -410,11 +307,6 @@ select:focus-visible,
     cursor: pointer;
 }
 
-/* Con un panel lateral abierto a la derecha, los avisos pasan a la izquierda para no taparlo */
-body:has(.offcanvas-end.show) #eduges-avisos {
-    right: auto !important;
-    left: 0;
-}
 /* ============================================
    Logo (static/img/Logo.png ya trae su cuadrado azul):
    sin marco, con borde suave y sombra para que se despegue del fondo azul
@@ -573,119 +465,12 @@ body:has(.offcanvas-end.show) #eduges-avisos {
 }
 
 /* ============================================
-   Dashboard del profesional
+   Inicio
    ============================================ */
-
-/* Celular: un bloque debajo del otro, en el orden del HTML
-   (próxima sesión, agenda, CUD, buscador).
-   Pantalla grande: buscador y agenda a la izquierda; próxima sesión
-   y CUD a la derecha. ("Sin registrar" queda oculto hasta que exista la API de sesiones.) */
-.dashboard-grid {
-    display: grid;
-    gap: 1.5rem;
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-}
-
-@media (min-width: 992px) {
-    .dashboard-grid {
-        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-        grid-template-areas:
-            "buscador proxima"
-            "agenda   cud";
-    }
-
-    .dashboard-agenda { grid-area: agenda; }
-    .dashboard-proxima { grid-area: proxima; }
-    .dashboard-cud { grid-area: cud; }
-    .dashboard-buscador { grid-area: buscador; }
-}
-
-/* La tarjeta del buscador deja salir la lista de sugerencias
-   (.card-table recorta lo que sobresale) */
-.dashboard-buscador {
-    overflow: visible;
-    position: relative;
-    z-index: 2;
-}
 
 /* Aviso de error del inicio: solo se ve si tiene contenido */
 #inicio-error:empty {
     display: none;
-}
-
-/* Números del dashboard que llevan a otra pantalla */
-.metrica-enlace-texto {
-    color: var(--eduges-primary);
-}
-
-.metrica-enlace:hover .metrica-enlace-texto,
-.metrica-enlace:focus-visible .metrica-enlace-texto {
-    text-decoration: underline;
-}
-
-.dashboard-hora {
-    min-width: 3.5rem;
-    font-family: var(--eduges-font-display);
-    font-weight: 700;
-    color: var(--eduges-primary);
-}
-
-.dashboard-hora-grande {
-    font-family: var(--eduges-font-display);
-    font-size: 1.75rem;
-    font-weight: 800;
-    color: var(--eduges-primary);
-}
-
-.min-w-0 {
-    min-width: 0;
-}
-
-/* Estados de turno y de CUD: color + ícono + texto (nunca solo color) */
-.badge-turno,
-.badge-cud-alerta,
-.badge-cud-vencido {
-    font-weight: 600;
-    border: 1px solid transparent;
-}
-
-.badge-turno-pendiente {
-    background-color: var(--eduges-warning-bg);
-    border-color: var(--eduges-warning-border);
-    color: var(--eduges-warning);
-}
-
-.badge-turno-confirmado {
-    background-color: var(--eduges-primary-light);
-    border-color: #C6DAFC;
-    color: var(--eduges-primary);
-}
-
-.badge-turno-realizado {
-    background-color: var(--eduges-success-bg);
-    border-color: var(--eduges-success-border);
-    color: var(--eduges-success);
-}
-
-.badge-turno-cancelado,
-.badge-cud-vencido {
-    background-color: var(--eduges-danger-bg);
-    border-color: var(--eduges-danger-border);
-    color: var(--eduges-danger);
-}
-
-.badge-cud-vigente {
-    font-weight: 600;
-    border: 1px solid var(--eduges-success-border);
-    background-color: var(--eduges-success-bg);
-    color: var(--eduges-success);
-}
-
-.badge-cud-alerta {
-    background-color: var(--eduges-warning-bg);
-    border-color: var(--eduges-warning-border);
-    color: var(--eduges-warning);
 }
 
 /* ============================================
@@ -749,13 +534,23 @@ body:has(.offcanvas-end.show) #eduges-avisos {
 }
 
 /* ============================================
-   Turnos: vista de una semana (un bloque por día)
+   Íconos de Material Symbols (también en el login: botón "Mostrar contraseña")
    ============================================ */
-.turnos-dia + .turnos-dia {
-    border-top: 1px solid var(--eduges-border);
+.ms {
+    font-family: 'Material Symbols Rounded';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    font-feature-settings: 'liga';
 }
 
-/* Hoy: barra de color a la izquierda + etiqueta "Hoy" (no solo color) */
-.turnos-dia-hoy {
-    box-shadow: inset 4px 0 0 var(--eduges-primary);
+.ms-chico {
+    font-size: 18px;
+    vertical-align: -4px;
+    margin-right: 4px;
 }

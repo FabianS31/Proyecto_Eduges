@@ -18,8 +18,9 @@ export const auth = {
     csrf: () => api.get('/auth/csrf/', { redirigirSi401: false }),
 
     // 200 → { id, usuario, rol }. 400 → credenciales incorrectas. 429 → bloqueado ({ reintentar_en })
-    login: (usuario, password, recordar = false) =>
-        api.post('/auth/login/', { usuario, password, recordar }, { redirigirSi401: false }),
+    // La sesión se cierra al cerrar el navegador o tras 20 minutos sin uso.
+    login: (usuario, password) =>
+        api.post('/auth/login/', { usuario, password }, { redirigirSi401: false }),
 
     logout: () => api.post('/auth/logout/'),
 
@@ -94,7 +95,8 @@ async function cambiarTurnos(llamada) {
 
 export const turnos = {
     // Un profesional recibe solo sus turnos; los administradores, todos. Ordenados por fecha y hora:
-    // [{ id_turno, fecha, hora: "HH:MM:SS", paciente_id, profesional_id, estado: "Pendiente" }]
+    // [{ id_turno, fecha, hora: "HH:MM:SS", paciente_id, profesional_id,
+    //    estado: { ID_EstadoTurno: 1, Estado: "Pendiente" } }]
     listar() {
         turnosEnMemoria ??= api.get('/turnos/').catch((error) => {
             turnosEnMemoria = null;
@@ -113,6 +115,11 @@ export const turnos = {
 
     // No borra: lo pasa a Cancelado
     cancelar: (id) => cambiarTurnos(() => api.delete(`/turnos/${id}/`)),
+
+    // Cambios permitidos (los valida la API): Pendiente → Confirmado; Confirmado → Ausente
+    // (desde la hora del turno) o Realizado (pasada la hora de duración); Ausente → Realizado.
+    // Ausente y Realizado: solo el profesional del turno o el SuperAdministrador.
+    cambiarEstado: (id, estado) => cambiarTurnos(() => api.patch(`/turnos/${id}/estado/`, { ID_EstadoTurno: estado })),
 };
 
 // ------------------------------------------------------------

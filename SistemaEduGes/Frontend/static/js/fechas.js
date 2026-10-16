@@ -28,6 +28,15 @@ export function sumarDias(iso, dias) {
     return fechaISO(fecha);
 }
 
+// "2026-11-30" + 3 meses → "2027-02-28" (si el mes no tiene ese día, el último del mes)
+export function sumarMeses(iso, meses) {
+    const [anio, mes, dia] = iso.split('-').map(Number);
+    const destino = new Date(anio, mes - 1 + meses, 1);
+    const ultimoDia = new Date(destino.getFullYear(), destino.getMonth() + 1, 0).getDate();
+    destino.setDate(Math.min(dia, ultimoDia));
+    return fechaISO(destino);
+}
+
 // Años cumplidos a hoy: "2017-03-10" → 9
 export function edad(nacimiento) {
     const [anio, mes, dia] = nacimiento.split('-').map(Number);
