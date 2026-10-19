@@ -5,13 +5,59 @@ from turnos.models import Turno, EstadoTurno
 from APIs.turnos.services.turno_service import TurnoService
 
 
+# Modelos relacionados obtenidos desde las relaciones de Turno.
+Paciente = (
+    Turno._meta.get_field('paciente')
+    .remote_field.model
+)
+
+Profesional = (
+    Turno._meta.get_field('profesional')
+    .remote_field.model
+)
+
+
+# ---------------------------------------------------------
+# SERIALIZERS DE CLAVES FORÁNEAS
+# ---------------------------------------------------------
+
+class PacienteTurnoSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(
+        source='id_paciente',
+        read_only=True,
+    )
+
+    class Meta:
+        model = Paciente
+        fields = [
+            'id',
+            'nombre',
+            'apellido',
+        ]
+
+
+class ProfesionalTurnoSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(
+        source='id_profesional',
+        read_only=True,
+    )
+
+    class Meta:
+        model = Profesional
+        fields = [
+            'id',
+            'nombre',
+            'apellido',
+        ]
+
+
 class EstadoTurnoSerializer(serializers.ModelSerializer):
-    ID_EstadoTurno = serializers.IntegerField(
+    id = serializers.IntegerField(
         source='id_estado_turno',
         read_only=True,
     )
 
-    Estado = serializers.CharField(
+    nombre = serializers.CharField(
         source='estado',
         read_only=True,
     )
@@ -19,43 +65,57 @@ class EstadoTurnoSerializer(serializers.ModelSerializer):
     class Meta:
         model = EstadoTurno
         fields = [
-            'ID_EstadoTurno',
-            'Estado',
+            'id',
+            'nombre',
         ]
 
+
+# ---------------------------------------------------------
+# CAMPO QUE RECIBE UN ID Y DEVUELVE UN OBJETO DESCRIPTIVO
+# ---------------------------------------------------------
+
+class RelatedObjectField(serializers.PrimaryKeyRelatedField):
+
+    def __init__(self, *args, serializer_class=None, **kwargs):
+        self.serializer_class = serializer_class
+        super().__init__(*args, **kwargs)
+
+    def use_pk_only_optimization(self):
+        # Necesitamos el objeto relacionado completo
+        # para generar su representación descriptiva.
+        return False
+
+    def to_representation(self, value):
+        return self.serializer_class(value).data
+
+
+# ---------------------------------------------------------
+# SERIALIZER DE TURNO
+# ---------------------------------------------------------
 
 class TurnoSerializer(serializers.ModelSerializer):
 
     fecha = serializers.DateField(required=False)
     hora = serializers.TimeField(required=False)
 
-    paciente = serializers.PrimaryKeyRelatedField(
-        queryset=Turno._meta.get_field('paciente')
-        .remote_field.model.objects.all(),
-        write_only=True,
+    # Recibe un ID y devuelve los datos del paciente.
+    paciente = RelatedObjectField(
+        queryset=Paciente.objects.all(),
+        serializer_class=PacienteTurnoSerializer,
     )
 
-    profesional = serializers.PrimaryKeyRelatedField(
-        queryset=Turno._meta.get_field('profesional')
-        .remote_field.model.objects.all(),
+    # Recibe un ID y devuelve los datos del profesional.
+    profesional = RelatedObjectField(
+        queryset=Profesional.objects.all(),
+        serializer_class=ProfesionalTurnoSerializer,
         required=False,
-        write_only=True,
     )
 
+    # Permite crear varios turnos en una solicitud.
     turnos = serializers.ListField(
         child=serializers.DictField(),
         write_only=True,
         required=False,
-    )
-
-    paciente_id = serializers.IntegerField(
-        source='paciente.id_paciente',
-        read_only=True,
-    )
-
-    profesional_id = serializers.IntegerField(
-        source='profesional.id_profesional',
-        read_only=True,
     )
 
     estado = EstadoTurnoSerializer(
@@ -70,21 +130,22 @@ class TurnoSerializer(serializers.ModelSerializer):
             'fecha',
             'hora',
             'paciente',
-            'paciente_id',
             'profesional',
-            'profesional_id',
             'estado',
             'turnos',
         ]
 
         read_only_fields = [
             'id_turno',
-            'paciente_id',
-            'profesional_id',
             'estado',
         ]
 
+    # -----------------------------------------------------
+    # VALIDACIONES GENERALES
+    # -----------------------------------------------------
+
     def validate(self, attrs):
+
         # Edición de un turno existente: PUT o PATCH.
         if self.instance is not None:
 
@@ -157,6 +218,10 @@ class TurnoSerializer(serializers.ModelSerializer):
 
         return attrs
 
+    # -----------------------------------------------------
+    # VALIDAR LISTA DE TURNOS
+    # -----------------------------------------------------
+
     def validate_turnos(self, value):
         if not value:
             raise serializers.ValidationError(
@@ -187,6 +252,10 @@ class TurnoSerializer(serializers.ModelSerializer):
             })
 
         return turnos_validados
+
+    # -----------------------------------------------------
+    # CREAR TURNO O VARIOS TURNOS
+    # -----------------------------------------------------
 
     def create(self, validated_data):
         usuario = self.context['request'].user
@@ -221,6 +290,10 @@ class TurnoSerializer(serializers.ModelSerializer):
             profesional_id=profesional_id,
         )
 
+    # -----------------------------------------------------
+    # MODIFICAR TURNO
+    # -----------------------------------------------------
+
     def update(self, instance, validated_data):
         usuario = self.context['request'].user
 
@@ -239,9 +312,7 @@ class TurnoSerializer(serializers.ModelSerializer):
             instance.paciente,
         )
 
-        profesional = validated_data.get(
-            'profesional',
-        )
+        profesional = validated_data.get('profesional')
 
         profesional_id = (
             profesional.pk
