@@ -94,6 +94,15 @@ class ObraSocialSerializer(serializers.ModelSerializer):
         ]
 
 
+class ObraSocialRelatedField(serializers.PrimaryKeyRelatedField):
+
+    def use_pk_only_optimization(self):
+        return False
+
+    def to_representation(self, value):
+        return ObraSocialSerializer(value).data
+
+
 class ProfesionalResponsableSerializer(serializers.ModelSerializer):
 
     id = serializers.IntegerField(
@@ -112,12 +121,14 @@ class ProfesionalResponsableSerializer(serializers.ModelSerializer):
 
 class PacienteSerializer(serializers.ModelSerializer):
 
-    obra_social = ObraSocialSerializer(
-        read_only=True
+    obra_social = ObraSocialRelatedField(
+        queryset=ObraSocial.objects.all(),
+        required=True
     )
 
-    estado = EstadoPacienteSerializer(
-        read_only=True
+    estado = serializers.PrimaryKeyRelatedField(
+        queryset=EstadoPaciente.objects.all(),
+        required=False
     )
 
     profesional = serializers.PrimaryKeyRelatedField(

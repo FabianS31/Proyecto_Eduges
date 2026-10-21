@@ -101,12 +101,17 @@ class PacienteTutor(models.Model):
         db_column='ResponsablePrincipal'
     )
 
+    activo = models.BooleanField(
+        db_column='Activo',
+        default=True
+    )
+
     class Meta:
         managed = False
         db_table = 'pacientes_tutores'
         constraints = [
             models.UniqueConstraint(
                 fields=['paciente', 'tutor'],
-                name='UQ_PacienteTutor_Paciente_Tutor'
+                name='uq_paciente_tutor'
             )
         ]

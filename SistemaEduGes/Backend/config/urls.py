@@ -61,4 +61,9 @@ urlpatterns = [
         'api/turnos/',
         include('APIs.turnos.urls')
     ),
+
+    path(
+        'api/tutores/',
+        include('APIs.tutores.urls'),
+    ),
 ]
