@@ -1,3 +1,4 @@
+
 from django.urls import include, path
 from django.views.generic import RedirectView, TemplateView
 
@@ -41,29 +42,39 @@ urlpatterns = [
         name='login'
     ),
 
-    # API
+    # API de profesionales
     path(
         'api/profesionales/',
         include('APIs.profesionales.urls')
     ),
 
+    # API de autenticación
     path(
         'api/auth/',
         include('APIs.autenticacion.urls')
     ),
 
+    # API de pacientes
     path(
         'api/pacientes/',
         include('APIs.pacientes.urls')
     ),
 
+    # API de turnos
     path(
         'api/turnos/',
         include('APIs.turnos.urls')
     ),
 
+    # API de tutores
     path(
         'api/tutores/',
         include('APIs.tutores.urls'),
+    ),
+
+    # API de reportes
+    path(
+        'api/reportes/',
+        include('APIs.reportes.urls')
     ),
 ]
