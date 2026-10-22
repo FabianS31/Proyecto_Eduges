@@ -14,7 +14,7 @@
 // ============================================================
 
 import { crearCombobox } from '../componentes/combobox.js';
-import { prepararFormularioPaciente } from '../componentes/formulario-paciente.js';
+import { prepararFormularioPaciente } from '../componentes/formulario-paciente.js?v=20261022_1';
 import {
     actualizarConLaHora,
     badgeEstadoTurno,
@@ -127,7 +127,7 @@ async function mostrarVistaGeneral(usuario) {
         <div class="col-12 col-sm-6"><dt>Rol</dt><dd>${usuario.rol?.nombre ?? '—'}</dd></div>
         ${especialidad && html`<div class="col-12"><dt>Especialidad</dt><dd>${especialidad}</dd></div>`}`);
 
-    if (!tienePermiso(usuario, PERMISO.PROFESIONALES_VER)) {
+    if (!tienePermiso(usuario, PERMISO.PROFESIONALES_EDITAR)) {
         return;
     }
     const contenedor = $('inicio-profesionales');
@@ -166,11 +166,11 @@ async function cargarCentro({ silencioso = false } = {}) {
         const manana = sumarDias(hoyISO(), 1);
         const deHoy = lista.filter((t) => t.fecha === hoyISO());
         const sinConfirmar = lista.filter((t) => (t.fecha === hoyISO() || t.fecha === manana)
-            && t.estado?.ID_EstadoTurno === ESTADO_TURNO.PENDIENTE);
+            && (t.estado?.id ?? t.estado?.ID_EstadoTurno) === ESTADO_TURNO.PENDIENTE);
         const proxima = proximaDeHoy(lista);
 
         const activos = deHoy.filter((t) => !estaCancelado(t));
-        const realizados = deHoy.filter((t) => t.estado?.ID_EstadoTurno === ESTADO_TURNO.REALIZADO).length;
+        const realizados = deHoy.filter((t) => (t.estado?.id ?? t.estado?.ID_EstadoTurno) === ESTADO_TURNO.REALIZADO).length;
         const porAtender = deHoy.filter((t) => estaActivo(t) && !yaEmpezo(t)).length;
         $('centro-hoy').textContent = activos.length;
         $('centro-hoy-detalle').textContent = activos.length === 0
@@ -201,7 +201,7 @@ async function cargarCentro({ silencioso = false } = {}) {
 async function cargarNumerosCentro() {
     const [listaPacientes, listaProfesionales] = await Promise.all([
         tienePermiso(estado.usuario, PERMISO.PACIENTES_VER) ? pacientes.listar().catch(() => null) : null,
-        tienePermiso(estado.usuario, PERMISO.PROFESIONALES_VER) ? profesionales.listar().catch(() => null) : null,
+        tienePermiso(estado.usuario, PERMISO.PROFESIONALES_EDITAR) ? profesionales.listar().catch(() => null) : null,
     ]);
     $('centro-cud').textContent = listaPacientes
         ? listaPacientes.filter((p) => estadoCud(p.cud_vencimiento).clave !== CUD.VIGENTE).length
@@ -299,7 +299,7 @@ function mostrarProxima(turno) {
 // "1 realizada · 3 por atender"
 function mostrarMetricaHoy(turnosDeHoy) {
     const activos = turnosDeHoy.filter((t) => !estaCancelado(t));
-    const realizadas = turnosDeHoy.filter((t) => t.estado?.ID_EstadoTurno === ESTADO_TURNO.REALIZADO).length;
+    const realizadas = turnosDeHoy.filter((t) => (t.estado?.id ?? t.estado?.ID_EstadoTurno) === ESTADO_TURNO.REALIZADO).length;
     const porAtender = turnosDeHoy.filter((t) => estaActivo(t) && !yaEmpezo(t)).length;
     $('metrica-hoy').textContent = activos.length;
     $('metrica-hoy-detalle').textContent = activos.length === 0

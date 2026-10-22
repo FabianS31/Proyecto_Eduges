@@ -175,7 +175,7 @@
                         <a href="{% url 'pacientes' %}?cud=alerta&amp;orden=cud" class="eg-stat__link">Ver cuáles<span class="ms" aria-hidden="true">arrow_forward</span></a>
                     </div>
                 </div>
-                <div class="eg-stat" data-requiere-permiso="profesionales.ver">
+                <div class="eg-stat" data-requiere-permiso="profesionales.edit">
                     <div class="eg-stat__icon eg-stat__icon--green"><span class="ms" aria-hidden="true">badge</span></div>
                     <div class="eg-stat__body">
                         <span class="eg-stat__label" id="centro-profesionales-titulo">Profesionales</span>
@@ -228,7 +228,7 @@
                 <dl class="ficha-dato row g-0 mb-0 mt-2" id="inicio-cuenta"></dl>
             </div>
         </div>
-        <div class="eg-stat" data-requiere-permiso="profesionales.ver">
+        <div class="eg-stat" data-requiere-permiso="profesionales.edit">
             <div class="eg-stat__icon eg-stat__icon--green"><span class="ms" aria-hidden="true">badge</span></div>
             <div class="eg-stat__body">
                 <span class="eg-stat__label" id="inicio-profesionales-titulo">Profesionales</span>
@@ -257,7 +257,7 @@
                     <span class="eg-stat__sub">Pacientes y vencimiento del CUD</span>
                 </div>
             </a>
-            <a href="{% url 'profesionales' %}" class="eg-stat eg-stat--enlace" data-requiere-permiso="profesionales.ver">
+            <a href="{% url 'profesionales' %}" class="eg-stat eg-stat--enlace" data-requiere-permiso="profesionales.edit">
                 <div class="eg-stat__icon eg-stat__icon--green"><span class="ms" aria-hidden="true">badge</span></div>
                 <div class="eg-stat__body">
                     <span class="eg-stat__titulo">Profesionales</span>
@@ -274,5 +274,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script type="module" src="{% static 'js/paginas/dashboard.js' %}"></script>
+<script type="module" src="{% static 'js/paginas/dashboard.js' %}?v=20261022_1"></script>
 {% endblock %}

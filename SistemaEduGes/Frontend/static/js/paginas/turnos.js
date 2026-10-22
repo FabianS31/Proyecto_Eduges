@@ -156,10 +156,10 @@ function vistaSemana(dias, lista, proxima) {
                     </h3>
                     ${delDia.map((t) => html`
                         <button type="button" class="eg-slot ${claseTurno(t, { esProxima: t === proxima })}" data-ir-a-dia="${fecha}"
-                                aria-label="${formatearHora(t.hora)}, ${nombrePaciente(t)}, ${t.estado?.Estado ?? ''}. Ver el día">
+                                aria-label="${formatearHora(t.hora)}, ${nombrePaciente(t)}, ${t.estado?.nombre ?? t.estado?.Estado ?? ''}. Ver el día">
                             <span class="eg-slot__time">${formatearHora(t.hora)}</span>
                             <span class="eg-slot__name">${nombrePaciente(t, { apellidoPrimero: true })}</span>
-                            <span class="eg-slot__estado">${t === proxima ? 'Próxima · ' : ''}${t.estado?.Estado ?? ''}${conProfesional() ? ` · ${nombreProfesional(t)}` : ''}</span>
+                            <span class="eg-slot__estado">${t === proxima ? 'Próxima · ' : ''}${t.estado?.nombre ?? t.estado?.Estado ?? ''}${conProfesional() ? ` · ${nombreProfesional(t)}` : ''}</span>
                         </button>`)}
                     ${delDia.length === 0 && html`<span class="eg-week__empty">Sin turnos</span>`}
                     ${botonAgendar(fecha, { enlace: true })}

@@ -65,7 +65,7 @@ function sumarMinutos(hora, minutos) {
 export const fechaMaximaTurno = () => sumarDias(hoyISO(), TURNO_DIAS_ANTICIPACION);
 
 // La API devuelve el estado como { ID_EstadoTurno, Estado }
-const idEstado = (turno) => turno.estado?.ID_EstadoTurno;
+const idEstado = (turno) => turno.estado?.id ?? turno.estado?.ID_EstadoTurno;
 
 // Pendiente o confirmado: todavía se puede atender, reprogramar o cancelar
 export const estaActivo = (turno) => [ESTADO_TURNO.PENDIENTE, ESTADO_TURNO.CONFIRMADO].includes(idEstado(turno));
@@ -89,11 +89,13 @@ export const conMayuscula = (texto) => texto.charAt(0).toUpperCase() + texto.sli
 // La API devuelve solo los IDs: los nombres salen de las listas de pacientes y profesionales.
 // Si no están (ej.: el paciente ya no está asignado a este profesional), se muestra el número.
 export function nombrePaciente(turno, opciones) {
-    return turno.paciente ? nombreCompleto(turno.paciente, opciones) : `Paciente N° ${turno.paciente_id}`;
+    const id = turno.paciente?.id ?? turno.paciente_id ?? '—';
+    return turno.paciente ? nombreCompleto(turno.paciente, opciones) : `Paciente N° ${id}`;
 }
 
 export function nombreProfesional(turno) {
-    return turno.profesional ? nombreCompleto(turno.profesional) : `Profesional N° ${turno.profesional_id}`;
+    const id = turno.profesional?.id ?? turno.profesional_id ?? '—';
+    return turno.profesional ? nombreCompleto(turno.profesional) : `Profesional N° ${id}`;
 }
 
 // Estado del turno: siempre con ícono y texto, no solo color
@@ -105,12 +107,13 @@ const ESTILO_ESTADO_TURNO = {
     [ESTADO_TURNO.AUSENTE]: { chip: '', icono: 'person_off', fila: 'is-done is-absent' },
 };
 
-const estiloDe = (estadoTurno) => ESTILO_ESTADO_TURNO[estadoTurno?.ID_EstadoTurno] ?? { chip: '', icono: 'help', fila: '' };
+const estiloDe = (estadoTurno) => ESTILO_ESTADO_TURNO[estadoTurno?.id ?? estadoTurno?.ID_EstadoTurno] ?? { chip: '', icono: 'help', fila: '' };
 
 // estadoTurno: { ID_EstadoTurno, Estado }, como lo devuelve la API
 export function badgeEstadoTurno(estadoTurno) {
     const estilo = estiloDe(estadoTurno);
-    return html`<span class="eg-chip ${estilo.chip}">${icono(estilo.icono)}${estadoTurno?.Estado ?? 'Sin estado'}</span>`;
+    const nombre = estadoTurno?.nombre ?? estadoTurno?.Estado ?? 'Sin estado';
+    return html`<span class="eg-chip ${estilo.chip}">${icono(estilo.icono)}${nombre}</span>`;
 }
 
 // Clase de color para la agenda: realizado, cancelado, pendiente o la próxima sesión
@@ -256,11 +259,19 @@ export async function obtenerTurnos() {
     const profesionalesPorId = new Map(listaProfesionales.map((p) => [p.id_profesional, p]));
     const yo = deProfesional ? usuarioActual.profesional : null;
     const completos = lista
-        .map((t) => ({
-            ...t,
-            paciente: pacientesPorId.get(t.paciente_id) ?? null,
-            profesional: yo ?? profesionalesPorId.get(t.profesional_id) ?? null,
-        }))
+        .map((t) => {
+            const pacId = t.paciente?.id ?? t.paciente_id;
+            const profId = t.profesional?.id ?? t.profesional_id;
+            const pac = (pacId ? pacientesPorId.get(pacId) : null) ?? t.paciente ?? null;
+            const prof = yo ?? (profId ? profesionalesPorId.get(profId) : null) ?? t.profesional ?? null;
+            return {
+                ...t,
+                paciente_id: pacId,
+                profesional_id: profId,
+                paciente: pac,
+                profesional: prof,
+            };
+        })
         .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
     turnosPorId = new Map(completos.map((t) => [t.id_turno, t]));
     firmaDibujada = firmaHoraria(completos);
@@ -353,7 +364,11 @@ export async function sugerirPacientes(texto) {
 
 // Para dar un turno: solo pacientes activos (la API no acepta turnos de pacientes inactivos)
 async function sugerirPacientesActivos(texto) {
-    const activos = (await pacientes.listar()).filter((p) => p.estado === ESTADO_PACIENTE.ACTIVO);
+    const todos = await pacientes.listar();
+    const activos = todos.filter((p) => {
+        const id = p.estado?.id ?? p.estado;
+        return id === ESTADO_PACIENTE.ACTIVO;
+    });
     return buscarEnLista(activos.map(opcionPaciente))(texto);
 }
 

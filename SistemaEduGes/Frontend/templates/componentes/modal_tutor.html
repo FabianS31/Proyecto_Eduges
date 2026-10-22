@@ -1,0 +1,120 @@
+<!-- ============================================================
+     EduGes - Modales de Gestión de Tutores (CU08 / CU09 / RN-08)
+     1. Modal Agregar Tutor (asocia tutor secundario al paciente).
+     2. Modal Editar Tutor (actualiza datos de contacto del tutor).
+     ============================================================ -->
+
+<!-- Modal: Agregar Tutor -->
+<div class="modal fade" id="modal-agregar-tutor" tabindex="-1" aria-labelledby="modal-agregar-tutor-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <form class="modal-content border-0 shadow" id="form-agregar-tutor" novalidate>
+            <div class="modal-header">
+                <h2 class="modal-title fs-6 fw-bold" id="modal-agregar-tutor-titulo">
+                    <span class="ms me-1" aria-hidden="true">person_add</span>Agregar tutor al paciente
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="form-agregar-tutor-errores"></div>
+                <input type="hidden" id="add-tutor-paciente-id" name="paciente_id">
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="add-tutor-nombre" class="form-label small fw-semibold">Nombre *</label>
+                        <input type="text" class="form-control" id="add-tutor-nombre" name="nombre" maxlength="100" required autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="add-tutor-apellido" class="form-label small fw-semibold">Apellido *</label>
+                        <input type="text" class="form-control" id="add-tutor-apellido" name="apellido" maxlength="100" required autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="add-tutor-dni" class="form-label small fw-semibold">DNI *</label>
+                        <input type="text" class="form-control" id="add-tutor-dni" name="dni" maxlength="20" inputmode="numeric" required
+                               autocomplete="off" aria-describedby="add-tutor-dni-ayuda">
+                        <div class="form-text" id="add-tutor-dni-ayuda">Sin puntos, 7 u 8 dígitos.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="add-tutor-parentesco" class="form-label small fw-semibold">Parentesco *</label>
+                        <select class="form-select" id="add-tutor-parentesco" name="parentesco_id" required>
+                            <option value="">Seleccioná un parentesco</option>
+                            <option value="5">Madre</option>
+                            <option value="1">Padre</option>
+                            <option value="2">Tutor Legal</option>
+                            <option value="3">Abuelo/a</option>
+                            <option value="4">Tío/a</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="add-tutor-telefono" class="form-label small fw-semibold">Teléfono *</label>
+                        <input type="tel" class="form-control" id="add-tutor-telefono" name="telefono" maxlength="30" required autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="add-tutor-movil" class="form-label small fw-semibold">Móvil / Celular</label>
+                        <input type="tel" class="form-control" id="add-tutor-movil" name="movil" maxlength="30" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="add-tutor-mail" class="form-label small fw-semibold">Mail</label>
+                        <input type="email" class="form-control" id="add-tutor-mail" name="mail" maxlength="150" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="add-tutor-domicilio" class="form-label small fw-semibold">Domicilio</label>
+                        <input type="text" class="form-control" id="add-tutor-domicilio" name="domicilio" maxlength="225" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-nuevo-tutor">Agregar tutor</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Editar Tutor -->
+<div class="modal fade" id="modal-editar-tutor" tabindex="-1" aria-labelledby="modal-editar-tutor-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <form class="modal-content border-0 shadow" id="form-editar-tutor" novalidate>
+            <div class="modal-header">
+                <h2 class="modal-title fs-6 fw-bold" id="modal-editar-tutor-titulo">
+                    <span class="ms me-1" aria-hidden="true">edit</span>Editar datos del tutor
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="form-editar-tutor-errores"></div>
+                <input type="hidden" id="edit-tutor-id" name="tutor_id">
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="edit-tutor-nombre" class="form-label small fw-semibold">Nombre *</label>
+                        <input type="text" class="form-control" id="edit-tutor-nombre" name="nombre" maxlength="100" required autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="edit-tutor-apellido" class="form-label small fw-semibold">Apellido *</label>
+                        <input type="text" class="form-control" id="edit-tutor-apellido" name="apellido" maxlength="100" required autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="edit-tutor-telefono" class="form-label small fw-semibold">Teléfono</label>
+                        <input type="tel" class="form-control" id="edit-tutor-telefono" name="telefono" maxlength="30" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="edit-tutor-movil" class="form-label small fw-semibold">Móvil / Celular</label>
+                        <input type="tel" class="form-control" id="edit-tutor-movil" name="movil" maxlength="30" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="edit-tutor-mail" class="form-label small fw-semibold">Mail</label>
+                        <input type="email" class="form-control" id="edit-tutor-mail" name="mail" maxlength="150" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="edit-tutor-domicilio" class="form-label small fw-semibold">Domicilio</label>
+                        <input type="text" class="form-control" id="edit-tutor-domicilio" name="domicilio" maxlength="225" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-editar-tutor">Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+</div>

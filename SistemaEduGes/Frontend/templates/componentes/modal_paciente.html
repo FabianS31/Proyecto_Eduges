@@ -2,7 +2,7 @@
      Nuevo paciente (POST /api/pacientes/). Lo maneja static/js/componentes/formulario-paciente.js.
      Si lo da de alta un profesional, el paciente queda asignado a él.
      Los name de los campos son las claves de error de la API: cada error se muestra debajo de su campo.
-     El tutor se suma cuando la API lo reciba.
+     El tutor Responsable Principal se crea y vincula en POST /api/tutores/ (CU01 / RN-08).
      ============================================================ -->
 <div class="modal fade" id="modal-paciente" tabindex="-1" aria-labelledby="modal-paciente-titulo" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
@@ -66,6 +66,59 @@
                         <div class="col-md-6">
                             <label for="pac-cud-vencimiento" class="form-label small fw-semibold">Vencimiento del CUD *</label>
                             <input type="date" class="form-control" id="pac-cud-vencimiento" name="cud_vencimiento" required>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="mb-4">
+                    <legend class="fs-6 fw-bold mb-3 d-flex align-items-center justify-content-between">
+                        <span><span class="ms me-1" aria-hidden="true">family_restroom</span>Datos del Tutor / Responsable Legal</span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle fs-7 fw-normal">
+                            <span class="ms me-1" aria-hidden="true" style="font-size: 13px;">star</span>Responsable Principal
+                        </span>
+                    </legend>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="tutor-nombre" class="form-label small fw-semibold">Nombre del tutor *</label>
+                            <input type="text" class="form-control" id="tutor-nombre" name="tutor_nombre" maxlength="100" required autocomplete="off">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tutor-apellido" class="form-label small fw-semibold">Apellido del tutor *</label>
+                            <input type="text" class="form-control" id="tutor-apellido" name="tutor_apellido" maxlength="100" required autocomplete="off">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tutor-dni" class="form-label small fw-semibold">DNI del tutor *</label>
+                            <input type="text" class="form-control" id="tutor-dni" name="tutor_dni" maxlength="20" inputmode="numeric" required
+                                   autocomplete="off" aria-describedby="tutor-dni-ayuda">
+                            <div class="form-text" id="tutor-dni-ayuda">Sin puntos, 7 u 8 dígitos.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tutor-parentesco" class="form-label small fw-semibold">Parentesco *</label>
+                            <select class="form-select" id="tutor-parentesco" name="tutor_parentesco" required>
+                                <option value="">Seleccioná un parentesco</option>
+                                <option value="5">Madre</option>
+                                <option value="1">Padre</option>
+                                <option value="2">Tutor Legal</option>
+                                <option value="3">Abuelo/a</option>
+                                <option value="4">Tío/a</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tutor-telefono" class="form-label small fw-semibold">Teléfono *</label>
+                            <input type="tel" class="form-control" id="tutor-telefono" name="tutor_telefono" maxlength="30" required autocomplete="off">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tutor-movil" class="form-label small fw-semibold">Móvil / Celular</label>
+                            <input type="tel" class="form-control" id="tutor-movil" name="tutor_movil" maxlength="30" autocomplete="off">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tutor-mail" class="form-label small fw-semibold">Mail del tutor</label>
+                            <input type="email" class="form-control" id="tutor-mail" name="tutor_mail" maxlength="150" autocomplete="off">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tutor-domicilio" class="form-label small fw-semibold">Domicilio</label>
+                            <input type="text" class="form-control" id="tutor-domicilio" name="tutor_domicilio" maxlength="225" autocomplete="off"
+                                   placeholder="Si difiere del paciente">
                         </div>
                     </div>
                 </fieldset>

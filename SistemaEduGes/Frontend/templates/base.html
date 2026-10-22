@@ -45,7 +45,7 @@
                 <a href="{% url 'pacientes' %}" class="eg-nav__item" data-requiere-permiso="pacientes.ver" {% if actual == 'pacientes' %}aria-current="page"{% endif %}>
                     <span class="ms" aria-hidden="true">groups</span>Pacientes
                 </a>
-                <a href="{% url 'profesionales' %}" class="eg-nav__item" data-requiere-permiso="profesionales.ver" {% if actual == 'profesionales' %}aria-current="page"{% endif %}>
+                <a href="{% url 'profesionales' %}" class="eg-nav__item" data-requiere-permiso="profesionales.edit" {% if actual == 'profesionales' %}aria-current="page"{% endif %}>
                     <span class="ms" aria-hidden="true">badge</span>Profesionales
                 </a>
                 {% endwith %}

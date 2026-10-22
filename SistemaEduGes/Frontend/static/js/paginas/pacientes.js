@@ -13,7 +13,8 @@
 // El dashboard enlaza a la ficha con /pacientes/?paciente=5.
 // ============================================================
 
-import { prepararFormularioPaciente } from '../componentes/formulario-paciente.js';
+import { prepararFormularioPaciente } from '../componentes/formulario-paciente.js?v=20261022_1';
+import { guardar } from '../componentes/formularios.js';
 import {
     enteroDeUrl,
     guardarEnUrl,
@@ -33,7 +34,7 @@ import {
     yaEmpezo,
 } from '../componentes/turnos.js';
 import { ESTADO_PACIENTE, PERMISO } from '../constantes.js';
-import { pacientes } from '../endpoints.js';
+import { pacientes, tutores } from '../endpoints.js';
 import { aFecha, edad, hoyISO, sumarDias } from '../fechas.js';
 import { esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
 import { coincideBusqueda, compararTexto } from '../texto.js';
@@ -42,6 +43,7 @@ import {
     bloqueCargando,
     bloqueVacio,
     celdaCud,
+    confirmar,
     CUD,
     demorar,
     enlaceMail,
@@ -52,6 +54,8 @@ import {
     iniciales,
     mostrarError,
     nombreCompleto,
+    notificar,
+    notificarError,
     renderizar,
 } from '../ui.js';
 
@@ -333,6 +337,16 @@ function abrirFicha(id) {
                     </dl>
                 </section>
 
+                <section class="eg-ficha__bloque" aria-labelledby="ficha-tutores-titulo">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h3 id="ficha-tutores-titulo" class="mb-0">${icono('family_restroom')}Tutores y Responsables</h3>
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 d-inline-flex align-items-center gap-1" data-accion="agregar-tutor">
+                            ${icono('person_add')}Agregar tutor
+                        </button>
+                    </div>
+                    <div id="ficha-tutores" aria-live="polite"></div>
+                </section>
+
                 <section class="eg-ficha__bloque" aria-labelledby="ficha-consentimiento-titulo">
                     <h3 id="ficha-consentimiento-titulo">${icono('task')}Consentimiento informado</h3>
                     ${p.consentimiento
@@ -355,6 +369,7 @@ function abrirFicha(id) {
         </div>`);
     panelFicha().show();
     cargarTurnosFicha();
+    cargarTutoresFicha(id);
 }
 
 // ------------------------------------------------------------
@@ -366,6 +381,83 @@ const puedeAgendar = (p) => p.estado === ESTADO_PACIENTE.ACTIVO && tienePermiso(
 
 const listaTurnosFicha = (lista) => html`
     <div class="eg-lista-ficha">${listaTurnos(lista, { conPaciente: false, conProfesional: !esProfesional(estado.usuario) })}</div>`;
+
+// ------------------------------------------------------------
+// Tutores del paciente en la ficha (CU08 / RN-08)
+// ------------------------------------------------------------
+async function cargarTutoresFicha(idPaciente) {
+    const contenedor = $('ficha-tutores');
+    if (!contenedor) {
+        return;
+    }
+    renderizar(contenedor, bloqueCargando(1));
+    try {
+        const todos = await tutores.listar();
+        if (estado.fichaId !== idPaciente) {
+            return;
+        }
+        const delPaciente = todos.flatMap((tutor) => {
+            const relaciones = (tutor.relaciones || []).filter((r) => r.paciente?.id === idPaciente && r.activo !== false);
+            return relaciones.map((r) => ({
+                ...tutor,
+                idRelacion: r.id,
+                parentesco: r.parentesco?.nombre ?? 'Tutor/a',
+                esPrincipal: Boolean(r.responsable_principal),
+            }));
+        });
+
+        if (delPaciente.length === 0) {
+            renderizar(contenedor, html`<p class="eg-ficha__vacio text-muted mb-0">${icono('info')}Sin tutores registrados aún.</p>`);
+            return;
+        }
+
+        renderizar(contenedor, html`
+            <div class="eg-tutores-lista">
+                ${delPaciente.map((t) => html`
+                    <div class="p-2 mb-2 rounded bg-light border">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="fw-bold">${t.nombre} ${t.apellido}</span>
+                            <span class="badge bg-secondary text-white">${t.parentesco}</span>
+                        </div>
+                        ${t.esPrincipal ? html`
+                            <div class="mb-2">
+                                <span class="eg-chip eg-chip--ok">${icono('star')}Responsable Principal</span>
+                            </div>` : ''}
+                        <dl class="ficha-dato row g-0 mb-2 small">
+                            ${t.dni ? html`<div class="col-6"><dt>DNI</dt><dd>${t.dni}</dd></div>` : ''}
+                            ${t.telefono ? html`<div class="col-6"><dt>Teléfono</dt><dd><a href="tel:${t.telefono}">${t.telefono}</a></dd></div>` : ''}
+                            ${t.movil ? html`<div class="col-6"><dt>Móvil</dt><dd><a href="tel:${t.movil}">${t.movil}</a></dd></div>` : ''}
+                            ${t.mail ? html`<div class="col-12"><dt>Mail</dt><dd>${enlaceMail(t.mail)}</dd></div>` : ''}
+                            ${t.domicilio ? html`<div class="col-12"><dt>Domicilio</dt><dd>${t.domicilio}</dd></div>` : ''}
+                        </dl>
+                        <div class="d-flex justify-content-end gap-1 pt-1 border-top">
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-inline-flex align-items-center gap-1"
+                                    data-accion="editar-tutor"
+                                    data-tutor-id="${t.id}"
+                                    data-tutor-nombre="${t.nombre}"
+                                    data-tutor-apellido="${t.apellido}"
+                                    data-tutor-telefono="${t.telefono ?? ''}"
+                                    data-tutor-movil="${t.movil ?? ''}"
+                                    data-tutor-mail="${t.mail ?? ''}"
+                                    data-tutor-domicilio="${t.domicilio ?? ''}">
+                                ${icono('edit')}Editar
+                            </button>
+                            ${!t.esPrincipal ? html`
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 d-inline-flex align-items-center gap-1"
+                                        data-accion="desvincular-tutor"
+                                        data-relacion-id="${t.idRelacion}"
+                                        data-tutor-nombre="${t.nombre} ${t.apellido}">
+                                    ${icono('person_remove')}Desvincular
+                                </button>` : ''}
+                        </div>
+                    </div>`)}
+            </div>`);
+    } catch (error) {
+        if (estado.fichaId === idPaciente) {
+            renderizar(contenedor, html`<p class="eg-ficha__vacio text-muted mb-0">${icono('error')}No se pudieron cargar los tutores.</p>`);
+        }
+    }
+}
 
 // silencioso: sin el "cargando" (para la actualización automática con la hora)
 async function cargarTurnosFicha({ silencioso = false } = {}) {
@@ -497,6 +589,143 @@ function prepararEventos() {
     });
 }
 
+function prepararGestionTutores() {
+    const modalAgregar = () => window.bootstrap.Modal.getOrCreateInstance($('modal-agregar-tutor'));
+    const modalEditar = () => window.bootstrap.Modal.getOrCreateInstance($('modal-editar-tutor'));
+    const formAgregar = $('form-agregar-tutor');
+    const erroresAgregar = $('form-agregar-tutor-errores');
+    const formEditar = $('form-editar-tutor');
+    const erroresEditar = $('form-editar-tutor-errores');
+
+    if (!formAgregar || !formEditar) {
+        return;
+    }
+
+    // Al cerrar modales hijos, mantener scroll en la ficha
+    $('modal-agregar-tutor').addEventListener('hidden.bs.modal', () => {
+        if ($('ficha-paciente').classList.contains('show')) {
+            document.body.classList.add('modal-open');
+        }
+    });
+    $('modal-editar-tutor').addEventListener('hidden.bs.modal', () => {
+        if ($('ficha-paciente').classList.contains('show')) {
+            document.body.classList.add('modal-open');
+        }
+    });
+
+    formAgregar.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        const campo = (nom) => formAgregar.elements[nom]?.value?.trim() ?? '';
+        const datos = {
+            nombre: campo('nombre'),
+            apellido: campo('apellido'),
+            dni: campo('dni'),
+            parentesco_id: Number(campo('parentesco_id')) || null,
+            telefono: campo('telefono'),
+            movil: campo('movil') || null,
+            mail: campo('mail') || null,
+            domicilio: campo('domicilio') || null,
+            paciente_id: estado.fichaId,
+            responsable_principal: false,
+        };
+
+        const errores = {};
+        if (!datos.nombre) errores.nombre = ['Indicá el nombre.'];
+        if (!datos.apellido) errores.apellido = ['Indicá el apellido.'];
+        if (!datos.dni) errores.dni = ['Indicá el DNI.'];
+        if (!datos.parentesco_id) errores.parentesco_id = ['Seleccioná el parentesco.'];
+        if (!datos.telefono) errores.telefono = ['Indicá un teléfono.'];
+
+        guardar({
+            formulario: formAgregar,
+            contenedorErrores: erroresAgregar,
+            boton: $('btn-guardar-nuevo-tutor'),
+            errores,
+            enviar: () => tutores.crear(datos),
+            mensajeExito: 'Tutor agregado correctamente al paciente.',
+            modal: modalAgregar,
+            alGuardar: () => cargarTutoresFicha(estado.fichaId),
+        });
+    });
+
+    formEditar.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        const campo = (nom) => formEditar.elements[nom]?.value?.trim() ?? '';
+        const idTutor = Number(campo('tutor_id'));
+        const datos = {
+            nombre: campo('nombre'),
+            apellido: campo('apellido'),
+            telefono: campo('telefono') || null,
+            movil: campo('movil') || null,
+            mail: campo('mail') || null,
+            domicilio: campo('domicilio') || null,
+        };
+
+        const errores = {};
+        if (!datos.nombre) errores.nombre = ['Indicá el nombre.'];
+        if (!datos.apellido) errores.apellido = ['Indicá el apellido.'];
+
+        guardar({
+            formulario: formEditar,
+            contenedorErrores: erroresEditar,
+            boton: $('btn-guardar-editar-tutor'),
+            errores,
+            enviar: () => tutores.actualizar(idTutor, datos),
+            mensajeExito: 'Datos del tutor actualizados correctamente.',
+            modal: modalEditar,
+            alGuardar: () => cargarTutoresFicha(estado.fichaId),
+        });
+    });
+
+    $('ficha-paciente').addEventListener('click', async (evento) => {
+        const btnAgregar = evento.target.closest('[data-accion="agregar-tutor"]');
+        if (btnAgregar) {
+            formAgregar.reset();
+            erroresAgregar.innerHTML = '';
+            $('add-tutor-paciente-id').value = estado.fichaId;
+            modalAgregar().show();
+            return;
+        }
+
+        const btnEditar = evento.target.closest('[data-accion="editar-tutor"]');
+        if (btnEditar) {
+            formEditar.reset();
+            erroresEditar.innerHTML = '';
+            $('edit-tutor-id').value = btnEditar.dataset.tutorId;
+            $('edit-tutor-nombre').value = btnEditar.dataset.tutorNombre;
+            $('edit-tutor-apellido').value = btnEditar.dataset.tutorApellido;
+            $('edit-tutor-telefono').value = btnEditar.dataset.tutorTelefono;
+            $('edit-tutor-movil').value = btnEditar.dataset.tutorMovil;
+            $('edit-tutor-mail').value = btnEditar.dataset.tutorMail;
+            $('edit-tutor-domicilio').value = btnEditar.dataset.tutorDomicilio;
+            modalEditar().show();
+            return;
+        }
+
+        const btnDesvincular = evento.target.closest('[data-accion="desvincular-tutor"]');
+        if (btnDesvincular) {
+            const idRelacion = Number(btnDesvincular.dataset.relacionId);
+            const nombre = btnDesvincular.dataset.tutorNombre;
+            const confirmado = await confirmar({
+                titulo: '¿Desvincular tutor?',
+                mensaje: `¿Estás seguro de que querés desvincular a ${nombre} como tutor de este paciente?`,
+                textoAceptar: 'Desvincular',
+                peligro: true,
+            });
+            if (!confirmado) {
+                return;
+            }
+            try {
+                await tutores.darDeBajaRelacion(idRelacion);
+                notificar('El tutor fue desvinculado del paciente.');
+                cargarTutoresFicha(estado.fichaId);
+            } catch (error) {
+                notificarError(error);
+            }
+        }
+    });
+}
+
 // Solo un profesional da de alta pacientes desde acá: la API se los asigna a él
 function prepararAlta() {
     const usuario = estado.usuario;
@@ -544,6 +773,7 @@ async function iniciar() {
 
     prepararAlta();
     prepararTurnosFicha();
+    prepararGestionTutores();
     if (await cargarListado() && fichaInicial) {
         abrirFicha(fichaInicial);
     }

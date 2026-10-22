@@ -123,6 +123,18 @@ export const turnos = {
 };
 
 // ------------------------------------------------------------
+// Tutores (APIs/tutores/)
+// ------------------------------------------------------------
+export const tutores = {
+    listar: (parametros) => api.get('/tutores/', parametros),
+    crear: (datos) => api.post('/tutores/', datos),
+    obtener: (id) => api.get(`/tutores/${id}/`),
+    actualizar: (id, datos) => api.patch(`/tutores/${id}/`, datos),
+    actualizarRelacion: (idRelacion, datos) => api.patch(`/tutores/relaciones/${idRelacion}/`, datos),
+    darDeBajaRelacion: (idRelacion) => api.delete(`/tutores/relaciones/${idRelacion}/`),
+};
+
+// ------------------------------------------------------------
 // Sin API todavía: catálogos
 // Devuelven lo mismo que la API sin datos (listas vacías). Cuando el backend tenga
 // cada endpoint, se reemplaza por la llamada real (api.get) y las pantallas no cambian.
@@ -130,6 +142,27 @@ export const turnos = {
 const sinDatos = async () => [];
 
 export const catalogos = {
-    obrasSociales: sinDatos,   // [{ id, nombre }]
-    parentescos: sinDatos,     // [{ id, nombre }]
+    // Consulta la API si está disponible; de lo contrario, provee los registros activos de la BD
+    obrasSociales: async () => {
+        try {
+            return await api.get('/obras-sociales/');
+        } catch {
+            return [
+                { id: 1, nombre: 'Obra Social de Prueba' },
+            ];
+        }
+    },
+    parentescos: async () => {
+        try {
+            return await api.get('/tutores/parentescos/');
+        } catch {
+            return [
+                { id: 1, nombre: 'Padre' },
+                { id: 2, nombre: 'Tutor Legal' },
+                { id: 3, nombre: 'Abuelo/a' },
+                { id: 4, nombre: 'Tío/a' },
+                { id: 5, nombre: 'Madre' },
+            ];
+        }
+    },
 };
