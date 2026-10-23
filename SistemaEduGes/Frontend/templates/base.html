@@ -48,6 +48,9 @@
                 <a href="{% url 'profesionales' %}" class="eg-nav__item" data-requiere-permiso="profesionales.edit" {% if actual == 'profesionales' %}aria-current="page"{% endif %}>
                     <span class="ms" aria-hidden="true">badge</span>Profesionales
                 </a>
+                <a href="{% url 'reportes' %}" class="eg-nav__item" {% if actual == 'reportes' %}aria-current="page"{% endif %}>
+                    <span class="ms" aria-hidden="true">bar_chart</span>Reportes
+                </a>
                 {% endwith %}
             </nav>
 
@@ -123,3 +126,4 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
+

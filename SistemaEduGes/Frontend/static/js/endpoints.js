@@ -139,6 +139,18 @@ export const tutores = {
 // Devuelven lo mismo que la API sin datos (listas vacías). Cuando el backend tenga
 // cada endpoint, se reemplaza por la llamada real (api.get) y las pantallas no cambian.
 // ------------------------------------------------------------
+// ------------------------------------------------------------
+// Reportes (APIs/reportes/)
+// ------------------------------------------------------------
+export const reportes = {
+    turnos: (filtros = {}, opciones = {}) =>
+        api.get('/reportes/turnos/', { ...opciones, parametros: filtros }),
+    pacientes: (filtros = {}, opciones = {}) =>
+        api.get('/reportes/pacientes/', { ...opciones, parametros: filtros }),
+    profesionales: (filtros = {}, opciones = {}) =>
+        api.get('/reportes/profesionales/', { ...opciones, parametros: filtros }),
+};
+
 const sinDatos = async () => [];
 
 export const catalogos = {

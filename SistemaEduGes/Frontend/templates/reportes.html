@@ -1,0 +1,395 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reportes e Informes | EduGes - Rincón Psi{% endblock %}
+
+{% block content %}
+<!-- Módulo de Reportes e Informes (CU11 / CA-04 Estandarización de Reportes)
+     Datos provistos por las APIs en /api/reportes/ (turnos, pacientes, profesionales).
+     Controlador en static/js/paginas/reportes.js -->
+
+<!-- Membrete Institucional (Solo visible al Imprimir / Guardar en PDF) -->
+<header class="eg-print-header d-none" id="reporte-membrete-print" aria-hidden="true">
+    <div class="eg-print-header__top">
+        <div class="eg-print-header__brand">
+            <h1 class="eg-print-title">EduGes — Sistema de Gestión de Sesiones</h1>
+            <p class="eg-print-subtitle">Centro Terapéutico e Instituto "Rincón Psi" · Práctica Profesional</p>
+        </div>
+        <div class="eg-print-header__meta">
+            <div><strong>Fecha de emisión:</strong> <span id="print-fecha">—</span></div>
+            <div><strong>Emitido por:</strong> <span id="print-usuario">—</span></div>
+        </div>
+    </div>
+    <div class="eg-print-header__banner">
+        <h2 id="print-reporte-titulo" class="eg-print-heading">Reporte Consolidado</h2>
+        <div id="print-criterios" class="eg-print-criterios">Criterios: Todos los registros</div>
+    </div>
+</header>
+
+<!-- Cabecera en pantalla -->
+<div class="eg-page-head d-print-none">
+    <div class="eg-page-head__text">
+        <span class="eg-eyebrow"><span class="ms" aria-hidden="true">bar_chart</span><span id="reportes-subtitulo">Módulo de estadísticas y auditoría</span></span>
+        <h1 class="eg-title">Reportes e Informes</h1>
+    </div>
+    <div class="eg-page-head__actions d-flex gap-2">
+        <button type="button" class="eg-btn eg-btn--ghost" id="btn-exportar-csv" title="Descargar datos en formato CSV">
+            <span class="ms" aria-hidden="true">download</span><span>Exportar CSV</span>
+        </button>
+        <button type="button" class="eg-btn eg-btn--lg eg-btn--primary" id="btn-imprimir">
+            <span class="ms" aria-hidden="true">print</span><span>Imprimir / Guardar en PDF</span>
+        </button>
+    </div>
+</div>
+
+<!-- Selector de tipo de reporte (Segmented tabs) -->
+<div class="eg-toolbar mb-4 d-print-none" role="region" aria-label="Selección de reporte">
+    <div class="eg-toolbar__group">
+        <span class="eg-label" id="tipo-reporte-label">Tipo de reporte</span>
+        <div class="eg-segmented" role="radiogroup" aria-labelledby="tipo-reporte-label">
+            <input type="radio" name="tipo_reporte" id="tab-turnos" value="turnos" checked>
+            <label for="tab-turnos" id="label-tab-turnos">
+                <span class="ms" aria-hidden="true">calendar_month</span>Turnos
+            </label>
+
+            <input type="radio" name="tipo_reporte" id="tab-pacientes" value="pacientes">
+            <label for="tab-pacientes" id="label-tab-pacientes">
+                <span class="ms" aria-hidden="true">groups</span>Pacientes
+            </label>
+
+            <input type="radio" name="tipo_reporte" id="tab-profesionales" value="profesionales">
+            <label for="tab-profesionales" id="label-tab-profesionales">
+                <span class="ms" aria-hidden="true">badge</span>Profesionales
+            </label>
+        </div>
+    </div>
+</div>
+
+<!-- Formulario de filtros dinámicos -->
+<form class="eg-filters mb-4 d-print-none" id="filtros-reporte" role="search" aria-label="Filtros del reporte">
+
+    <!-- FILTROS: TURNOS -->
+    <div class="eg-field" data-filtro-grupo="turnos">
+        <label for="filtro-turno-desde" class="eg-label">Fecha desde</label>
+        <input type="date" class="eg-input" id="filtro-turno-desde" name="fecha_desde">
+    </div>
+    <div class="eg-field" data-filtro-grupo="turnos">
+        <label for="filtro-turno-hasta" class="eg-label">Fecha hasta</label>
+        <input type="date" class="eg-input" id="filtro-turno-hasta" name="fecha_hasta">
+    </div>
+    <div class="eg-field" data-filtro-grupo="turnos">
+        <label for="filtro-turno-estado" class="eg-label">Estado del turno</label>
+        <select class="eg-select" id="filtro-turno-estado" name="estado_id">
+            <option value="">Todos los estados</option>
+            <option value="1">Pendiente</option>
+            <option value="2">Confirmado</option>
+            <option value="4">Realizado</option>
+            <option value="5">Ausente</option>
+            <option value="3">Cancelado</option>
+        </select>
+    </div>
+    <div class="eg-field" data-filtro-grupo="turnos" id="campo-turno-profesional" hidden>
+        <label for="filtro-turno-profesional" class="eg-label">Profesional</label>
+        <select class="eg-select" id="filtro-turno-profesional" name="profesional_id">
+            <option value="">Todos los profesionales</option>
+        </select>
+    </div>
+    <div class="eg-field" data-filtro-grupo="turnos">
+        <label for="filtro-turno-busqueda" class="eg-label">Buscar paciente</label>
+        <span class="eg-input-icon">
+            <span class="ms" aria-hidden="true">search</span>
+            <input type="search" id="filtro-turno-busqueda" name="q" placeholder="Nombre o apellido" autocomplete="off">
+        </span>
+    </div>
+
+    <!-- FILTROS: PACIENTES -->
+    <div class="eg-field eg-field--full d-none" data-filtro-grupo="pacientes">
+        <label for="filtro-paciente-q" class="eg-label">Buscar paciente</label>
+        <span class="eg-input-icon">
+            <span class="ms" aria-hidden="true">search</span>
+            <input type="search" id="filtro-paciente-q" name="q" placeholder="Nombre, apellido o DNI" autocomplete="off">
+        </span>
+    </div>
+    <div class="eg-field d-none" data-filtro-grupo="pacientes">
+        <label for="filtro-paciente-estado" class="eg-label">Estado</label>
+        <select class="eg-select" id="filtro-paciente-estado" name="estado_id">
+            <option value="">Todos los estados</option>
+            <option value="1">Activo</option>
+            <option value="2">Inactivo</option>
+        </select>
+    </div>
+    <div class="eg-field d-none" data-filtro-grupo="pacientes">
+        <label for="filtro-paciente-obra-social" class="eg-label">Obra Social</label>
+        <select class="eg-select" id="filtro-paciente-obra-social" name="obra_social_id">
+            <option value="">Todas las obras sociales</option>
+        </select>
+    </div>
+
+    <!-- FILTROS: PROFESIONALES -->
+    <div class="eg-field eg-field--full d-none" data-filtro-grupo="profesionales">
+        <label for="filtro-profesional-q" class="eg-label">Buscar profesional</label>
+        <span class="eg-input-icon">
+            <span class="ms" aria-hidden="true">search</span>
+            <input type="search" id="filtro-profesional-q" name="q" placeholder="Nombre, apellido, DNI o matrícula" autocomplete="off">
+        </span>
+    </div>
+    <div class="eg-field d-none" data-filtro-grupo="profesionales">
+        <label for="filtro-profesional-especialidad" class="eg-label">Especialidad</label>
+        <select class="eg-select" id="filtro-profesional-especialidad" name="especialidad_id">
+            <option value="">Todas las especialidades</option>
+            <option value="1">Psicopedagogo</option>
+        </select>
+    </div>
+    <div class="eg-field d-none" data-filtro-grupo="profesionales">
+        <label for="filtro-profesional-estado" class="eg-label">Estado profesional</label>
+        <select class="eg-select" id="filtro-profesional-estado" name="estado_id">
+            <option value="">Todos los estados</option>
+            <option value="1">Activo</option>
+            <option value="2">Inactivo</option>
+        </select>
+    </div>
+
+    <!-- BOTONES DE ACCIÓN -->
+    <div class="d-flex gap-2 align-items-end">
+        <button type="submit" class="eg-btn eg-btn--primary flex-grow-1" id="btn-aplicar-filtros">
+            <span class="ms" aria-hidden="true">filter_alt</span>Aplicar filtros
+        </button>
+        <button type="button" class="eg-btn" id="btn-limpiar-filtros" title="Restablecer filtros">
+            <span class="ms" aria-hidden="true">restart_alt</span>Limpiar
+        </button>
+    </div>
+</form>
+
+<!-- Resumen Cuantitativo / KPIs (CA-04) -->
+<section class="mb-4" aria-labelledby="kpis-titulo">
+    <h2 id="kpis-titulo" class="visually-hidden">Resumen de métricas</h2>
+    <div class="eg-stats" id="reporte-kpis" aria-live="polite">
+        <!-- Renderizado dinámico desde reportes.js -->
+    </div>
+</section>
+
+<!-- Card de Resultados / Tabla -->
+<section class="eg-card" aria-labelledby="reporte-titulo-tabla">
+    <div class="eg-card__head">
+        <div class="eg-card__title">
+            <span class="ms" aria-hidden="true">table_chart</span>
+            <h2 id="reporte-titulo-tabla">Listado detallado</h2>
+            <span class="eg-chip eg-chip--count" id="reporte-total" aria-live="polite">—</span>
+        </div>
+        <div class="d-print-none text-muted small" id="reporte-resumen-filtros"></div>
+    </div>
+
+    <!-- Contenedor de la tabla -->
+    <div id="reporte-tabla-contenedor">
+        <div class="table-responsive">
+            <table class="table eg-report-table align-middle mb-0" id="tabla-reporte" role="table">
+                <thead class="table-light" id="reporte-thead">
+                    <!-- Columnas inyectadas dinámicamente según el reporte -->
+                </thead>
+                <tbody id="reporte-cuerpo">
+                    <!-- Filas inyectadas por JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Estados auxiliares: cargando, vacío o error -->
+    <div id="reporte-estado" class="p-4" aria-live="polite">
+        <div class="placeholder-glow eg-cargando" aria-busy="true">
+            <span class="placeholder col-7 mb-2 d-block rounded"></span>
+            <span class="placeholder col-10 mb-2 d-block rounded"></span>
+            <span class="placeholder col-5 mb-2 d-block rounded"></span>
+            <span class="visually-hidden" role="status">Cargando reporte…</span>
+        </div>
+    </div>
+
+    <!-- Pie de página impreso institucional (CA-04) -->
+    <div class="eg-card__foot d-none d-print-block">
+        <div class="d-flex justify-content-between align-items-center text-muted small">
+            <span>EduGes &copy; 2026 — Sistema de Gestión · <b>Rincón Psi</b></span>
+            <span>Documento oficial de uso interno</span>
+        </div>
+    </div>
+</section>
+
+<!-- Estilos específicos para la vista e impresión (CA-04) -->
+<style>
+/* Estilos en pantalla para la tabla de reportes */
+.eg-report-table {
+    font-size: 15px;
+}
+.eg-report-table th {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--eg-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: 14px 18px;
+    border-bottom: 2px solid var(--eg-border-soft);
+    background-color: var(--eg-surface-2);
+}
+.eg-report-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--eg-border-soft);
+    color: var(--eg-ink-2);
+}
+.eg-report-table tr:hover td {
+    background-color: var(--eg-surface-2);
+}
+
+/* Membrete institucional para impresión */
+.eg-print-header {
+    border-bottom: 2px solid #222;
+    padding-bottom: 14px;
+    margin-bottom: 20px;
+}
+.eg-print-header__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+.eg-print-title {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0;
+    color: #0b1a30;
+}
+.eg-print-subtitle {
+    font-size: 12px;
+    color: #444;
+    margin: 2px 0 0;
+}
+.eg-print-header__meta {
+    font-size: 12px;
+    text-align: right;
+    line-height: 1.4;
+    color: #333;
+}
+.eg-print-heading {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 8px 0 2px;
+    color: #1f5fae;
+}
+.eg-print-criterios {
+    font-size: 12px;
+    color: #555;
+    font-style: italic;
+}
+
+/* ============================================================
+   ESTILOS DE IMPRESIÓN (@media print) - ERS CA-04
+   ============================================================ */
+@media print {
+    @page {
+        size: auto;
+        margin: 1.2cm 1.5cm;
+    }
+
+    body {
+        background: #fff !important;
+        color: #111 !important;
+        font-size: 12pt;
+    }
+
+    /* Ocultar elementos de navegación y control */
+    .eg-header,
+    .eg-footer,
+    .saltar-contenido,
+    .d-print-none,
+    .toast-container,
+    .modal {
+        display: none !important;
+    }
+
+    /* Mostrar membrete oficial */
+    #reporte-membrete-print,
+    .d-print-block {
+        display: block !important;
+    }
+
+    .eg-container,
+    .eg-main {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .eg-card {
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+
+    .eg-stats {
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 15px !important;
+    }
+
+    .eg-stat {
+        border: 1px solid #ccc !important;
+        padding: 10px !important;
+        box-shadow: none !important;
+        background: #fafafa !important;
+    }
+
+    .eg-stat__icon {
+        display: none !important;
+    }
+
+    .eg-stat__value {
+        font-size: 20px !important;
+        color: #111 !important;
+    }
+
+    .eg-stat__label {
+        font-size: 11px !important;
+        text-transform: uppercase !important;
+        color: #555 !important;
+    }
+
+    .eg-report-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 10.5pt !important;
+    }
+
+    .eg-report-table th,
+    .eg-report-table td {
+        padding: 6px 8px !important;
+        border: 1px solid #ccc !important;
+        color: #000 !important;
+    }
+
+    .eg-report-table th {
+        background-color: #f0f0f0 !important;
+        font-weight: bold !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .eg-chip {
+        border: 1px solid #999 !important;
+        padding: 2px 6px !important;
+        font-size: 9pt !important;
+        background: transparent !important;
+        color: #111 !important;
+    }
+
+    thead {
+        display: table-header-group;
+    }
+
+    tr {
+        page-break-inside: avoid;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/paginas/reportes.js' %}"></script>
+{% endblock %}
