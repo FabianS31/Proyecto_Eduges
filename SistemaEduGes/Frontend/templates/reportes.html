@@ -8,19 +8,32 @@
      Datos provistos por las APIs en /api/reportes/ (turnos, pacientes, profesionales).
      Controlador en static/js/paginas/reportes.js -->
 
-<!-- Membrete Institucional (Solo visible al Imprimir / Guardar en PDF) -->
+<!-- Membrete Ejecutivo Oficial (Solo visible al Imprimir / Guardar en PDF) -->
 <header class="eg-print-header d-none" id="reporte-membrete-print" aria-hidden="true">
-    <div class="eg-print-header__top">
+    <div class="eg-print-header__brand-row">
         <div class="eg-print-header__brand">
-            <h1 class="eg-print-title">EduGes — Sistema de Gestión de Sesiones</h1>
-            <p class="eg-print-subtitle">Centro Terapéutico e Instituto "Rincón Psi" · Práctica Profesional</p>
+            <img src="{% static 'img/Logo.png' %}" alt="" class="eg-print-logo" width="44" height="44">
+            <div>
+                <h1 class="eg-print-title">EduGes</h1>
+                <p class="eg-print-subtitle">Sistema de gestión web de sesiones</p>
+            </div>
         </div>
-        <div class="eg-print-header__meta">
-            <div><strong>Fecha de emisión:</strong> <span id="print-fecha">—</span></div>
-            <div><strong>Emitido por:</strong> <span id="print-usuario">—</span></div>
+        <div class="eg-print-meta-card">
+            <div class="eg-print-meta-item">
+                <span class="eg-print-meta-lbl">Emisión:</span>
+                <span class="eg-print-meta-val" id="print-fecha">—</span>
+            </div>
+            <div class="eg-print-meta-item">
+                <span class="eg-print-meta-lbl">Emisor:</span>
+                <span class="eg-print-meta-val" id="print-usuario">—</span>
+            </div>
+            <div class="eg-print-meta-item">
+                <span class="eg-print-meta-lbl">Período:</span>
+                <span class="eg-print-meta-val" id="print-periodo">—</span>
+            </div>
         </div>
     </div>
-    <div class="eg-print-header__banner">
+    <div class="eg-print-report-banner">
         <h2 id="print-reporte-titulo" class="eg-print-heading">Reporte Consolidado</h2>
         <div id="print-criterios" class="eg-print-criterios">Criterios: Todos los registros</div>
     </div>
@@ -194,11 +207,17 @@
         </div>
     </div>
 
-    <!-- Pie de página impreso institucional (CA-04) -->
+    <!-- Pie de página impreso institucional y firma profesional (CA-04) -->
     <div class="eg-card__foot d-none d-print-block">
-        <div class="d-flex justify-content-between align-items-center text-muted small">
-            <span>EduGes &copy; 2026 — Sistema de Gestión · <b>Rincón Psi</b></span>
-            <span>Documento oficial de uso interno</span>
+        <div class="eg-print-footer-row">
+            <div class="eg-print-footer-info">
+                <strong>EduGes</strong> — Sistema de gestión web de sesiones<br>
+                <span>Documento oficial confidencial emitido para auditoría y gestión clínica.</span>
+            </div>
+            <div class="eg-print-signature-box">
+                <div class="eg-print-signature-line"></div>
+                <span>Firma y Sello del Profesional</span>
+            </div>
         </div>
     </div>
 </section>
@@ -239,73 +258,43 @@
     background-color: var(--eg-surface-2);
 }
 
-/* Membrete institucional para impresión */
-.eg-print-header {
-    border-bottom: 2px solid #222;
-    padding-bottom: 14px;
-    margin-bottom: 20px;
-}
-.eg-print-header__top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 10px;
-}
-.eg-print-title {
-    font-size: 20px;
-    font-weight: 800;
-    margin: 0;
-    color: #0b1a30;
-}
-.eg-print-subtitle {
-    font-size: 12px;
-    color: #444;
-    margin: 2px 0 0;
-}
-.eg-print-header__meta {
-    font-size: 12px;
-    text-align: right;
-    line-height: 1.4;
-    color: #333;
-}
-.eg-print-heading {
-    font-size: 16px;
-    font-weight: 700;
-    margin: 8px 0 2px;
-    color: #1f5fae;
-}
-.eg-print-criterios {
-    font-size: 12px;
-    color: #555;
-    font-style: italic;
-}
-
 /* ============================================================
-   ESTILOS DE IMPRESIÓN (@media print) - ERS CA-04
+   ESTILOS DE IMPRESIÓN Y PDF MODERNOS (@media print) - ERS CA-04
    ============================================================ */
 @media print {
     @page {
-        size: auto;
-        margin: 1.2cm 1.5cm;
+        size: A4 portrait;
+        margin: 1.2cm 1.4cm 1.4cm 1.4cm;
+    }
+
+    *, *::before, *::after {
+        box-sizing: border-box;
+        text-shadow: none !important;
     }
 
     body {
-        background: #fff !important;
-        color: #111 !important;
-        font-size: 12pt;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        font-family: 'Figtree', system-ui, -apple-system, sans-serif !important;
+        font-size: 10pt !important;
+        line-height: 1.4 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 
-    /* Ocultar elementos de navegación y control */
+    /* Ocultar elementos irrelevantes para el PDF */
     .eg-header,
     .eg-footer,
     .saltar-contenido,
     .d-print-none,
     .toast-container,
-    .modal {
+    .modal,
+    .eg-toolbar,
+    .eg-filters {
         display: none !important;
     }
 
-    /* Mostrar membrete oficial */
+    /* Mostrar membrete oficial y elementos de impresión */
     #reporte-membrete-print,
     .d-print-block {
         display: block !important;
@@ -318,75 +307,275 @@
         margin: 0 !important;
     }
 
-    .eg-card {
-        border: 1px solid #ccc !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
+    /* Encabezado Ejecutivo */
+    .eg-print-header {
+        margin-bottom: 20px !important;
+        padding-bottom: 14px !important;
+        border-bottom: 2px solid #193153 !important;
     }
 
+    .eg-print-header__brand-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        gap: 16px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .eg-print-header__brand {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+
+    .eg-print-logo {
+        width: 44px !important;
+        height: 44px !important;
+        object-fit: contain !important;
+    }
+
+    .eg-print-title {
+        font-size: 24pt !important;
+        font-weight: 800 !important;
+        color: #193153 !important;
+        margin: 0 !important;
+        line-height: 1.1 !important;
+        letter-spacing: -0.02em !important;
+    }
+
+    .eg-print-subtitle {
+        font-size: 9.5pt !important;
+        font-weight: 600 !important;
+        color: #64748b !important;
+        margin: 2px 0 0 0 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+    }
+
+    .eg-print-meta-card {
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+        padding: 8px 14px !important;
+        min-width: 260px !important;
+        font-size: 8.5pt !important;
+        line-height: 1.5 !important;
+    }
+
+    .eg-print-meta-item {
+        display: flex !important;
+        justify-content: space-between !important;
+        gap: 10px !important;
+    }
+
+    .eg-print-meta-lbl {
+        color: #64748b !important;
+        font-weight: 600 !important;
+    }
+
+    .eg-print-meta-val {
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        text-align: right !important;
+    }
+
+    .eg-print-report-banner {
+        background: #f1f5f9 !important;
+        border-radius: 6px !important;
+        padding: 8px 14px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-top: 8px !important;
+    }
+
+    .eg-print-heading {
+        font-size: 12.5pt !important;
+        font-weight: 800 !important;
+        color: #193153 !important;
+        margin: 0 !important;
+    }
+
+    .eg-print-criterios {
+        font-size: 8.5pt !important;
+        color: #475569 !important;
+        font-weight: 500 !important;
+    }
+
+    /* Franja de Métricas / KPIs Modernas */
     .eg-stats {
         display: grid !important;
         grid-template-columns: repeat(4, 1fr) !important;
         gap: 10px !important;
-        margin-bottom: 15px !important;
+        margin-bottom: 18px !important;
     }
 
     .eg-stat {
-        border: 1px solid #ccc !important;
-        padding: 10px !important;
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+        padding: 10px 12px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 2px !important;
         box-shadow: none !important;
-        background: #fafafa !important;
     }
 
     .eg-stat__icon {
         display: none !important;
     }
 
-    .eg-stat__value {
-        font-size: 20px !important;
-        color: #111 !important;
+    .eg-stat__body {
+        display: flex !important;
+        flex-direction: column !important;
     }
 
     .eg-stat__label {
-        font-size: 11px !important;
+        font-size: 8pt !important;
+        font-weight: 700 !important;
         text-transform: uppercase !important;
-        color: #555 !important;
+        letter-spacing: 0.05em !important;
+        color: #64748b !important;
+    }
+
+    .eg-stat__value {
+        font-size: 18pt !important;
+        font-weight: 800 !important;
+        color: #193153 !important;
+        line-height: 1.2 !important;
+    }
+
+    .eg-stat__sub {
+        font-size: 7.5pt !important;
+        color: #94a3b8 !important;
+        margin-top: 2px !important;
+    }
+
+    /* Tabla Clínica de Alta Definición */
+    .eg-card {
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+    }
+
+    .eg-card__head {
+        display: none !important;
+    }
+
+    .table-responsive {
+        overflow: visible !important;
     }
 
     .eg-report-table {
         width: 100% !important;
         border-collapse: collapse !important;
-        font-size: 10.5pt !important;
+        font-size: 9.5pt !important;
+        border: 1px solid #cbd5e1 !important;
     }
 
-    .eg-report-table th,
-    .eg-report-table td {
-        padding: 6px 8px !important;
-        border: 1px solid #ccc !important;
-        color: #000 !important;
+    .eg-report-table thead {
+        display: table-header-group !important;
     }
 
     .eg-report-table th {
-        background-color: #f0f0f0 !important;
-        font-weight: bold !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        background-color: #f1f5f9 !important;
+        color: #1e293b !important;
+        font-weight: 700 !important;
+        font-size: 8pt !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 8px 10px !important;
+        text-align: left !important;
     }
 
+    .eg-report-table td {
+        padding: 8px 10px !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #1e293b !important;
+        vertical-align: middle !important;
+    }
+
+    .eg-report-table tbody tr:nth-child(even) {
+        background-color: #f8fafc !important;
+    }
+
+    .eg-report-table tbody tr {
+        page-break-inside: avoid !important;
+    }
+
+    /* Chips de Estado en Impresión */
     .eg-chip {
-        border: 1px solid #999 !important;
-        padding: 2px 6px !important;
-        font-size: 9pt !important;
-        background: transparent !important;
-        color: #111 !important;
+        display: inline-block !important;
+        padding: 2px 8px !important;
+        border-radius: 999px !important;
+        font-size: 8pt !important;
+        font-weight: 700 !important;
+        background: #ffffff !important;
+        border: 1.5px solid #94a3b8 !important;
+        color: #334155 !important;
+        white-space: nowrap !important;
     }
 
-    thead {
-        display: table-header-group;
+    .eg-chip .ms {
+        display: none !important;
     }
 
-    tr {
-        page-break-inside: avoid;
+    .eg-chip--ok {
+        border-color: #16a34a !important;
+        color: #15803d !important;
+        background: #f0fdf4 !important;
+    }
+
+    .eg-chip--primary,
+    .eg-chip--info {
+        border-color: #2563eb !important;
+        color: #1d4ed8 !important;
+        background: #eff6ff !important;
+    }
+
+    .eg-chip--warn {
+        border-color: #d97706 !important;
+        color: #b45309 !important;
+        background: #fffbeb !important;
+    }
+
+    .eg-chip--err {
+        border-color: #dc2626 !important;
+        color: #b91c1c !important;
+        background: #fef2f2 !important;
+    }
+
+    /* Pie de página institucional y Firma */
+    .eg-card__foot {
+        margin-top: 25px !important;
+        padding-top: 14px !important;
+        border-top: 1px solid #cbd5e1 !important;
+        page-break-inside: avoid !important;
+    }
+
+    .eg-print-footer-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-end !important;
+        font-size: 8.5pt !important;
+        color: #64748b !important;
+    }
+
+    .eg-print-footer-info strong {
+        color: #193153 !important;
+    }
+
+    .eg-print-signature-box {
+        text-align: center !important;
+        min-width: 220px !important;
+    }
+
+    .eg-print-signature-line {
+        border-bottom: 1px solid #475569 !important;
+        height: 40px !important;
+        margin-bottom: 4px !important;
     }
 }
 </style>

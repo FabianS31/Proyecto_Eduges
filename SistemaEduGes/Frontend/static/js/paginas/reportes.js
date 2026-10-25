@@ -728,25 +728,38 @@ function actualizarMembreteImpresion() {
         : 'Usuario del Sistema';
     const rolUsuario = estado.usuario?.rol?.nombre || 'Operador';
 
-    $('print-fecha').textContent = fechaHoraEmision;
-    $('print-usuario').textContent = `${nombreUsuario} (${rolUsuario})`;
+    const fechaEl = $('print-fecha');
+    if (fechaEl) fechaEl.textContent = fechaHoraEmision;
+
+    const usuarioEl = $('print-usuario');
+    if (usuarioEl) usuarioEl.textContent = `${nombreUsuario} (${rolUsuario})`;
 
     const titulos = {
-        turnos: 'Reporte Consolidado de Turnos y Sesiones Terapéuticas',
-        pacientes: 'Reporte Consolidado de Padrón General de Pacientes',
-        profesionales: 'Reporte Oficial del Equipo de Profesionales del Centro',
+        turnos: 'Reporte Consolidado de Turnos y Sesiones',
+        pacientes: 'Reporte de Padrón General de Pacientes',
+        profesionales: 'Reporte Oficial del Equipo Profesional',
     };
-    $('print-reporte-titulo').textContent = titulos[estado.tipo] || 'Reporte Oficial EduGes';
+    const tituloEl = $('print-reporte-titulo');
+    if (tituloEl) tituloEl.textContent = titulos[estado.tipo] || 'Reporte Oficial EduGes';
 
-    // Construir resumen textual de criterios aplicados
+    let periodoTexto = 'Histórico a la fecha';
     let resumen = `Registros: ${estado.resultados.length}`;
-    if (estado.tipo === 'turnos') {
-        const desde = $('filtro-turno-desde').value ? formatearFecha($('filtro-turno-desde').value) : null;
-        const hasta = $('filtro-turno-hasta').value ? formatearFecha($('filtro-turno-hasta').value) : null;
-        const estadoSel = $('filtro-turno-estado');
-        const estadoTexto = estadoSel.value ? estadoSel.options[estadoSel.selectedIndex].text : 'Todos';
 
-        resumen = `Período: ${desde || 'Histórico'} al ${hasta || 'Hoy'} | Estado: ${estadoTexto}`;
+    if (estado.tipo === 'turnos') {
+        const desde = $('filtro-turno-desde')?.value ? formatearFecha($('filtro-turno-desde').value) : null;
+        const hasta = $('filtro-turno-hasta')?.value ? formatearFecha($('filtro-turno-hasta').value) : null;
+        const estadoSel = $('filtro-turno-estado');
+        const estadoTexto = estadoSel?.value ? estadoSel.options[estadoSel.selectedIndex].text : 'Todos';
+
+        if (desde && hasta) {
+            periodoTexto = `${desde} al ${hasta}`;
+        } else if (desde) {
+            periodoTexto = `Desde ${desde}`;
+        } else if (hasta) {
+            periodoTexto = `Hasta ${hasta}`;
+        }
+
+        resumen = `Estado: ${estadoTexto}`;
         if (!estado.esPro) {
             const proSel = $('filtro-turno-profesional');
             const proTexto = proSel?.value ? proSel.options[proSel.selectedIndex].text : 'Todos los profesionales';
@@ -755,19 +768,27 @@ function actualizarMembreteImpresion() {
     } else if (estado.tipo === 'pacientes') {
         const estadoSel = $('filtro-paciente-estado');
         const osSel = $('filtro-paciente-obra-social');
-        const estadoTexto = estadoSel.value ? estadoSel.options[estadoSel.selectedIndex].text : 'Todos';
-        const osTexto = osSel.value ? osSel.options[osSel.selectedIndex].text : 'Todas';
+        const estadoTexto = estadoSel?.value ? estadoSel.options[estadoSel.selectedIndex].text : 'Todos';
+        const osTexto = osSel?.value ? osSel.options[osSel.selectedIndex].text : 'Todas';
+        periodoTexto = 'Padrón activo';
         resumen = `Estado: ${estadoTexto} | Obra Social: ${osTexto}`;
     } else if (estado.tipo === 'profesionales') {
         const espSel = $('filtro-profesional-especialidad');
         const estadoSel = $('filtro-profesional-estado');
-        const espTexto = espSel.value ? espSel.options[espSel.selectedIndex].text : 'Todas';
-        const estadoTexto = estadoSel.value ? estadoSel.options[estadoSel.selectedIndex].text : 'Todos';
+        const espTexto = espSel?.value ? espSel.options[espSel.selectedIndex].text : 'Todas';
+        const estadoTexto = estadoSel?.value ? estadoSel.options[estadoSel.selectedIndex].text : 'Todos';
+        periodoTexto = 'Nómina activa';
         resumen = `Especialidad: ${espTexto} | Estado: ${estadoTexto}`;
     }
 
-    $('print-criterios').textContent = `Criterios: ${resumen}`;
-    $('reporte-resumen-filtros').textContent = resumen;
+    const periodoEl = $('print-periodo');
+    if (periodoEl) periodoEl.textContent = periodoTexto;
+
+    const criteriosEl = $('print-criterios');
+    if (criteriosEl) criteriosEl.textContent = `Filtros: ${resumen} · Total: ${estado.resultados.length} registros`;
+
+    const resumenEl = $('reporte-resumen-filtros');
+    if (resumenEl) resumenEl.textContent = `${periodoTexto} | ${resumen}`;
 }
 
 // ============================================================
