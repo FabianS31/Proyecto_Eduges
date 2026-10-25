@@ -9,10 +9,11 @@
 //   - Administrador y SuperAdministrador: acceso total a los 3 reportes.
 // ============================================================
 
-import { catalogos, profesionales, reportes } from '../endpoints.js';
+import { buscarEnLista, crearCombobox } from '../componentes/combobox.js';
+import { catalogos, pacientes, profesionales, reportes } from '../endpoints.js';
 import { edad, hoyISO } from '../fechas.js';
 import { esProfesional, obtenerUsuario } from '../layout.js';
-import { coincideBusqueda } from '../texto.js';
+import { normalizarTexto } from '../texto.js';
 import {
     badgeCud,
     bloqueCargando,
@@ -45,6 +46,76 @@ const estado = {
     obrasSocialesLista: [],
     cargando: false,
 };
+
+// Instancias de combobox para búsqueda reactiva con sugerencias
+const combos = {
+    turnos: null,
+    pacientes: null,
+    profesionales: null,
+};
+
+let listaPacientesCache = null;
+let listaProfesionalesCache = null;
+
+// ============================================================
+// Proveedores de sugerencias para autocompletado (Combobox)
+// ============================================================
+async function obtenerPacientesOpciones() {
+    if (!listaPacientesCache) {
+        try {
+            const todos = await pacientes.listar();
+            listaPacientesCache = todos.map((p) => ({
+                valor: p.id_paciente,
+                texto: `${p.apellido}, ${p.nombre}`,
+                detalle: `DNI ${p.dni || 'S/D'}`,
+                item: p,
+            }));
+        } catch (error) {
+            console.warn('No se pudieron precargar pacientes para autocompletado:', error);
+            listaPacientesCache = [];
+        }
+    }
+    return listaPacientesCache;
+}
+
+async function sugerirPacientes(texto) {
+    const opciones = await obtenerPacientesOpciones();
+    return buscarEnLista(opciones)(texto);
+}
+
+async function obtenerProfesionalesOpciones() {
+    if (!listaProfesionalesCache) {
+        try {
+            const todos = await profesionales.listar();
+            listaProfesionalesCache = todos.map((p) => ({
+                valor: p.id_profesional,
+                texto: `${p.apellido}, ${p.nombre}`,
+                detalle: `Matrícula: ${p.matricula || 'S/D'} · ${p.especialidad?.nombre || 'General'}`,
+                item: p,
+            }));
+        } catch (error) {
+            console.warn('No se pudieron precargar profesionales para autocompletado:', error);
+            listaProfesionalesCache = [];
+        }
+    }
+    return listaProfesionalesCache;
+}
+
+async function sugerirProfesionales(texto) {
+    const opciones = await obtenerProfesionalesOpciones();
+    return buscarEnLista(opciones)(texto);
+}
+
+// Búsqueda tolerante a mayúsculas, minúsculas, acentos y signos de puntuación (ej: "Pérez, Lucía")
+function coincideBusquedaReporte(campos, busqueda) {
+    if (!busqueda || !busqueda.trim()) return true;
+    const texto = normalizarTexto(campos.filter(Boolean).join(' '));
+    const palabras = normalizarTexto(busqueda)
+        .replace(/[,;.]/g, ' ')
+        .split(/\s+/)
+        .filter(Boolean);
+    return palabras.every((palabra) => texto.includes(palabra));
+}
 
 // ============================================================
 // Inicialización del módulo
@@ -130,6 +201,55 @@ async function cargarCatalogos() {
 // Conexión de eventos
 // ============================================================
 function conectarEventos() {
+    // Inicializar comboboxes con sugerencias desplegables al escribir
+    const inputTurnosBusqueda = $('filtro-turno-busqueda');
+    if (inputTurnosBusqueda) {
+        combos.turnos = crearCombobox(inputTurnosBusqueda, {
+            buscar: sugerirPacientes,
+            minimo: 1,
+            textoLibre: true,
+            mensajeVacio: 'No se encontraron pacientes coincidentes.',
+            alElegir: (opcion) => {
+                if (opcion) {
+                    inputTurnosBusqueda.value = opcion.texto;
+                    consultarReporte();
+                }
+            },
+        });
+    }
+
+    const inputPacientesQ = $('filtro-paciente-q');
+    if (inputPacientesQ) {
+        combos.pacientes = crearCombobox(inputPacientesQ, {
+            buscar: sugerirPacientes,
+            minimo: 1,
+            textoLibre: true,
+            mensajeVacio: 'No se encontraron pacientes coincidentes.',
+            alElegir: (opcion) => {
+                if (opcion) {
+                    inputPacientesQ.value = opcion.texto;
+                    consultarReporte();
+                }
+            },
+        });
+    }
+
+    const inputProfesionalesQ = $('filtro-profesional-q');
+    if (inputProfesionalesQ) {
+        combos.profesionales = crearCombobox(inputProfesionalesQ, {
+            buscar: sugerirProfesionales,
+            minimo: 1,
+            textoLibre: true,
+            mensajeVacio: 'No se encontraron profesionales coincidentes.',
+            alElegir: (opcion) => {
+                if (opcion) {
+                    inputProfesionalesQ.value = opcion.texto;
+                    consultarReporte();
+                }
+            },
+        });
+    }
+
     // Cambio de pestaña (Tipo de reporte)
     document.querySelectorAll('input[name="tipo_reporte"]').forEach((radio) => {
         radio.addEventListener('change', async (e) => {
@@ -149,6 +269,9 @@ function conectarEventos() {
     // Botón limpiar filtros
     $('btn-limpiar-filtros').addEventListener('click', async () => {
         $('filtros-reporte').reset();
+        combos.turnos?.limpiar();
+        combos.pacientes?.limpiar();
+        combos.profesionales?.limpiar();
         await consultarReporte();
     });
 
@@ -231,7 +354,7 @@ async function consultarReporte() {
             // Filtrado complementario tolerante a mayúsculas/acentos
             if (textoBusqueda) {
                 items = items.filter((t) =>
-                    coincideBusqueda(
+                    coincideBusquedaReporte(
                         [
                             t.paciente?.nombre,
                             t.paciente?.apellido,
@@ -260,7 +383,7 @@ async function consultarReporte() {
 
             if (textoBusqueda) {
                 items = items.filter((p) =>
-                    coincideBusqueda(
+                    coincideBusquedaReporte(
                         [p.nombre, p.apellido, p.dni, p.obra_social?.nombre, p.numero_afiliado],
                         textoBusqueda
                     )
@@ -283,7 +406,7 @@ async function consultarReporte() {
 
             if (textoBusqueda) {
                 items = items.filter((p) =>
-                    coincideBusqueda(
+                    coincideBusquedaReporte(
                         [p.nombre, p.apellido, p.dni, p.matricula, p.especialidad?.nombre],
                         textoBusqueda
                     )

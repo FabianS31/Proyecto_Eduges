@@ -69,13 +69,13 @@
 <form class="eg-filters mb-4 d-print-none" id="filtros-reporte" role="search" aria-label="Filtros del reporte">
 
     <!-- FILTROS: TURNOS -->
-    <div class="eg-field" data-filtro-grupo="turnos">
-        <label for="filtro-turno-desde" class="eg-label">Fecha desde</label>
-        <input type="date" class="eg-input" id="filtro-turno-desde" name="fecha_desde">
-    </div>
-    <div class="eg-field" data-filtro-grupo="turnos">
-        <label for="filtro-turno-hasta" class="eg-label">Fecha hasta</label>
-        <input type="date" class="eg-input" id="filtro-turno-hasta" name="fecha_hasta">
+    <div class="eg-field eg-field--rango" data-filtro-grupo="turnos">
+        <label class="eg-label" for="filtro-turno-desde">Período (Desde — Hasta)</label>
+        <div class="eg-rango-fechas">
+            <input type="date" class="eg-input eg-rango-fechas__input" id="filtro-turno-desde" name="fecha_desde" title="Fecha desde" aria-label="Fecha desde">
+            <span class="eg-rango-fechas__sep" aria-hidden="true">a</span>
+            <input type="date" class="eg-input eg-rango-fechas__input" id="filtro-turno-hasta" name="fecha_hasta" title="Fecha hasta" aria-label="Fecha hasta">
+        </div>
     </div>
     <div class="eg-field" data-filtro-grupo="turnos">
         <label for="filtro-turno-estado" class="eg-label">Estado del turno</label>
@@ -96,19 +96,13 @@
     </div>
     <div class="eg-field" data-filtro-grupo="turnos">
         <label for="filtro-turno-busqueda" class="eg-label">Buscar paciente</label>
-        <span class="eg-input-icon">
-            <span class="ms" aria-hidden="true">search</span>
-            <input type="search" id="filtro-turno-busqueda" name="q" placeholder="Nombre o apellido" autocomplete="off">
-        </span>
+        <input type="text" class="eg-input" id="filtro-turno-busqueda" name="q" placeholder="Escribí el nombre o apellido del paciente..." autocomplete="off">
     </div>
 
     <!-- FILTROS: PACIENTES -->
     <div class="eg-field eg-field--full d-none" data-filtro-grupo="pacientes">
         <label for="filtro-paciente-q" class="eg-label">Buscar paciente</label>
-        <span class="eg-input-icon">
-            <span class="ms" aria-hidden="true">search</span>
-            <input type="search" id="filtro-paciente-q" name="q" placeholder="Nombre, apellido o DNI" autocomplete="off">
-        </span>
+        <input type="text" class="eg-input" id="filtro-paciente-q" name="q" placeholder="Escribí el nombre, apellido o DNI del paciente..." autocomplete="off">
     </div>
     <div class="eg-field d-none" data-filtro-grupo="pacientes">
         <label for="filtro-paciente-estado" class="eg-label">Estado</label>
@@ -128,10 +122,7 @@
     <!-- FILTROS: PROFESIONALES -->
     <div class="eg-field eg-field--full d-none" data-filtro-grupo="profesionales">
         <label for="filtro-profesional-q" class="eg-label">Buscar profesional</label>
-        <span class="eg-input-icon">
-            <span class="ms" aria-hidden="true">search</span>
-            <input type="search" id="filtro-profesional-q" name="q" placeholder="Nombre, apellido, DNI o matrícula" autocomplete="off">
-        </span>
+        <input type="text" class="eg-input" id="filtro-profesional-q" name="q" placeholder="Escribí el nombre, matrícula o DNI del profesional..." autocomplete="off">
     </div>
     <div class="eg-field d-none" data-filtro-grupo="profesionales">
         <label for="filtro-profesional-especialidad" class="eg-label">Especialidad</label>
@@ -214,6 +205,17 @@
 
 <!-- Estilos específicos para la vista e impresión (CA-04) -->
 <style>
+/* Botón Aplicar filtros: alto contraste */
+#btn-aplicar-filtros,
+.eg-filters .eg-btn--primary {
+    color: #ffffff !important;
+    font-weight: 700;
+}
+#btn-aplicar-filtros .ms,
+.eg-filters .eg-btn--primary .ms {
+    color: #ffffff !important;
+}
+
 /* Estilos en pantalla para la tabla de reportes */
 .eg-report-table {
     font-size: 15px;
