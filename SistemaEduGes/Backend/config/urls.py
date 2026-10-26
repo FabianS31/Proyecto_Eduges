@@ -1,6 +1,7 @@
 
 from django.urls import include, path
 from django.views.generic import RedirectView, TemplateView
+from APIs.sesiones import urls as sesiones_urls
 
 
 # Páginas del frontend: solo devuelven el esqueleto HTML.
@@ -83,4 +84,10 @@ urlpatterns = [
         'api/reportes/',
         include('APIs.reportes.urls')
     ),
+
+    path(
+        'api/sesiones/',
+        include(sesiones_urls)
+    ),
+
 ]
