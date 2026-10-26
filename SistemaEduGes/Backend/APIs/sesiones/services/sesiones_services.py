@@ -144,8 +144,7 @@ class SesionesService:
 
         else:
             raise PermissionDenied(
-                'Solo los profesionales y el '
-                'SuperAdministrador pueden consultar '
+                'No tenés permisos para consultar '
                 'los turnos pendientes de registro.'
             )
 
