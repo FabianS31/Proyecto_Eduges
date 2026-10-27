@@ -135,6 +135,30 @@ export const tutores = {
 };
 
 // ------------------------------------------------------------
+// Sesiones clinicas (APIs/sesiones/)
+// ------------------------------------------------------------
+export const sesiones = {
+    // Consulta turnos pendientes de registro de sesion (excluye cancelados)
+    // Filtros opcionales: { fecha_desde, fecha_hasta, paciente_id }
+    pendientes: (filtros = {}, opciones = {}) =>
+        api.get('/sesiones/pendientes/', { ...opciones, parametros: filtros }),
+
+    // Consulta el registro de sesion asociado al ID del turno
+    // Profesional/SuperAdmin reciben { id, trabajo_sesion, resultado, nota_especial }
+    // Administrador recibe solo { id, trabajo_sesion }
+    obtener: (turnoId, opciones = {}) =>
+        api.get(`/sesiones/${turnoId}/`, opciones),
+
+    // Crea el registro para un turno:
+    // datos: { turno_id, trabajo_sesion, resultado, nota_especial }
+    crear: (datos) => api.post('/sesiones/', datos),
+
+    // Modifica uno o varios campos del registro de sesion:
+    // datos: { trabajo_sesion?, resultado?, nota_especial? }
+    actualizar: (turnoId, datos) => api.patch(`/sesiones/${turnoId}/`, datos),
+};
+
+// ------------------------------------------------------------
 // Sin API todavía: catálogos
 // Devuelven lo mismo que la API sin datos (listas vacías). Cuando el backend tenga
 // cada endpoint, se reemplaza por la llamada real (api.get) y las pantallas no cambian.

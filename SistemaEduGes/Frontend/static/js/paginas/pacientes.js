@@ -33,8 +33,8 @@ import {
     prepararTurnos,
     yaEmpezo,
 } from '../componentes/turnos.js';
-import { ESTADO_PACIENTE, PERMISO } from '../constantes.js';
-import { pacientes, tutores } from '../endpoints.js';
+import { ESTADO_PACIENTE, ESTADO_TURNO, PERMISO } from '../constantes.js';
+import { pacientes, sesiones, tutores } from '../endpoints.js';
 import { aFecha, edad, hoyISO, sumarDias } from '../fechas.js';
 import { esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
 import { coincideBusqueda, compararTexto } from '../texto.js';
@@ -459,6 +459,70 @@ async function cargarTutoresFicha(idPaciente) {
     }
 }
 
+const conMayuscula = (texto) => (texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : '');
+
+function tarjetaEvolucionClinica({ turno: t, sesion }) {
+    const quienAtendio = !esProfesional(estado.usuario) && t.profesional ? ` · Profesional: ${nombreProfesional(t)}` : '';
+    const fechaHora = `${diaEnTexto(t.fecha)}, ${formatearHora(t.hora)} hs`;
+
+    return html`
+        <article class="p-3 mb-3 bg-white border rounded shadow-sm" aria-labelledby="evolucion-titulo-${t.id_turno}">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="ms text-primary" aria-hidden="true" style="font-size: 22px;">clinical_notes</span>
+                    <div>
+                        <h5 class="mb-0 fw-bold fs-6" id="evolucion-titulo-${t.id_turno}">
+                            ${conMayuscula(fechaHora)}
+                        </h5>
+                        ${quienAtendio && html`<span class="small text-muted">${quienAtendio}</span>`}
+                    </div>
+                </div>
+                <div>
+                    ${sesion ? html`
+                        <span class="eg-chip eg-chip--ok">${icono('task_alt')}Nota registrada</span>` : html`
+                        <span class="eg-chip eg-chip--warn">${icono('pending_actions')}Pendiente de nota</span>`}
+                </div>
+            </div>
+
+            ${sesion ? html`
+                <div class="small mb-3">
+                    <div class="mb-2">
+                        <span class="fw-bold text-dark d-block mb-1">Trabajo en sesión:</span>
+                        <p class="mb-0 text-secondary bg-light p-2 rounded" style="white-space: pre-wrap;">${sesion.trabajo_sesion}</p>
+                    </div>
+                    ${sesion.resultado ? html`
+                        <div class="mb-2">
+                            <span class="fw-bold text-dark d-block mb-1">Resultado clínico:</span>
+                            <p class="mb-0 text-secondary bg-light p-2 rounded" style="white-space: pre-wrap;">${sesion.resultado}</p>
+                        </div>` : ''}
+                    ${sesion.nota_especial ? html`
+                        <div class="mb-2">
+                            <span class="fw-bold text-dark d-block mb-1">${icono('lock')} Nota confidencial:</span>
+                            <p class="mb-0 text-muted bg-warning-subtle p-2 rounded border border-warning" style="white-space: pre-wrap;">${sesion.nota_especial}</p>
+                        </div>` : ''}
+                    ${!sesion.resultado && !esProfesional(estado.usuario) ? html`
+                        <div class="text-muted fst-italic py-1 small">
+                            ${icono('privacy_tip')} Los resultados clínicos y notas privadas están reservados al profesional tratante.
+                        </div>` : ''}
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="eg-btn eg-btn--ghost" data-accion="sesion" data-turno="${t.id_turno}"
+                            aria-label="Modificar nota clínica de la sesión del ${diaEnTexto(t.fecha)}">
+                        ${icono('edit')}Modificar nota
+                    </button>
+                </div>
+            ` : html`
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-1">
+                    <p class="mb-0 text-muted small">Esta sesión no tiene el registro de notas de evolución completado.</p>
+                    <button type="button" class="eg-btn eg-btn--primary" data-accion="sesion" data-turno="${t.id_turno}"
+                            aria-label="Escribir nota clínica para la sesión del ${diaEnTexto(t.fecha)}">
+                        ${icono('edit_note')}Escribir nota clínica
+                    </button>
+                </div>
+            `}
+        </article>`;
+}
+
 // silencioso: sin el "cargando" (para la actualización automática con la hora)
 async function cargarTurnosFicha({ silencioso = false } = {}) {
     const contenedor = $('ficha-turnos');
@@ -477,17 +541,61 @@ async function cargarTurnosFicha({ silencioso = false } = {}) {
         const proximos = delPaciente.filter((t) => estaActivo(t) && !yaEmpezo(t));
         // Los más recientes primero
         const anteriores = delPaciente.filter((t) => !proximos.includes(t)).reverse();
-        const mostrados = anteriores.slice(0, ANTERIORES_A_MOSTRAR);
+
+        // Identificar sesiones clínicas (realizadas o pasadas/en curso no canceladas)
+        const sesionesClinicas = anteriores.filter((t) => {
+            const estadoId = t.estado?.id ?? t.estado?.ID_EstadoTurno;
+            return estadoId === ESTADO_TURNO.REALIZADO || (!estaCancelado(t) && yaEmpezo(t));
+        });
+
+        // Otros turnos anteriores (cancelados o ausentes sin sesión clínica)
+        const otrosAnteriores = anteriores.filter((t) => !sesionesClinicas.includes(t));
+
+        // Consultar las notas de evolución para las sesiones clínicas (hasta 10 más recientes)
+        const sesionesAMostrar = sesionesClinicas.slice(0, 10);
+        const historialClinico = await Promise.all(
+            sesionesAMostrar.map(async (t) => {
+                try {
+                    const sesion = await sesiones.obtener(t.id_turno);
+                    return { turno: t, sesion };
+                } catch {
+                    return { turno: t, sesion: null };
+                }
+            })
+        );
+
+        if (estado.fichaId !== id) {
+            return;
+        }
+
         renderizar(contenedor, html`
-            <h4 class="eg-ficha__subtitulo">Próximos</h4>
+            <h4 class="eg-ficha__subtitulo">Próximos turnos</h4>
             ${proximos.length > 0
                 ? listaTurnosFicha(proximos)
-                : html`<p class="eg-ficha__vacio">No tiene turnos próximos.</p>`}
-            ${anteriores.length > 0 && html`
-                <h4 class="eg-ficha__subtitulo">Anteriores y cancelados</h4>
-                ${listaTurnosFicha(mostrados)}
-                ${anteriores.length > mostrados.length
-                    && html`<p class="eg-ficha__vacio">Se muestran los últimos ${mostrados.length} de ${anteriores.length}.</p>`}`}`);
+                : html`<p class="eg-ficha__vacio">No tiene turnos próximos agendados.</p>`}
+
+            <div class="eg-ficha__evoluciones mt-4 pt-3 border-top" id="ficha-historia-seccion">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="eg-ficha__subtitulo m-0" style="font-size: 16px;">
+                        ${icono('clinical_notes')}Historia y Evolución Clínica
+                    </h4>
+                    <span class="badge bg-secondary text-white">${sesionesClinicas.length} ${sesionesClinicas.length === 1 ? 'sesión' : 'sesiones'}</span>
+                </div>
+
+                ${historialClinico.length > 0
+                    ? html`${historialClinico.map((item) => tarjetaEvolucionClinica(item))}
+                           ${sesionesClinicas.length > sesionesAMostrar.length && html`
+                               <p class="eg-ficha__vacio text-muted">Se muestran las últimas ${sesionesAMostrar.length} de ${sesionesClinicas.length} sesiones.</p>`}`
+                    : html`<p class="eg-ficha__vacio">No hay sesiones clínicas anteriores registradas para este paciente.</p>`}
+            </div>
+
+            ${otrosAnteriores.length > 0 && html`
+                <div class="mt-4 pt-3 border-top">
+                    <h4 class="eg-ficha__subtitulo">Otros turnos (cancelados o ausentes)</h4>
+                    ${listaTurnosFicha(otrosAnteriores.slice(0, ANTERIORES_A_MOSTRAR))}
+                    ${otrosAnteriores.length > ANTERIORES_A_MOSTRAR
+                        && html`<p class="eg-ficha__vacio">Se muestran los últimos ${ANTERIORES_A_MOSTRAR} de ${otrosAnteriores.length}.</p>`}
+                </div>`}`);
     } catch (error) {
         if (estado.fichaId === id) {
             mostrarError(contenedor, error, () => cargarTurnosFicha());

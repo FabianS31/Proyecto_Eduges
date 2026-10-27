@@ -1,0 +1,173 @@
+<!-- ============================================================
+     EduGes - Modal de Registro de Sesiones Clínicas (APIs/sesiones/)
+     Permite registrar y consultar notas de evolución de una sesión.
+     Respeta el secreto profesional según el rol del usuario:
+     - Profesional / SuperAdmin: edición y lectura completa (trabajo, resultado, notas).
+     - Administrador: solo lectura de "trabajo_sesion".
+     ============================================================ -->
+<div class="modal fade" id="modal-sesion" tabindex="-1" aria-labelledby="modal-sesion-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <form class="modal-content border-0 shadow" id="form-sesion" novalidate>
+            <div class="modal-header">
+                <h2 class="modal-title fs-6 fw-bold" id="modal-sesion-titulo">
+                    <span class="ms me-1" aria-hidden="true">clinical_notes</span><span id="modal-sesion-titulo-texto">Registro de Sesión</span>
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="form-sesion-errores"></div>
+
+                <!-- Detalle del turno seleccionado -->
+                <div class="p-3 mb-3 rounded bg-light border" id="sesion-turno-info">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="fw-bold" id="sesion-info-paciente">—</span>
+                        <span class="badge bg-primary text-white" id="sesion-info-estado">Realizado</span>
+                    </div>
+                    <div class="small text-muted d-flex flex-wrap gap-3" id="sesion-info-sub">
+                        <span><span class="ms me-1 align-middle" aria-hidden="true">event</span><span id="sesion-info-fecha">—</span></span>
+                        <span><span class="ms me-1 align-middle" aria-hidden="true">schedule</span><span id="sesion-info-hora">—</span></span>
+                        <span id="sesion-info-profesional-wrap"><span class="ms me-1 align-middle" aria-hidden="true">badge</span><span id="sesion-info-profesional">—</span></span>
+                    </div>
+                </div>
+
+                <!-- Estado de carga mientras se consulta la API -->
+                <div id="sesion-cargando" class="text-center py-4" hidden>
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando registro de sesión…</span>
+                    </div>
+                    <p class="small text-muted mt-2 mb-0">Consultando notas de la sesión…</p>
+                </div>
+
+                <!-- Campos del formulario -->
+                <div id="sesion-campos">
+                    <input type="hidden" id="sesion-turno-id" name="turno_id">
+
+                    <!-- Trabajo realizado (visible para todos los roles autorizados) -->
+                    <div class="mb-3">
+                        <label for="sesion-trabajo" class="form-label small fw-semibold">Trabajo realizado en sesión *</label>
+                        <textarea class="form-control" id="sesion-trabajo" name="trabajo_sesion" rows="3" maxlength="225" required
+                                  placeholder="Describí las actividades, técnicas o dinámicas abordadas en el encuentro..."
+                                  aria-describedby="sesion-trabajo-ayuda"></textarea>
+                        <div class="d-flex justify-content-between form-text" id="sesion-trabajo-ayuda">
+                            <span id="sesion-trabajo-desc">Resumen de tareas y actividades desarrolladas.</span>
+                            <span id="sesion-trabajo-contador" class="text-muted small">0 / 225</span>
+                        </div>
+                    </div>
+
+                    <!-- Campos confidenciales (exclusivos de Profesional asignado y SuperAdmin) -->
+                    <div id="sesion-campos-clinicos">
+                        <div class="alert alert-secondary py-2 px-3 small mb-3 d-flex align-items-center gap-2">
+                            <span class="ms text-primary" aria-hidden="true">lock</span>
+                            <span><strong>Secreto profesional:</strong> Los resultados y notas clínicas detalladas son de acceso reservado al equipo tratante.</span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="sesion-resultado" class="form-label small fw-semibold">Resultado y evolución *</label>
+                            <textarea class="form-control" id="sesion-resultado" name="resultado" rows="3" maxlength="225" required
+                                      placeholder="Logros observados, respuestas ante los estímulos, avances o dificultades..."
+                                      aria-describedby="sesion-resultado-ayuda"></textarea>
+                            <div class="d-flex justify-content-between form-text" id="sesion-resultado-ayuda">
+                                <span>Evolución y desempeño del paciente durante la sesión.</span>
+                                <span id="sesion-resultado-contador" class="text-muted small">0 / 225</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="sesion-nota-especial" class="form-label small fw-semibold">Nota especial / confidencial *</label>
+                            <textarea class="form-control" id="sesion-nota-especial" name="nota_especial" rows="2" maxlength="225" required
+                                      placeholder="Anotaciones privadas, pautas para la próxima sesión o indicaciones internas..."
+                                      aria-describedby="sesion-nota-ayuda"></textarea>
+                            <div class="d-flex justify-content-between form-text" id="sesion-nota-ayuda">
+                                <span>Anotaciones privadas del profesional.</span>
+                                <span id="sesion-nota-contador" class="text-muted small">0 / 225</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aviso de confidencialidad para perfil Administrador -->
+                    <div id="sesion-aviso-admin" class="alert alert-info py-2 px-3 small mb-0 d-flex align-items-center gap-2" hidden>
+                        <span class="ms" aria-hidden="true">visibility_off</span>
+                        <span>Por secreto profesional y confidencialidad médica, los resultados y notas clínicas son de acceso reservado al profesional tratante.</span>
+                    </div>
+
+                    <p class="small text-muted mt-3 mb-0" id="sesion-ayuda-obligatorios">* Campos obligatorios (máximo 225 caracteres cada uno).</p>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-sesion">
+                    <span class="ms me-1" aria-hidden="true">save</span><span id="btn-guardar-sesion-texto">Guardar registro</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================
+     Modal: Turnos pendientes de registro de sesión (GET /api/sesiones/pendientes/)
+     ============================================================ -->
+<div class="modal fade" id="modal-sesiones-pendientes" tabindex="-1" aria-labelledby="modal-sesiones-pendientes-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h2 class="modal-title fs-6 fw-bold" id="modal-sesiones-pendientes-titulo">
+                    <span class="ms me-1" aria-hidden="true">pending_actions</span>Sesiones pendientes de registro clínico
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Filtros opcionales: fecha_desde, fecha_hasta, paciente_id -->
+                <form class="row g-2 mb-3 align-items-end" id="form-filtros-pendientes">
+                    <div class="col-sm-4 col-md-3">
+                        <label for="pend-fecha-desde" class="form-label small fw-semibold">Fecha desde</label>
+                        <input type="date" class="form-control form-control-sm" id="pend-fecha-desde" name="fecha_desde">
+                    </div>
+                    <div class="col-sm-4 col-md-3">
+                        <label for="pend-fecha-hasta" class="form-label small fw-semibold">Fecha hasta</label>
+                        <input type="date" class="form-control form-control-sm" id="pend-fecha-hasta" name="fecha_hasta">
+                    </div>
+                    <div class="col-sm-4 col-md-3">
+                        <label for="pend-paciente-id" class="form-label small fw-semibold">ID Paciente</label>
+                        <input type="number" class="form-control form-control-sm" id="pend-paciente-id" name="paciente_id" placeholder="Ej.: 2">
+                    </div>
+                    <div class="col-sm-12 col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                            <span class="ms me-1" aria-hidden="true">search</span>Filtrar
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-limpiar-filtros-pend">
+                            Limpiar
+                        </button>
+                    </div>
+                </form>
+
+                <div id="pendientes-contenedor">
+                    <div class="text-center py-4" id="pendientes-cargando">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <span class="small text-muted ms-2">Buscando turnos pendientes…</span>
+                    </div>
+                    <div class="table-responsive" id="pendientes-tabla-wrap" hidden>
+                        <table class="table table-hover align-middle mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Hora</th>
+                                    <th>Paciente</th>
+                                    <th>Estado del turno</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendientes-tabla-cuerpo"></tbody>
+                        </table>
+                    </div>
+                    <div id="pendientes-vacio" class="text-center py-4 text-muted" hidden>
+                        <span class="ms fs-3 d-block mb-1" aria-hidden="true">check_circle</span>
+                        ¡Excelente! No hay turnos pendientes de registro de sesión para los filtros seleccionados.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>

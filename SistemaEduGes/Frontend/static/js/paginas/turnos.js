@@ -269,6 +269,15 @@ function prepararAcciones() {
         focoTrasCambio: () => $('periodo-titulo'),
     });
     estado.acciones.escuchar($('turnos-cuerpo'));
+
+    const botonPendientes = $('btn-sesiones-pendientes');
+    if (botonPendientes && (esProfesional(estado.usuario) || tienePermiso(estado.usuario, PERMISO.SESIONES_REGISTRAR))) {
+        botonPendientes.hidden = false;
+        botonPendientes.addEventListener('click', () => {
+            estado.acciones.abrirPendientes();
+        });
+    }
+
     if (!tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR)) {
         return;
     }

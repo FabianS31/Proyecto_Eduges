@@ -19,6 +19,7 @@
 import { ApiError } from '../api.js';
 import { buscarEnLista, crearCombobox } from './combobox.js';
 import { guardar, prepararModal } from './formularios.js';
+import { prepararModalSesion } from './sesion-modal.js';
 import { crearSelectorFechas } from './selector-fechas.js';
 import {
     ESTADO_PACIENTE,
@@ -153,6 +154,12 @@ function accionesTurno(turno, descripcion) {
     }
     if (puedeMarcarAsistencia() && yaEmpezo(turno) && estadoId === ESTADO_TURNO.CONFIRMADO) {
         principales.push(boton('ausente', turno, { texto: 'Marcar ausente', nombreIcono: 'person_off', descripcion }));
+    }
+    if (estadoId === ESTADO_TURNO.REALIZADO) {
+        const textoSesion = esProfesional(usuarioActual) ? 'Nota clínica' : 'Ver resumen';
+        principales.push(boton('sesion', turno, { texto: textoSesion, nombreIcono: 'clinical_notes', clase: 'eg-btn--secondary', descripcion }));
+    } else if (estadoId === ESTADO_TURNO.CONFIRMADO && (yaEmpezo(turno) || turno.fecha < hoyISO()) && esProfesional(usuarioActual)) {
+        principales.push(boton('sesion', turno, { texto: 'Tomar notas', nombreIcono: 'edit_note', clase: 'eg-btn--primary', descripcion }));
     }
     if (puedeEditar() && estaActivo(turno) && !yaEmpezo(turno)) {
         secundarias.push(
@@ -500,6 +507,11 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
     usuarioActual = usuario;
     const deProfesional = esProfesional(usuario);
 
+    const modalSesion = prepararModalSesion({
+        usuario,
+        alGuardar: alCambiar,
+    });
+
     // ---- Nuevo turno: una fecha o varias (RF-15)
     const formulario = $('form-turno');
     const contenedorCalendario = $('turno-selector-fechas');
@@ -760,12 +772,21 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
         notificar(cambio.exito(quien));
         await alCambiar();
         enfocarSiSePerdio(focoTrasCambio());
+        if (cambio.estado === ESTADO_TURNO.REALIZADO && modalSesion) {
+            modalSesion.abrirSesion(turno);
+        }
     }
 
     return {
         abrirNuevo({ fecha = null, paciente: pacienteInicial = null } = {}) {
             inicial = { fecha, paciente: pacienteInicial };
             obtenerModalNuevo().show();
+        },
+        abrirSesion(turno) {
+            modalSesion.abrirSesion(turno);
+        },
+        abrirPendientes() {
+            modalSesion.abrirPendientes?.();
         },
         // Botones de las listas de turnos dentro de "contenedor"
         // (Confirmar, Marcar realizado, Marcar ausente, Reprogramar, Cancelar)
@@ -782,6 +803,8 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
                     obtenerModalReprogramar().show();
                 } else if (accion === 'cancelar') {
                     cancelar(turno, botonUsado);
+                } else if (accion === 'sesion') {
+                    modalSesion.abrirSesion(turno);
                 } else if (CAMBIOS_DE_ESTADO[accion]) {
                     cambiarEstado(turno, botonUsado, CAMBIOS_DE_ESTADO[accion]);
                 }

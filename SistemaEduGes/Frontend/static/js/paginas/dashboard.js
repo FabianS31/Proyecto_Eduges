@@ -34,7 +34,7 @@ import {
     yaEmpezo,
 } from '../componentes/turnos.js';
 import { ESTADO_TURNO, MESES_AVISO_CUD, PERMISO, TURNO_DURACION_MINUTOS } from '../constantes.js';
-import { pacientes, profesionales } from '../endpoints.js';
+import { pacientes, profesionales, sesiones } from '../endpoints.js';
 import { diasEntre, hoyISO, sumarDias } from '../fechas.js';
 import { esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
 import {
@@ -390,9 +390,50 @@ async function cargarCantidadPacientes() {
 // ------------------------------------------------------------
 // Dashboard del profesional: armado
 // ------------------------------------------------------------
-// Devuelve una Promise que termina cuando la agenda y los pacientes se volvieron a mostrar
+async function cargarNotasPendientes() {
+    const elValor = $('metrica-notas');
+    const elDetalle = $('metrica-notas-detalle');
+    const elIcono = $('icono-notas-pendientes');
+    const elBoton = $('btn-completar-notas-inicio');
+    if (!elValor) {
+        return;
+    }
+
+    try {
+        const pendientes = await sesiones.pendientes();
+        const cantidad = Array.isArray(pendientes) ? pendientes.length : 0;
+        elValor.textContent = cantidad;
+
+        if (cantidad === 0) {
+            if (elDetalle) elDetalle.textContent = 'Al día · Sin notas pendientes';
+            if (elIcono) {
+                elIcono.className = 'eg-stat__icon eg-stat__icon--green';
+                elIcono.innerHTML = '<span class="ms" aria-hidden="true">task_alt</span>';
+            }
+            if (elBoton) {
+                elBoton.innerHTML = 'Ver registro<span class="ms" aria-hidden="true">arrow_forward</span>';
+                elBoton.setAttribute('aria-label', 'Ver registro de sesiones');
+            }
+        } else {
+            if (elDetalle) elDetalle.textContent = plural(cantidad, 'sesión requiere nota clínica', 'sesiones requieren nota clínica');
+            if (elIcono) {
+                elIcono.className = 'eg-stat__icon eg-stat__icon--orange';
+                elIcono.innerHTML = '<span class="ms" aria-hidden="true">edit_note</span>';
+            }
+            if (elBoton) {
+                elBoton.innerHTML = `Completar pendientes (${cantidad})<span class="ms" aria-hidden="true">arrow_forward</span>`;
+                elBoton.setAttribute('aria-label', `Completar ${cantidad} notas clínicas pendientes`);
+            }
+        }
+    } catch {
+        elValor.textContent = '—';
+        if (elDetalle) elDetalle.textContent = 'No disponible';
+    }
+}
+
+// Devuelve una Promise que termina cuando la agenda, pacientes y notas se volvieron a mostrar
 function refrescarDashboard() {
-    return Promise.all([cargarAgenda(), cargarCud(), cargarCantidadPacientes()]);
+    return Promise.all([cargarAgenda(), cargarCud(), cargarCantidadPacientes(), cargarNotasPendientes()]);
 }
 
 function mostrarDashboardProfesional() {
@@ -417,6 +458,26 @@ function mostrarDashboardProfesional() {
     $('btn-dia-hoy').addEventListener('click', () => cambiarDia(0));
     $('btn-nuevo-turno').addEventListener('click', () => estado.acciones.abrirNuevo());
     $('btn-nuevo-paciente').addEventListener('click', abrirNuevoPaciente);
+
+    const tarjetaNotas = $('tarjeta-notas-pendientes');
+    const btnCompletarNotas = $('btn-completar-notas-inicio');
+    if (tarjetaNotas) {
+        tarjetaNotas.style.cursor = 'pointer';
+        tarjetaNotas.addEventListener('click', (e) => {
+            if (!e.target.closest('#btn-completar-notas-inicio')) {
+                estado.acciones.abrirPendientes();
+            }
+        });
+        tarjetaNotas.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                estado.acciones.abrirPendientes();
+            }
+        });
+    }
+    if (btnCompletarNotas) {
+        btnCompletarNotas.addEventListener('click', () => estado.acciones.abrirPendientes());
+    }
     estado.acciones.escuchar($('agenda-cuerpo'));
     estado.acciones.escuchar($('proxima-cuerpo'));
     $('agenda-cuerpo').addEventListener('click', (evento) => {

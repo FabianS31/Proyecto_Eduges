@@ -14,9 +14,14 @@
         <span class="eg-eyebrow"><span class="ms" aria-hidden="true">calendar_month</span><span id="turnos-subtitulo">&nbsp;</span></span>
         <h1 class="eg-title">Turnos y Agenda</h1>
     </div>
-    <button type="button" class="eg-btn eg-btn--lg eg-btn--primary" id="btn-nuevo-turno" hidden>
-        <span class="ms" aria-hidden="true">add_circle</span>Nuevo turno
-    </button>
+    <div class="eg-btn-group">
+        <button type="button" class="eg-btn eg-btn--lg eg-btn--secondary" id="btn-sesiones-pendientes" hidden>
+            <span class="ms" aria-hidden="true">pending_actions</span>Sesiones sin registrar
+        </button>
+        <button type="button" class="eg-btn eg-btn--lg eg-btn--primary" id="btn-nuevo-turno" hidden>
+            <span class="ms" aria-hidden="true">add_circle</span>Nuevo turno
+        </button>
+    </div>
 </div>
 
 <!-- Qué se muestra: día o semana, profesional (solo administradores) y cancelados -->
@@ -79,6 +84,7 @@
 </div>
 
 {% include "componentes/modales_turno.html" %}
+{% include "componentes/modal_sesion.html" %}
 {% endblock %}
 
 {% block extra_js %}

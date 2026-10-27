@@ -85,6 +85,17 @@
                     </a>
                 </div>
             </div>
+            <div class="eg-stat" id="tarjeta-notas-pendientes" role="button" tabindex="0" aria-label="Abrir notas clínicas pendientes">
+                <div class="eg-stat__icon" id="icono-notas-pendientes"><span class="ms" aria-hidden="true">edit_note</span></div>
+                <div class="eg-stat__body">
+                    <span class="eg-stat__label" id="metrica-notas-titulo">Notas pendientes</span>
+                    <span class="eg-stat__value" id="metrica-notas" aria-describedby="metrica-notas-titulo">—</span>
+                    <span class="eg-stat__sub" id="metrica-notas-detalle">Cargando…</span>
+                    <button type="button" class="eg-stat__link border-0 bg-transparent p-0 text-start" id="btn-completar-notas-inicio">
+                        Completar notas<span class="ms" aria-hidden="true">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -270,6 +281,7 @@
 </div>
 
 {% include "componentes/modales_turno.html" %}
+{% include "componentes/modal_sesion.html" %}
 {% include "componentes/modal_paciente.html" %}
 {% endblock %}
 
