@@ -127,6 +127,8 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
         const esCreacion = modo === 'creacion';
         const turnoId = datos.turno_id;
 
+        let sePudoPasarARealizado = true;
+
         guardar({
             formulario,
             contenedorErrores,
@@ -140,16 +142,29 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
                         resultado: datos.resultado,
                         nota_especial: datos.nota_especial,
                     });
-                // Si el turno estaba Confirmado, actualizamos a Realizado para ahorrar el paso administrativo
+                // Si el turno estaba Confirmado, intentamos pasarlo a Realizado automáticamente
                 const estadoId = turnoActual?.estado?.id ?? turnoActual?.estado?.ID_EstadoTurno;
+                sePudoPasarARealizado = true;
                 if (estadoId === ESTADO_TURNO.CONFIRMADO) {
-                    await turnos.cambiarEstado(turnoId, ESTADO_TURNO.REALIZADO).catch(() => null);
+                    try {
+                        await turnos.cambiarEstado(turnoId, ESTADO_TURNO.REALIZADO);
+                        sePudoPasarARealizado = true;
+                    } catch {
+                        // El backend no permite pasar a Realizado hasta que transcurran los 60 min del turno
+                        sePudoPasarARealizado = false;
+                    }
                 }
                 return res;
             },
-            mensajeExito: esCreacion
-                ? 'Registro de sesión creado correctamente.'
-                : 'Registro de sesión actualizado correctamente.',
+            mensajeExito: () => {
+                const estadoId = turnoActual?.estado?.id ?? turnoActual?.estado?.ID_EstadoTurno;
+                if (estadoId === ESTADO_TURNO.CONFIRMADO && !sePudoPasarARealizado) {
+                    return 'Nota clínica guardada. El turno se marcará como Realizado al cumplirse los 60 min de atención.';
+                }
+                return esCreacion
+                    ? 'Registro de sesión creado correctamente.'
+                    : 'Registro de sesión actualizado correctamente.';
+            },
             modal: obtenerModal,
             alGuardar: (resultadoApi) => {
                 alGuardar?.(resultadoApi, turnoActual);

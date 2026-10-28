@@ -393,7 +393,7 @@ async function iniciar() {
         return;
     }
 
-    if (!tienePermiso(estado.usuario, PERMISO.PROFESIONALES_EDITAR)) {
+    if (!tienePermiso(estado.usuario, PERMISO.PROFESIONALES_VER)) {
         renderizar($('profesionales-estado'), bloqueVacio('No tenés acceso al listado de profesionales.', 'lock'));
         return;
     }

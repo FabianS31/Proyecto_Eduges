@@ -95,7 +95,7 @@ function validar(datos, formulario) {
     } else if (!soloDigitos(datos.tutor.dni) || datos.tutor.dni.length < 7) {
         errores.tutor_dni = ['El DNI del tutor tiene que tener 7 u 8 números, sin puntos.'];
     }
-    obligatorio('tutor_parentesco', datos.tutor.parentesco_id, 'Seleccioná el parentesco.');
+    obligatorio('tutor_parentesco_id', datos.tutor.parentesco_id, 'Seleccioná el parentesco.');
     obligatorio('tutor_telefono', datos.tutor.telefono, 'Indicá un teléfono de contacto.');
     if (datos.tutor.mail && !formulario.elements.tutor_mail.checkValidity()) {
         errores.tutor_mail = ['Revisá el mail del tutor: falta la @ o el dominio.'];
@@ -127,8 +127,14 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
         },
     });
 
-    formulario.addEventListener('submit', (evento) => {
+    let enviando = false;
+
+    formulario.addEventListener('submit', async (evento) => {
         evento.preventDefault();
+        if (enviando) {
+            return;
+        }
+        enviando = true;
         const campo = (nombre) => formulario.elements[nombre]?.value?.trim() ?? '';
         const datos = {
             nombre: campo('nombre'),
@@ -146,7 +152,7 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
                 nombre: campo('tutor_nombre'),
                 apellido: campo('tutor_apellido'),
                 dni: campo('tutor_dni'),
-                parentesco_id: Number(campo('tutor_parentesco')) || null,
+                parentesco_id: Number(campo('tutor_parentesco_id')) || null,
                 telefono: campo('tutor_telefono'),
                 movil: campo('tutor_movil') || null,
                 mail: campo('tutor_mail') || null,
@@ -155,12 +161,13 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
             },
         };
 
-        guardar({
-            formulario,
-            contenedorErrores,
-            boton: $('btn-guardar-paciente'),
-            errores: validar(datos, formulario),
-            enviar: async () => {
+        try {
+            await guardar({
+                formulario,
+                contenedorErrores,
+                boton: $('btn-guardar-paciente'),
+                errores: validar(datos, formulario),
+                enviar: async () => {
                 let resultadoPaciente;
                 if (!pacienteCreadoId) {
                     resultadoPaciente = await pacientes.crear({
@@ -197,7 +204,8 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
                 } catch (errorTutor) {
                     const deCampo = {};
                     for (const [clave, valor] of Object.entries(errorTutor.erroresDeCampo || {})) {
-                        deCampo[`tutor_${clave}`] = valor;
+                        const claveNormalizada = (clave === 'parentesco' || clave === 'parentesco_id') ? 'parentesco_id' : clave;
+                        deCampo[`tutor_${claveNormalizada}`] = valor;
                     }
                     throw new ApiError(errorTutor.status, deCampo);
                 }
@@ -206,9 +214,12 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
                 return resultadoPaciente;
             },
             mensajeExito: 'El paciente y su tutor responsable quedaron registrados exitosamente.',
-            modal,
-            alGuardar,
-        });
+                modal,
+                alGuardar,
+            });
+        } finally {
+            enviando = false;
+        }
     });
 
     return () => modal().show();

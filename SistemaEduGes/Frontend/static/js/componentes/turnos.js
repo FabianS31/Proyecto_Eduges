@@ -155,10 +155,11 @@ function accionesTurno(turno, descripcion) {
     if (puedeMarcarAsistencia() && yaEmpezo(turno) && estadoId === ESTADO_TURNO.CONFIRMADO) {
         principales.push(boton('ausente', turno, { texto: 'Marcar ausente', nombreIcono: 'person_off', descripcion }));
     }
+    const puedeManejarNotasClinicas = esProfesional(usuarioActual) || esAdministrador(usuarioActual) || tienePermiso(usuarioActual, PERMISO.SESIONES_REGISTRAR);
     if (estadoId === ESTADO_TURNO.REALIZADO) {
-        const textoSesion = esProfesional(usuarioActual) ? 'Nota clínica' : 'Ver resumen';
+        const textoSesion = puedeManejarNotasClinicas ? 'Nota clínica' : 'Ver resumen';
         principales.push(boton('sesion', turno, { texto: textoSesion, nombreIcono: 'clinical_notes', clase: 'eg-btn--secondary', descripcion }));
-    } else if (estadoId === ESTADO_TURNO.CONFIRMADO && (yaEmpezo(turno) || turno.fecha < hoyISO()) && esProfesional(usuarioActual)) {
+    } else if (estadoId === ESTADO_TURNO.CONFIRMADO && turno.fecha <= hoyISO() && puedeManejarNotasClinicas) {
         principales.push(boton('sesion', turno, { texto: 'Tomar notas', nombreIcono: 'edit_note', clase: 'eg-btn--primary', descripcion }));
     }
     if (puedeEditar() && estaActivo(turno) && !yaEmpezo(turno)) {

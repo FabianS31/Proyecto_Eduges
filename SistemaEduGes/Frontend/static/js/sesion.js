@@ -86,24 +86,24 @@ async function mantenerSesion() {
 // ------------------------------------------------------------
 function crearDialogo() {
     const elemento = document.createElement('div');
-    elemento.className = 'modal fade modal-sesion';
-    elemento.id = 'modal-sesion';
+    elemento.className = 'modal fade modal-inactividad';
+    elemento.id = 'modal-inactividad';
     elemento.tabIndex = -1;
-    elemento.setAttribute('aria-labelledby', 'modal-sesion-titulo');
-    elemento.setAttribute('aria-describedby', 'modal-sesion-texto');
+    elemento.setAttribute('aria-labelledby', 'modal-inactividad-titulo');
+    elemento.setAttribute('aria-describedby', 'modal-inactividad-texto');
     elemento.setAttribute('aria-hidden', 'true');
     renderizar(elemento, html`
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-0 pb-0">
-                    <h2 class="modal-title fs-5 fw-bold" id="modal-sesion-titulo">
+                    <h2 class="modal-title fs-5 fw-bold" id="modal-inactividad-titulo">
                         <span class="ms eg-icono-warn" aria-hidden="true">hourglass_empty</span>¿Seguís ahí?
                     </h2>
                 </div>
-                <div class="modal-body" id="modal-sesion-texto">
+                <div class="modal-body" id="modal-inactividad-texto">
                     <p class="mb-2">
                         Por seguridad, tu sesión se va a cerrar en
-                        <strong class="fs-5" id="modal-sesion-cuenta">2:00</strong>
+                        <strong class="fs-5" id="modal-inactividad-cuenta">2:00</strong>
                         porque no hubo actividad.
                     </p>
                     <p class="mb-0 text-muted">Si estabas escribiendo algo, tocá «Seguir conectado» para no perderlo.</p>
@@ -147,7 +147,7 @@ function crearDialogo() {
             modal.hide();
         },
         mostrarRestante(ms) {
-            elemento.querySelector('#modal-sesion-cuenta').textContent = formatearRestante(ms);
+            elemento.querySelector('#modal-inactividad-cuenta').textContent = formatearRestante(ms);
         },
     };
 }

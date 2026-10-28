@@ -79,7 +79,7 @@ export async function guardar({ formulario, contenedorErrores, boton, errores, e
     try {
         const resultado = await enviar();
         modal().hide();
-        notificar(mensajeExito);
+        notificar(typeof mensajeExito === 'function' ? mensajeExito(resultado) : mensajeExito);
         alGuardar?.(resultado);
     } catch (error) {
         mostrarErroresDelFormulario(formulario, contenedorErrores, error);
