@@ -1,3 +1,4 @@
+
 from django.db import models
 
 
@@ -8,19 +9,18 @@ class RegistroSesion(models.Model):
         db_column='ID_RegistroSesion'
     )
 
-    trabajo_sesion = models.CharField(
-        max_length=225,
+    trabajo_sesion = models.TextField(
         db_column='TrabajoSesion'
     )
 
-    resultado = models.CharField(
-        max_length=225,
+    resultado = models.TextField(
         db_column='Resultado'
     )
 
-    nota_especial = models.CharField(
-        max_length=225,
-        db_column='NotaEspecial'
+    nota_especial = models.TextField(
+        db_column='NotaEspecial',
+        null=True,
+        blank=True
     )
 
     class Meta:

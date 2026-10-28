@@ -4,7 +4,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-
 from APIs.autenticacion.autenticacion import (
     UsuarioSessionAuthentication,
 )
@@ -76,13 +75,17 @@ class RegistroSesionCrearView(APIView):
             turno_id=turno.pk,
             trabajo_sesion=datos['trabajo_sesion'],
             resultado=datos['resultado'],
-            nota_especial=datos['nota_especial'],
+            nota_especial=datos.get('nota_especial'),
             usuario=request.user,
         )
 
         return Response(
             {
                 'id': registro.pk,
+                'descripcion': (
+                    f'Registro clínico correspondiente al turno '
+                    f'{turno.pk}'
+                ),
                 'trabajo_sesion': registro.trabajo_sesion,
                 'mensaje': 'Registro de sesión creado correctamente.',
             },

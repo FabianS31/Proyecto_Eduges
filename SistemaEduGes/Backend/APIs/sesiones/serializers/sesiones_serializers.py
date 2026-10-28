@@ -17,17 +17,16 @@ class RegistroSesionEntradaSerializer(serializers.Serializer):
         write_only=True,
     )
 
-    trabajo_sesion = serializers.CharField(
-        max_length=225,
-    )
+    trabajo_sesion = serializers.CharField()
 
     resultado = serializers.CharField(
-        max_length=225,
         write_only=True,
     )
 
     nota_especial = serializers.CharField(
-        max_length=225,
+        required=False,
+        allow_null=True,
+        allow_blank=True,
         write_only=True,
     )
 

@@ -111,6 +111,20 @@ class SesionesService:
             )
 
     # --------------------------------------------------
+    # VALIDAR QUE EL TURNO NO ESTÉ CANCELADO
+    # --------------------------------------------------
+
+    @staticmethod
+    def validar_turno_no_cancelado(turno):
+        if turno.estado.estado.casefold() == 'cancelado':
+            raise ValidationError({
+                'turno_id': (
+                    'No se puede registrar ni modificar '
+                    'una sesión de un turno cancelado.'
+                )
+            })
+
+    # --------------------------------------------------
     # LISTAR TURNOS SIN REGISTRO DE SESIÓN
     # --------------------------------------------------
 
@@ -187,6 +201,9 @@ class SesionesService:
             bloquear=True,
         )
 
+        # No se permite registrar sesiones de turnos cancelados.
+        cls.validar_turno_no_cancelado(turno)
+
         cls.validar_profesional_autorizado(
             turno,
             usuario,
@@ -228,6 +245,9 @@ class SesionesService:
             turno_id,
             bloquear=True,
         )
+
+        # No se permite modificar sesiones de turnos cancelados.
+        cls.validar_turno_no_cancelado(turno)
 
         # Solo el profesional asignado o el
         # SuperAdministrador pueden modificar.

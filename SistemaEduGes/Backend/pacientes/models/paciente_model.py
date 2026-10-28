@@ -1,3 +1,4 @@
+
 from django.db import models
 
 
@@ -67,7 +68,9 @@ class Paciente(models.Model):
     )
 
     cud_vencimiento = models.DateField(
-        db_column='CUD_Vencimiento'
+        db_column='CUD_Vencimiento',
+        null=True,
+        blank=True
     )
 
     obra_social = models.ForeignKey(
