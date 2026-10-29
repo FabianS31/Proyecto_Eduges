@@ -69,7 +69,6 @@ function mostrarUsuario(usuario) {
     const detalle = usuario.profesional?.especialidad?.nombre ?? usuario.rol.nombre;
     const letras = usuario.profesional ? iniciales(usuario.profesional) : usuario.usuario.slice(0, 2).toUpperCase();
     renderizar(contenedor, html`
-        <div class="eg-avatar eg-avatar--sm eg-avatar--blue" aria-hidden="true">${letras}</div>
         <div><span class="eg-user__name">${nombre}</span><span class="eg-user__role">${detalle}</span></div>`);
 }
 
@@ -217,8 +216,47 @@ function prepararModalesApilados() {
     });
 }
 
+function prepararMenuMovil() {
+    const btnToggle = document.getElementById('btn-toggle-menu');
+    const collapse = document.getElementById('eg-nav-collapse');
+    const icono = document.getElementById('icono-menu-toggle');
+    if (!btnToggle || !collapse) {
+        return;
+    }
+
+    btnToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const abierto = collapse.classList.toggle('is-open');
+        btnToggle.setAttribute('aria-expanded', String(abierto));
+        if (icono) {
+            icono.textContent = abierto ? 'close' : 'menu';
+        }
+    });
+
+    // Cerrar al hacer clic en un enlace del menú
+    collapse.querySelectorAll('.eg-nav__item').forEach((link) => {
+        link.addEventListener('click', () => {
+            collapse.classList.remove('is-open');
+            btnToggle.setAttribute('aria-expanded', 'false');
+            if (icono) icono.textContent = 'menu';
+        });
+    });
+
+    // Cerrar si se hace clic fuera del menú desplegado
+    document.addEventListener('click', (evento) => {
+        if (!collapse.contains(evento.target) && !btnToggle.contains(evento.target)) {
+            if (collapse.classList.contains('is-open')) {
+                collapse.classList.remove('is-open');
+                btnToggle.setAttribute('aria-expanded', 'false');
+                if (icono) icono.textContent = 'menu';
+            }
+        }
+    });
+}
+
 async function iniciar() {
     prepararModalesApilados();
+    prepararMenuMovil();
     const botonSalir = document.getElementById('btn-cerrar-sesion');
     botonSalir?.addEventListener('click', () => cerrarSesion(botonSalir));
     prepararCambioPassword();

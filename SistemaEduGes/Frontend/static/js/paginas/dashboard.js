@@ -278,7 +278,6 @@ function mostrarProxima(turno) {
     renderizar($('proxima-cuando'), html`<span class="eg-chip eg-chip--dark">${textoFalta(turno)}</span>`);
     renderizar($('proxima-cuerpo'), html`
         <div class="eg-next__who">
-            <div class="eg-avatar eg-avatar--lg eg-avatar--blue" aria-hidden="true">${iniciales(turno.paciente)}</div>
             <div>
                 <span class="eg-next__name">${paciente}</span>
                 <span class="eg-next__when">${rangoHorario(turno)}</span>
@@ -364,7 +363,6 @@ async function cargarCud() {
         renderizar($('cud-cuerpo'), lista.length > 0
             ? html`<ul class="eg-lista">${lista.map((p) => html`
                 <li class="eg-list-item">
-                    <div class="eg-avatar" aria-hidden="true">${iniciales(p)}</div>
                     <div class="eg-list-item__text">
                         <a href="${urlPaciente(p.id_paciente)}" class="eg-list-item__title">${nombreCompleto(p)}</a>
                         <span class="eg-list-item__sub">${p.cud.fecha}</span>

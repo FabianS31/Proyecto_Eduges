@@ -442,7 +442,8 @@ function renderizarKPIs() {
     if (estado.tipo === 'turnos') {
         const total = items.length;
         const realizados = items.filter((t) => t.estado?.id === 4).length;
-        const confirmadosOPendientes = items.filter((t) => t.estado?.id === 1 || t.estado?.id === 2).length;
+        const confirmados = items.filter((t) => t.estado?.id === 2).length;
+        const pendientes = items.filter((t) => t.estado?.id === 1).length;
         const cancelados = items.filter((t) => t.estado?.id === 3).length;
 
         renderizar(kpisContenedor, html`
@@ -465,13 +466,21 @@ function renderizarKPIs() {
             <div class="eg-stat">
                 <div class="eg-stat__icon"><span class="ms" aria-hidden="true">event_available</span></div>
                 <div class="eg-stat__body">
-                    <span class="eg-stat__label">Pendientes / Conf.</span>
-                    <span class="eg-stat__value">${confirmadosOPendientes}</span>
-                    <span class="eg-stat__sub">Próximos en agenda</span>
+                    <span class="eg-stat__label">Confirmados</span>
+                    <span class="eg-stat__value">${confirmados}</span>
+                    <span class="eg-stat__sub">Asistencia confirmada</span>
                 </div>
             </div>
             <div class="eg-stat">
-                <div class="eg-stat__icon eg-stat__icon--orange"><span class="ms" aria-hidden="true">event_busy</span></div>
+                <div class="eg-stat__icon eg-stat__icon--orange"><span class="ms" aria-hidden="true">schedule</span></div>
+                <div class="eg-stat__body">
+                    <span class="eg-stat__label">Pendientes</span>
+                    <span class="eg-stat__value">${pendientes}</span>
+                    <span class="eg-stat__sub">Aguardando confirmación</span>
+                </div>
+            </div>
+            <div class="eg-stat">
+                <div class="eg-stat__icon eg-stat__icon--red"><span class="ms" aria-hidden="true">event_busy</span></div>
                 <div class="eg-stat__body">
                     <span class="eg-stat__label">Cancelados</span>
                     <span class="eg-stat__value">${cancelados}</span>

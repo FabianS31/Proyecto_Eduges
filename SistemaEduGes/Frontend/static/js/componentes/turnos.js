@@ -30,7 +30,7 @@ import {
 } from '../constantes.js';
 import { pacientes, profesionales, turnos } from '../endpoints.js';
 import { aFecha, edad, hoyISO, sumarDias } from '../fechas.js';
-import { esProfesional, tienePermiso } from '../layout.js';
+import { esAdministrador, esProfesional, tienePermiso } from '../layout.js';
 import {
     confirmar,
     formatearFecha,

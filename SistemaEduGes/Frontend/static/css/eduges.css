@@ -107,25 +107,68 @@ h1, h2 { margin: 0; }
   background: rgba(185, 28, 28, 0.35);
   color: #ffffff;
 }
-.eg-header__inner { min-height: 76px; padding-top: 12px; padding-bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.eg-header .eg-container,
+.eg-header__inner {
+  width: 100%;
+  max-width: 100%;
+  min-height: 72px;
+  padding: 10px clamp(16px, 2.5vw, 36px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
 
-.eg-brand { display: flex; align-items: center; gap: 12px; }
+.eg-brand {
+  order: 1;
+  flex: 1 1 0;
+  min-width: max-content;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  text-decoration: none;
+}
 .eg-brand__logo { width: 40px; height: 40px; border-radius: var(--eg-r); background: var(--eg-primary); color: #fff; display: flex; align-items: center; justify-content: center; }
 .eg-brand__text { display: flex; flex-direction: column; line-height: 1.1; }
 .eg-brand__name { font-weight: 800; font-size: 19px; letter-spacing: -0.01em; }
 .eg-brand__sub { font-size: 13px; color: var(--eg-muted); }
 
-.eg-nav { order: 2; flex: 1 1 540px; min-width: 0; display: flex; gap: 6px; justify-content: safe center; overflow-x: auto; scrollbar-width: none; }
+.eg-nav {
+  order: 2;
+  flex: 0 0 auto;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
 .eg-nav::-webkit-scrollbar { display: none; }
-.eg-nav__item { flex-shrink: 0; white-space: nowrap; display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--eg-r-sm); border: none; background: transparent; color: var(--eg-ink-2); font-weight: 600; font-size: 16px; cursor: pointer; text-decoration: none; }
-.eg-nav__item .ms { font-size: 22px; }
+.eg-nav__item { flex-shrink: 0; white-space: nowrap; display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: var(--eg-r-sm); border: none; background: transparent; color: var(--eg-ink-2); font-weight: 600; font-size: 15px; cursor: pointer; text-decoration: none; }
+.eg-nav__item .ms { font-size: 20px; }
 .eg-nav__item:hover { background: #f1f4f8; color: var(--eg-ink); text-decoration: none; }
 .eg-nav__item.is-active, .eg-nav__item[aria-current="page"] { background: var(--eg-primary-soft); color: var(--eg-primary); font-weight: 700; }
 
-.eg-user { order: 3; margin-left: auto; justify-content: flex-end; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-.eg-user__info { display: flex; align-items: center; gap: 12px; padding: 6px 14px 6px 0; }
+.eg-user {
+  order: 3;
+  flex: 1 1 0;
+  min-width: max-content;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.eg-user__info { display: flex; flex-direction: column; text-align: right; justify-content: center; padding: 0 4px 0 0; }
 .eg-user__name { font-weight: 700; font-size: 15px; display: block; line-height: 1.2; }
 .eg-user__role { font-size: 13px; color: var(--eg-muted); display: block; line-height: 1.2; }
+.eg-user__actions { display: flex; align-items: center; gap: 8px; }
+
+@media (min-width: 992px) {
+  .eg-menu-toggle { display: none !important; }
+  .eg-nav-collapse { display: contents !important; }
+}
 
 /* ---------- Avatares ---------- */
 .eg-avatar { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: var(--eg-neutral-bg); color: var(--eg-ink-2); font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; }
@@ -182,11 +225,45 @@ h1, h2 { margin: 0; }
 .eg-stat__icon .ms { font-size: 28px; }
 .eg-stat__icon--green { background: var(--eg-ok-bg); color: var(--eg-ok); }
 .eg-stat__icon--orange { background: var(--eg-warn-soft); color: var(--eg-warn-icon); }
+.eg-stat__icon--red { background: var(--eg-err-bg); color: var(--eg-err); }
 .eg-stat__body { flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .eg-stat__label { font-size: 15px; font-weight: 600; color: var(--eg-ink-2); }
 .eg-stat__value { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
 .eg-stat__sub { font-size: 15px; color: var(--eg-muted); }
 .eg-stat__link { margin-top: 10px; display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: 15px; }
+
+/* ---------- KPIs en Reportes (5 tarjetas en una sola fila) ---------- */
+#reporte-kpis {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+#reporte-kpis .eg-stat {
+  padding: 16px 18px;
+  gap: 14px;
+}
+#reporte-kpis .eg-stat__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--eg-r);
+}
+#reporte-kpis .eg-stat__icon .ms {
+  font-size: 24px;
+}
+#reporte-kpis .eg-stat__body {
+  gap: 2px;
+}
+#reporte-kpis .eg-stat__label {
+  font-size: 14px;
+  white-space: nowrap;
+}
+#reporte-kpis .eg-stat__value {
+  font-size: 32px;
+  line-height: 1.15;
+}
+#reporte-kpis .eg-stat__sub {
+  font-size: 13px;
+  line-height: 1.25;
+}
 
 /* ---------- Buscador destacado (Inicio) ---------- */
 .eg-search-hero { background: var(--eg-surface); border: 1px solid var(--eg-border); border-radius: var(--eg-r-lg); padding: 20px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
@@ -531,8 +608,6 @@ button.eg-slot { width: 100%; text-align: left; border-top: none; border-right: 
 /* Celular: el menú no se desliza de costado (muchos no se dan cuenta de que hay más):
    los cuatro botones se ven siempre, en dos columnas */
 @media (max-width: 640px) {
-  .eg-nav { flex-basis: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; overflow: visible; }
-  .eg-nav__item { justify-content: center; padding: 10px 8px; font-size: 15px; white-space: normal; text-align: center; }
   .eg-list-item { flex-wrap: wrap; }
   .eg-list-item__text { flex: 1 1 160px; }
   .eg-list-item .eg-chip { margin-left: 58px; }
@@ -607,35 +682,300 @@ textarea.form-control { min-height: 96px; }
 /* =========================================================
    Celular: encabezado, números y acciones más compactos
    ========================================================= */
-@media (max-width: 640px) {
-  /* Encabezado: logo y botones (Contraseña, Salir) en una fila; el menú debajo, en 2 columnas */
-  .eg-header__inner { min-height: 0; padding-top: 10px; padding-bottom: 10px; gap: 10px; }
-  .eg-brand { order: 1; gap: 8px; }
-  .eg-brand__logo, .eg-brand__logo img { width: 34px; height: 34px; }
-  .eg-brand__name { font-size: 17px; }
-  .eg-user { order: 2; flex-wrap: nowrap; gap: 6px; }
-  .eg-user__info { display: none; }
-  .eg-user .eg-btn { flex: none; height: 38px; padding: 0 10px; font-size: 14px; gap: 4px; }
-  .eg-user .eg-btn .ms { font-size: 18px; }
-  .eg-nav { order: 3; gap: 4px; }
-  .eg-nav__item { padding: 8px 6px; min-height: 42px; font-size: 14px; gap: 6px; }
-  .eg-nav__item .ms { font-size: 20px; }
+/* =========================================================
+   Celulares y Tablets (< 992px): Encabezado ultra-compacto con Menú Hamburguesa
+   ========================================================= */
+@media (max-width: 991.98px) {
+  .eg-header {
+    min-height: 56px !important;
+    position: sticky;
+    top: 0;
+    z-index: 1040;
+  }
+  .eg-header .eg-container,
+  .eg-header__inner {
+    min-height: 56px !important;
+    padding: 6px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: relative !important;
+    gap: 12px !important;
+  }
+  .eg-brand {
+    order: 1 !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+  .eg-brand__logo, .eg-brand__logo img {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .eg-brand__name {
+    font-size: 17px !important;
+  }
+  .eg-brand__sub {
+    display: none !important;
+  }
+  .eg-menu-toggle {
+    order: 2 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: var(--eg-r) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    cursor: pointer !important;
+    transition: background .15s, border-color .15s !important;
+    margin-left: auto !important;
+  }
+  .eg-menu-toggle:hover,
+  .eg-menu-toggle:focus-visible {
+    background: rgba(255, 255, 255, 0.22) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+    outline: none !important;
+  }
+  .eg-menu-toggle .ms {
+    font-size: 26px !important;
+  }
 
-  /* Botones de la cabecera (Nuevo paciente / Nuevo turno) uno al lado del otro */
-  .eg-page-head { gap: 16px; }
-  .eg-page-head .eg-btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .eg-page-head .eg-btn--lg { height: 52px; padding: 0 10px; font-size: 16px; gap: 6px; }
+  /* Menú desplegable móvil */
+  .eg-nav-collapse {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: #142845;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 16px 36px rgba(10, 20, 36, 0.5);
+    padding: 14px 16px 20px 16px;
+    gap: 16px;
+    max-height: calc(100vh - 58px);
+    overflow-y: auto;
+    z-index: 1050;
+  }
+  .eg-nav-collapse.is-open {
+    display: flex;
+    animation: egMenuDown .2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
 
-  /* Inicio del profesional: los tres números en una sola fila, para llegar rápido a la agenda */
-  #vista-profesional, #centro { gap: 20px !important; }
-  #vista-profesional .eg-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  #centro .eg-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  :is(#vista-profesional, #centro) .eg-stat { padding: 14px 10px; flex-direction: column; gap: 4px; }
-  :is(#vista-profesional, #centro) :is(.eg-stat__icon, .eg-stat__sub) { display: none; }
-  :is(#vista-profesional, #centro) .eg-stat__label { font-size: 13px; line-height: 1.25; }
-  :is(#vista-profesional, #centro) .eg-stat__value { font-size: 28px; }
-  :is(#vista-profesional, #centro) .eg-stat__link { margin-top: 4px; font-size: 14px; }
-  :is(#vista-profesional, #centro) .eg-stat__link .ms { display: none; }
+  @keyframes egMenuDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .eg-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 6px !important;
+    overflow: visible !important;
+    order: 1 !important;
+  }
+  .eg-nav__item {
+    width: 100% !important;
+    min-height: 46px !important;
+    padding: 10px 14px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    justify-content: flex-start !important;
+    border-radius: var(--eg-r) !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    gap: 12px !important;
+  }
+  .eg-nav__item .ms {
+    font-size: 22px !important;
+  }
+
+  .eg-user {
+    order: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 12px !important;
+    padding-top: 14px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+    margin: 0 !important;
+    align-items: stretch !important;
+  }
+  .eg-user__info {
+    text-align: left !important;
+    padding: 0 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .eg-user__name {
+    font-size: 15px !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+  }
+  .eg-user__role {
+    font-size: 13px !important;
+    color: #94a9c7 !important;
+    display: block !important;
+  }
+  .eg-user__actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .eg-user__actions .eg-btn {
+    height: 40px !important;
+    padding: 0 10px !important;
+    font-size: 14px !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+}
+
+/* =========================================================
+   Celulares: Adaptación de cabecera de página, botones y tablas (< 768px)
+   ========================================================= */
+@media (max-width: 768px) {
+  /* Cabecera de página y botones de acción */
+  .eg-page-head {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+  .eg-page-head__actions {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  .eg-page-head__actions .eg-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Botones de la cabecera (Nuevo paciente / Nuevo turno) */
+  .eg-page-head .eg-btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+  .eg-page-head .eg-btn--lg { height: 48px; padding: 0 10px; font-size: 15px; gap: 6px; }
+
+  /* Filtro de rango de fechas en móvil */
+  .eg-field--rango {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* KPIs en reportes en móviles: Grilla compacta 2x2 con Total Turnos arriba */
+  #reporte-kpis {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  #reporte-kpis .eg-stat:first-child {
+    grid-column: 1 / -1 !important;
+  }
+  #reporte-kpis .eg-stat {
+    padding: 12px 14px !important;
+    gap: 10px !important;
+  }
+  #reporte-kpis .eg-stat__icon {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  #reporte-kpis .eg-stat__icon .ms {
+    font-size: 20px !important;
+  }
+  #reporte-kpis .eg-stat__value {
+    font-size: 26px !important;
+  }
+  #reporte-kpis .eg-stat__label {
+    font-size: 13px !important;
+  }
+  #reporte-kpis .eg-stat__sub {
+    font-size: 11px !important;
+  }
+
+  /* Inicio del profesional en móvil: grilla 2x2 vertical prolija y sin desbordes */
+  #vista-profesional .eg-stats,
+  #centro .eg-stats {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+  #vista-profesional .eg-stat,
+  #centro .eg-stat {
+    padding: 14px 12px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    border-radius: var(--eg-r-md) !important;
+  }
+  :is(#vista-profesional, #centro) .eg-stat__icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: var(--eg-r-sm) !important;
+  }
+  :is(#vista-profesional, #centro) .eg-stat__icon .ms {
+    font-size: 20px !important;
+  }
+  :is(#vista-profesional, #centro) .eg-stat__body {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+  }
+  :is(#vista-profesional, #centro) .eg-stat__label {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    width: 100% !important;
+  }
+  :is(#vista-profesional, #centro) .eg-stat__value {
+    font-size: 26px !important;
+    line-height: 1.1 !important;
+  }
+  :is(#vista-profesional, #centro) .eg-stat__sub {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    color: var(--eg-muted) !important;
+  }
+  :is(#vista-profesional, #centro) .eg-stat__link {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    margin-top: 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    max-width: 100% !important;
+  }
+  :is(#vista-profesional, #centro) .eg-stat__link .ms {
+    font-size: 15px !important;
+  }
+
+  /* Tablas con desplazamiento suave */
+  .table-responsive {
+    border-radius: var(--eg-r) !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .eg-report-table {
+    min-width: 580px !important;
+  }
+
   .eg-search-hero { padding: 14px 16px; gap: 12px; }
   .eg-search-hero input { font-size: 17px; }
 
@@ -645,6 +985,22 @@ textarea.form-control { min-height: 96px; }
   /* Modales: botones grandes, uno al lado del otro */
   .modal-body { padding: 18px !important; }
   .modal-footer .btn { flex: 1; }
+}
+
+@media (max-width: 576px) {
+  /* En pantallas chicas, fechas apiladas limpias */
+  .eg-rango-fechas {
+    flex-direction: column !important;
+    height: auto !important;
+    gap: 6px !important;
+  }
+  .eg-rango-fechas__input {
+    width: 100% !important;
+    height: 48px !important;
+  }
+  .eg-rango-fechas__sep {
+    display: none !important;
+  }
 }
 
 /* Enlaces de texto ("Ver agenda", "Ver todos", "Agendar", teléfonos, mails, nombres):

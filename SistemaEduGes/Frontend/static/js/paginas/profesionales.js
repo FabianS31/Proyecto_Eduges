@@ -122,7 +122,6 @@ function filaProfesional(p) {
     return html`
         <div class="eg-table__row${yo ? ' is-me' : ''}" role="row" data-profesional-id="${p.id_profesional}">
             <div class="eg-table__main" role="cell">
-                <div class="eg-avatar ${yo ? 'eg-avatar--solid' : ''}" aria-hidden="true">${iniciales(p)}</div>
                 <div>
                     <div class="eg-table__name">
                         ${nombreCompleto(p, { apellidoPrimero: true })}

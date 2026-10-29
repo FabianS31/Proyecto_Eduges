@@ -405,7 +405,8 @@
     /* Franja de Métricas / KPIs Modernas */
     .eg-stats {
         display: grid !important;
-        grid-template-columns: repeat(4, 1fr) !important;
+        grid-auto-flow: column !important;
+        grid-auto-columns: 1fr !important;
         gap: 10px !important;
         margin-bottom: 18px !important;
     }

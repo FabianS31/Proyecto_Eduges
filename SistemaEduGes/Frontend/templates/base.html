@@ -25,7 +25,7 @@
     <!-- Encabezado: logo, menú y usuario.
          data-requiere-permiso: el ítem solo se muestra si el usuario tiene ese permiso (lo resuelve layout.js). -->
     <header class="eg-header">
-        <div class="eg-container eg-header__inner">
+        <div class="eg-header__inner">
             <a class="eg-brand" href="{% url 'home' %}">
                 <span class="eg-brand__logo"><img src="{% static 'img/Logo.png' %}" alt="" width="40" height="40"></span>
                 <span class="eg-brand__text">
@@ -34,38 +34,47 @@
                 </span>
             </a>
 
-            <nav class="eg-nav" aria-label="Menú principal">
-                {% with actual=request.resolver_match.url_name %}
-                <a href="{% url 'home' %}" class="eg-nav__item" data-requiere-permiso="dashboard.ver" {% if actual == 'home' %}aria-current="page"{% endif %}>
-                    <span class="ms" aria-hidden="true">home</span>Inicio
-                </a>
-                <a href="{% url 'turnos' %}" class="eg-nav__item" data-requiere-permiso="turnos.ver" {% if actual == 'turnos' %}aria-current="page"{% endif %}>
-                    <span class="ms" aria-hidden="true">calendar_month</span>Turnos y Agenda
-                </a>
-                <a href="{% url 'pacientes' %}" class="eg-nav__item" data-requiere-permiso="pacientes.ver" {% if actual == 'pacientes' %}aria-current="page"{% endif %}>
-                    <span class="ms" aria-hidden="true">groups</span>Pacientes
-                </a>
-                <a href="{% url 'profesionales' %}" class="eg-nav__item" data-requiere-permiso="profesionales.edit" {% if actual == 'profesionales' %}aria-current="page"{% endif %}>
-                    <span class="ms" aria-hidden="true">badge</span>Profesionales
-                </a>
-                <a href="{% url 'reportes' %}" class="eg-nav__item" {% if actual == 'reportes' %}aria-current="page"{% endif %}>
-                    <span class="ms" aria-hidden="true">bar_chart</span>Reportes
-                </a>
-                {% endwith %}
-            </nav>
+            <!-- Botón Hamburguesa para celulares y tablets -->
+            <button class="eg-menu-toggle" id="btn-toggle-menu" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="eg-nav-collapse">
+                <span class="ms" id="icono-menu-toggle" aria-hidden="true">menu</span>
+            </button>
 
-            <!-- Usuario logueado (datos de /api/auth/me/) y botones con texto visible -->
-            <div class="eg-user">
-                <div class="eg-user__info" id="usuario-actual">
-                    <div class="eg-avatar eg-avatar--sm eg-avatar--blue" aria-hidden="true"></div>
-                    <div><span class="eg-user__name">&nbsp;</span><span class="eg-user__role">&nbsp;</span></div>
+            <!-- Menú y usuario: en escritorio van en línea, en mobile se colapsan suavemente -->
+            <div class="eg-nav-collapse" id="eg-nav-collapse">
+                <nav class="eg-nav" aria-label="Menú principal">
+                    {% with actual=request.resolver_match.url_name %}
+                    <a href="{% url 'home' %}" class="eg-nav__item" data-requiere-permiso="dashboard.ver" {% if actual == 'home' %}aria-current="page"{% endif %}>
+                        <span class="ms" aria-hidden="true">home</span>Inicio
+                    </a>
+                    <a href="{% url 'turnos' %}" class="eg-nav__item" data-requiere-permiso="turnos.ver" {% if actual == 'turnos' %}aria-current="page"{% endif %}>
+                        <span class="ms" aria-hidden="true">calendar_month</span>Turnos y Agenda
+                    </a>
+                    <a href="{% url 'pacientes' %}" class="eg-nav__item" data-requiere-permiso="pacientes.ver" {% if actual == 'pacientes' %}aria-current="page"{% endif %}>
+                        <span class="ms" aria-hidden="true">groups</span>Pacientes
+                    </a>
+                    <a href="{% url 'profesionales' %}" class="eg-nav__item" data-requiere-permiso="profesionales.edit" {% if actual == 'profesionales' %}aria-current="page"{% endif %}>
+                        <span class="ms" aria-hidden="true">badge</span>Profesionales
+                    </a>
+                    <a href="{% url 'reportes' %}" class="eg-nav__item" {% if actual == 'reportes' %}aria-current="page"{% endif %}>
+                        <span class="ms" aria-hidden="true">bar_chart</span>Reportes
+                    </a>
+                    {% endwith %}
+                </nav>
+
+                <!-- Usuario logueado (datos de /api/auth/me/) y botones de acción -->
+                <div class="eg-user">
+                    <div class="eg-user__info" id="usuario-actual">
+                        <div><span class="eg-user__name">&nbsp;</span><span class="eg-user__role">&nbsp;</span></div>
+                    </div>
+                    <div class="eg-user__actions">
+                        <button type="button" class="eg-btn eg-btn--ghost" data-bs-toggle="modal" data-bs-target="#modal-cambiar-password">
+                            <span class="ms" aria-hidden="true">key</span><span>Contraseña</span>
+                        </button>
+                        <button type="button" id="btn-cerrar-sesion" class="eg-btn eg-btn--danger">
+                            <span class="ms" aria-hidden="true">logout</span><span>Salir</span>
+                        </button>
+                    </div>
                 </div>
-                <button type="button" class="eg-btn eg-btn--ghost" data-bs-toggle="modal" data-bs-target="#modal-cambiar-password">
-                    <span class="ms" aria-hidden="true">key</span><span><span class="visually-hidden">Cambiar </span>Contraseña</span>
-                </button>
-                <button type="button" id="btn-cerrar-sesion" class="eg-btn eg-btn--danger">
-                    <span class="ms" aria-hidden="true">logout</span><span>Salir</span>
-                </button>
             </div>
         </div>
     </header>

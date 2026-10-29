@@ -26,9 +26,12 @@ import {
 } from '../componentes/listado.js';
 import {
     actualizarConLaHora,
+    diaEnTexto,
     estaActivo,
+    estaCancelado,
     formatearHora,
     listaTurnos,
+    nombreProfesional,
     obtenerTurnos,
     prepararTurnos,
     yaEmpezo,
@@ -161,7 +164,6 @@ function filaPaciente(p) {
     return html`
         <div class="eg-table__row" role="row" data-paciente-id="${p.id_paciente}">
             <div class="eg-table__main" role="cell">
-                <div class="eg-avatar eg-avatar--blue" aria-hidden="true">${iniciales(p)}</div>
                 <div>
                     <div class="eg-table__name">${nombreCompleto(p, { apellidoPrimero: true })}</div>
                     <div class="eg-table__meta">${meta}</div>
