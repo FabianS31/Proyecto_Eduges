@@ -90,4 +90,10 @@ urlpatterns = [
         include(sesiones_urls)
     ),
 
+    # API de obras sociales
+    path(
+        'api/obras-sociales/',
+        include('APIs.obras_sociales.urls')
+    ),
+
 ]

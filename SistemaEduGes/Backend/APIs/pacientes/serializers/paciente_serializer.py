@@ -1,3 +1,4 @@
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -183,6 +184,19 @@ class PacienteSerializer(serializers.ModelSerializer):
         return ProfesionalResponsableSerializer(
             asignacion.profesional
         ).data
+
+    def validate_obra_social(self, value):
+
+        estado_obra_social = value.estado.descripcion
+
+        if estado_obra_social.strip().lower() != 'activa':
+            raise serializers.ValidationError(
+                f"La obra social '{value.nombre}' "
+                f"se encuentra en estado '{estado_obra_social}' "
+                "y no puede asignarse al paciente."
+            )
+
+        return value
 
     @transaction.atomic
     def create(self, validated_data):
