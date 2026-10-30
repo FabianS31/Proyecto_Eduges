@@ -16,7 +16,7 @@ from profesionales.models.asignacion_model import (
 
 class TurnoService:
 
-    DURACION_MINUTOS = 60
+    DURACION_MINUTOS = 40
     DIAS_ANTICIPACION = 30
 
     ESTADOS_EDITABLES = (
@@ -498,7 +498,7 @@ class TurnoService:
                 raise serializers.ValidationError({
                     'estado': (
                         'Solo se puede marcar Realizado '
-                        'una vez finalizados los 60 minutos '
+                        'una vez finalizados los 40 minutos '
                         'del turno.'
                     )
                 })

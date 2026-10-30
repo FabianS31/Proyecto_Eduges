@@ -17,3 +17,16 @@ class TutorEntradaSerializer(serializers.ModelSerializer):
             'mail',
             'domicilio',
         ]
+
+        extra_kwargs = {
+            'mail': {
+                'required': True,
+                'allow_null': False,
+                'allow_blank': False,
+            },
+            'domicilio': {
+                'required': True,
+                'allow_null': False,
+                'allow_blank': False,
+            },
+        }
