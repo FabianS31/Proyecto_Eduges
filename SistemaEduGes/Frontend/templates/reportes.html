@@ -79,7 +79,7 @@
 </div>
 
 <!-- Formulario de filtros dinámicos -->
-<form class="eg-filters mb-4 d-print-none" id="filtros-reporte" role="search" aria-label="Filtros del reporte">
+<form class="eg-filters mb-4 d-print-none" id="filtros-reporte" data-tipo="turnos" role="search" aria-label="Filtros del reporte">
 
     <!-- FILTROS: TURNOS -->
     <div class="eg-field eg-field--rango" data-filtro-grupo="turnos">
@@ -111,6 +111,10 @@
         <label for="filtro-turno-busqueda" class="eg-label">Buscar paciente</label>
         <input type="text" class="eg-input" id="filtro-turno-busqueda" name="q" placeholder="Escribí el nombre o apellido del paciente..." autocomplete="off">
     </div>
+    <div class="eg-field" id="campo-turno-trabajo" data-filtro-grupo="turnos">
+        <label for="filtro-turno-trabajo" class="eg-label">Trabajo de sesión</label>
+        <input type="text" class="eg-input" id="filtro-turno-trabajo" name="trabajo_sesion" placeholder="Buscar por tema o contenido..." autocomplete="off">
+    </div>
 
     <!-- FILTROS: PACIENTES -->
     <div class="eg-field eg-field--full d-none" data-filtro-grupo="pacientes">
@@ -130,6 +134,15 @@
         <select class="eg-select" id="filtro-paciente-obra-social" name="obra_social_id">
             <option value="">Todas las obras sociales</option>
         </select>
+    </div>
+
+    <div class="eg-field eg-field--rango d-none" data-filtro-grupo="pacientes">
+        <label class="eg-label" for="filtro-paciente-alta-desde">Fecha de alta (Desde — Hasta)</label>
+        <div class="eg-rango-fechas">
+            <input type="date" class="eg-input eg-rango-fechas__input" id="filtro-paciente-alta-desde" name="fecha_alta_desde" title="Fecha de alta desde">
+            <span class="eg-rango-fechas__sep" aria-hidden="true">a</span>
+            <input type="date" class="eg-input eg-rango-fechas__input" id="filtro-paciente-alta-hasta" name="fecha_alta_hasta" title="Fecha de alta hasta">
+        </div>
     </div>
 
     <!-- FILTROS: PROFESIONALES -->
@@ -154,13 +167,15 @@
     </div>
 
     <!-- BOTONES DE ACCIÓN -->
-    <div class="d-flex gap-2 align-items-end">
-        <button type="submit" class="eg-btn eg-btn--primary flex-grow-1" id="btn-aplicar-filtros">
-            <span class="ms" aria-hidden="true">filter_alt</span>Aplicar filtros
-        </button>
-        <button type="button" class="eg-btn" id="btn-limpiar-filtros" title="Restablecer filtros">
-            <span class="ms" aria-hidden="true">restart_alt</span>Limpiar
-        </button>
+    <div class="eg-field eg-field--acciones">
+        <div class="eg-btn-group-filtros">
+            <button type="submit" class="eg-btn eg-btn--primary" id="btn-aplicar-filtros">
+                <span class="ms" aria-hidden="true">filter_alt</span>Aplicar filtros
+            </button>
+            <button type="button" class="eg-btn" id="btn-limpiar-filtros" title="Restablecer filtros">
+                <span class="ms" aria-hidden="true">restart_alt</span>Limpiar
+            </button>
+        </div>
     </div>
 </form>
 
@@ -224,6 +239,197 @@
 
 <!-- Estilos específicos para la vista e impresión (CA-04) -->
 <style>
+/* ============================================================
+   AJUSTES RESPONSIVOS DE FILTROS (DESKTOP, TABLET Y MÓVIL)
+   ============================================================ */
+#filtros-reporte {
+    display: grid;
+    gap: 16px;
+    align-items: end;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+/* Grilla Desktop (>= 992px) */
+@media (min-width: 992px) {
+    /* Por defecto y Turnos: 3 columnas (filas equilibradas de 3 elementos) */
+    #filtros-reporte,
+    #filtros-reporte[data-tipo="turnos"] {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    /* Turnos: cuando no está el selector de profesional (vista profesional), Trabajo de sesión ocupa 2 columnas */
+    #filtros-reporte[data-tipo="turnos"] #campo-turno-profesional[hidden] ~ #campo-turno-trabajo {
+        grid-column: span 2;
+    }
+
+    /* Pacientes: Fila 1 búsqueda completa; Fila 2 grilla de 4 columnas iguales */
+    #filtros-reporte[data-tipo="pacientes"] {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    #filtros-reporte[data-tipo="pacientes"] .eg-field--full {
+        grid-column: 1 / -1;
+    }
+    #filtros-reporte[data-tipo="pacientes"] .eg-field--rango {
+        grid-column: span 1;
+        min-width: 0 !important;
+    }
+    #filtros-reporte[data-tipo="pacientes"] .eg-field--acciones {
+        grid-column: span 1;
+        min-width: 0 !important;
+    }
+
+    /* Profesionales: 3 columnas iguales */
+    #filtros-reporte[data-tipo="profesionales"] {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    #filtros-reporte[data-tipo="profesionales"] .eg-field--full {
+        grid-column: 1 / -1;
+    }
+}
+
+/* Campo de rango de fechas en filtros */
+#filtros-reporte .eg-field--rango {
+    min-width: 0;
+}
+
+.eg-rango-fechas {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 52px;
+    width: 100%;
+    min-width: 0;
+}
+
+.eg-rango-fechas__input {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 100%;
+    height: 52px;
+    padding: 0 8px;
+    font-size: 13.5px;
+}
+
+.eg-rango-fechas__sep {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--eg-muted);
+    flex-shrink: 0;
+}
+
+/* Botones de acción (Aplicar y Limpiar) */
+.eg-field--acciones {
+    min-width: 0;
+    width: 100%;
+}
+
+.eg-btn-group-filtros {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 52px;
+    min-width: 0;
+}
+
+#btn-aplicar-filtros {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    height: 52px;
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+#btn-limpiar-filtros {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    height: 52px;
+    padding: 0 12px;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* Tablet (577px a 991px) */
+@media (min-width: 577px) and (max-width: 991px) {
+    #filtros-reporte {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 14px;
+    }
+    #filtros-reporte .eg-field--full,
+    #filtros-reporte .eg-field--rango,
+    #filtros-reporte .eg-field--acciones {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    #btn-aplicar-filtros,
+    #btn-limpiar-filtros {
+        flex: 1 !important;
+    }
+}
+
+/* Celular (pantallas pequeñas <= 576px) */
+@media (max-width: 576px) {
+    #filtros-reporte {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+        padding: 16px !important;
+    }
+
+    #filtros-reporte .eg-field--full,
+    #filtros-reporte .eg-field--rango,
+    #filtros-reporte .eg-field--acciones {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .eg-rango-fechas {
+        flex-direction: column !important;
+        height: auto !important;
+        gap: 8px !important;
+    }
+
+    .eg-rango-fechas__input {
+        width: 100% !important;
+        height: 48px !important;
+        min-height: 48px !important;
+    }
+
+    .eg-rango-fechas__sep {
+        display: none !important;
+    }
+
+    .eg-btn-group-filtros {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 8px !important;
+        width: 100% !important;
+        height: auto !important;
+    }
+
+    #btn-aplicar-filtros,
+    #btn-limpiar-filtros {
+        flex: 1 !important;
+        height: 48px !important;
+        min-height: 48px !important;
+        font-size: 14px !important;
+        padding: 0 8px !important;
+        justify-content: center !important;
+    }
+}
+
 /* Botón Aplicar filtros: alto contraste */
 #btn-aplicar-filtros,
 .eg-filters .eg-btn--primary {
@@ -580,6 +786,73 @@
     }
 }
 </style>
+
+<!-- Modal: Consulta de Sesión Clínica desde Reportes (Ítems 9, 10 y 11 Minuta) -->
+<div class="modal fade d-print-none" id="modal-detalle-sesion-reporte" tabindex="-1" aria-labelledby="modal-detalle-sesion-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light">
+                <h2 class="modal-title fs-6 fw-bold" id="modal-detalle-sesion-titulo">
+                    <span class="ms text-primary me-1" aria-hidden="true">clinical_notes</span>Detalle de Sesión Clínica
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="p-3 mb-3 rounded bg-light border" id="detalle-sesion-encabezado">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <strong class="fs-6" id="det-sesion-paciente">—</strong>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle" id="det-sesion-estado">Realizado</span>
+                    </div>
+                    <div class="small text-muted d-flex flex-wrap gap-3">
+                        <span><span class="ms me-1 align-middle" aria-hidden="true">event</span><span id="det-sesion-fecha">—</span></span>
+                        <span><span class="ms me-1 align-middle" aria-hidden="true">schedule</span><span id="det-sesion-hora">—</span></span>
+                        <span><span class="ms me-1 align-middle" aria-hidden="true">badge</span><span id="det-sesion-profesional">—</span></span>
+                    </div>
+                </div>
+
+                <div id="det-sesion-cargando" class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span class="small text-muted ms-2">Consultando registro de sesión…</span>
+                </div>
+
+                <div id="det-sesion-error" class="d-none"></div>
+
+                <div id="det-sesion-contenido" class="d-none">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
+                            <span class="ms text-primary" aria-hidden="true">task_alt</span>Trabajo realizado en sesión
+                        </label>
+                        <div class="p-3 rounded bg-white border" id="det-sesion-trabajo" style="white-space: pre-wrap; min-height: 50px;">—</div>
+                    </div>
+
+                    <div id="det-sesion-seccion-clinica">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
+                                <span class="ms text-info" aria-hidden="true">insights</span>Resultado y evolución
+                            </label>
+                            <div class="p-3 rounded bg-white border" id="det-sesion-resultado" style="white-space: pre-wrap; min-height: 50px;">—</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
+                                <span class="ms text-warning" aria-hidden="true">lock</span>Nota especial / confidencial
+                            </label>
+                            <div class="p-3 rounded bg-white border" id="det-sesion-nota-especial" style="white-space: pre-wrap; min-height: 40px;">—</div>
+                        </div>
+                    </div>
+
+                    <div id="det-sesion-aviso-admin" class="alert alert-info py-2 px-3 small mb-0 d-none d-flex align-items-center gap-2">
+                        <span class="ms" aria-hidden="true">visibility_off</span>
+                        <span><strong>Secreto profesional:</strong> Por confidencialidad médica y secreto profesional, los resultados clínicos y notas de evolución son de acceso exclusivo del profesional tratante.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}

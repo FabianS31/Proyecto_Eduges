@@ -42,6 +42,9 @@ export const profesionales = {
     // Array con todos los profesionales (sin paginación ni filtros en el servidor)
     listar: (opciones) => api.get('/profesionales/', opciones),
 
+    // Crea un nuevo profesional con su usuario y contraseña
+    crear: (datos) => api.post('/profesionales/', datos),
+
     // Cambia solo los campos enviados y devuelve el profesional actualizado.
     // Solo el SuperAdministrador tiene permiso (403 para el resto). 400 → errores por campo (ej.: matricula).
     actualizar: (id, datos) => api.patch(`/profesionales/${id}/`, datos),
@@ -126,7 +129,7 @@ export const turnos = {
 // Tutores (APIs/tutores/)
 // ------------------------------------------------------------
 export const tutores = {
-    listar: (parametros) => api.get('/tutores/', parametros),
+    listar: (parametros, opciones = {}) => api.get('/tutores/', { ...opciones, parametros }),
     crear: (datos) => api.post('/tutores/', datos),
     obtener: (id) => api.get(`/tutores/${id}/`),
     actualizar: (id, datos) => api.patch(`/tutores/${id}/`, datos),
@@ -164,6 +167,24 @@ export const sesiones = {
 // cada endpoint, se reemplaza por la llamada real (api.get) y las pantallas no cambian.
 // ------------------------------------------------------------
 // ------------------------------------------------------------
+// Obras Sociales — /api/obras-sociales/
+// ------------------------------------------------------------
+export const obrasSociales = {
+    // Lista todas las obras sociales o filtra por estado (?estado=1 para activas)
+    listar: (filtros = {}, opciones = {}) =>
+        api.get('/obras-sociales/', { ...opciones, parametros: filtros }),
+
+    obtener: (id, opciones = {}) =>
+        api.get(`/obras-sociales/${id}/`, opciones),
+
+    // Crea una nueva obra social ({ nombre, contacto?, mail?, web? })
+    crear: (datos) => api.post('/obras-sociales/', datos),
+
+    // Modifica datos o estado ({ estado_id: 1 | 2, nombre?, contacto?, mail?, web? })
+    actualizar: (id, datos) => api.patch(`/obras-sociales/${id}/`, datos),
+};
+
+// ------------------------------------------------------------
 // Reportes (APIs/reportes/)
 // ------------------------------------------------------------
 export const reportes = {
@@ -178,10 +199,10 @@ export const reportes = {
 const sinDatos = async () => [];
 
 export const catalogos = {
-    // Consulta la API si está disponible; de lo contrario, provee los registros activos de la BD
+    // Consulta la API si está disponible; filtra solo las activas (estado: 1) para combos y formularios
     obrasSociales: async () => {
         try {
-            return await api.get('/obras-sociales/');
+            return await api.get('/obras-sociales/', { parametros: { estado: 1 } });
         } catch {
             return [
                 { id: 1, nombre: 'Obra Social de Prueba' },
@@ -194,11 +215,15 @@ export const catalogos = {
         } catch {
             return [
                 { id: 1, nombre: 'Padre' },
-                { id: 2, nombre: 'Tutor Legal' },
-                { id: 3, nombre: 'Abuelo/a' },
-                { id: 4, nombre: 'Tío/a' },
+                { id: 2, nombre: 'Tío/a' },
+                { id: 3, nombre: 'Tutor Legal' },
+                { id: 4, nombre: 'Hermano/a' },
                 { id: 5, nombre: 'Madre' },
+                { id: 6, nombre: 'Abuelo/a' },
             ];
         }
     },
+    especialidades: async () => [
+        { id: 1, nombre: 'Psicopedagogo/a' },
+    ],
 };

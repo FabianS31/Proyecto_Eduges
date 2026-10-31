@@ -10,7 +10,7 @@
 // ============================================================
 
 import { buscarEnLista, crearCombobox } from '../componentes/combobox.js';
-import { catalogos, pacientes, profesionales, reportes } from '../endpoints.js';
+import { catalogos, pacientes, profesionales, reportes, sesiones } from '../endpoints.js';
 import { edad, hoyISO } from '../fechas.js';
 import { esProfesional, obtenerUsuario } from '../layout.js';
 import { normalizarTexto } from '../texto.js';
@@ -285,12 +285,97 @@ function conectarEventos() {
     $('btn-exportar-csv').addEventListener('click', () => {
         exportarCSV(estado.tipo, estado.resultados);
     });
+
+    // Consulta rápida de sesión clínica desde la tabla (Ítems 9 y 10 Minuta)
+    $('reporte-cuerpo')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-accion="ver-sesion"]');
+        if (btn) {
+            const turnoId = btn.dataset.turnoId;
+            if (turnoId) {
+                abrirDetalleSesion(turnoId);
+            }
+        }
+    });
+
+    // Actualización reactiva al cambiar obras sociales desde el modal de gestión
+    window.addEventListener('eduges:obras-sociales-actualizadas', async () => {
+        await cargarCatalogos();
+    });
+
+    actualizarVisibilidadFiltros();
+}
+
+// ============================================================
+// Modal de detalle de sesión clínica (Ítems 9, 10 y 11 Minuta)
+// ============================================================
+async function abrirDetalleSesion(turnoId) {
+    const modalEl = $('modal-detalle-sesion-reporte');
+    if (!modalEl) return;
+
+    const bsModal = window.bootstrap?.Modal?.getOrCreateInstance(modalEl) || new bootstrap.Modal(modalEl);
+    bsModal.show();
+
+    const turno = estado.resultados.find((t) => String(t.id) === String(turnoId));
+
+    // Llenar encabezado con los datos conocidos del turno
+    if (turno) {
+        $('det-sesion-paciente').textContent = turno.paciente ? `${turno.paciente.apellido}, ${turno.paciente.nombre}` : '—';
+        $('det-sesion-fecha').textContent = formatearFecha(turno.fecha);
+        $('det-sesion-hora').textContent = turno.hora ? `${String(turno.hora).slice(0, 5)} hs` : '—';
+        $('det-sesion-profesional').textContent = turno.profesional ? `${turno.profesional.apellido}, ${turno.profesional.nombre}` : '—';
+    }
+
+    const cargandoEl = $('det-sesion-cargando');
+    const errorEl = $('det-sesion-error');
+    const contenidoEl = $('det-sesion-contenido');
+    const trabajoEl = $('det-sesion-trabajo');
+    const seccionClinicaEl = $('det-sesion-seccion-clinica');
+    const resultadoEl = $('det-sesion-resultado');
+    const notaEspecialEl = $('det-sesion-nota-especial');
+    const avisoAdminEl = $('det-sesion-aviso-admin');
+
+    cargandoEl.classList.remove('d-none');
+    errorEl.classList.add('d-none');
+    contenidoEl.classList.add('d-none');
+
+    try {
+        const sesion = await sesiones.obtener(turnoId);
+        cargandoEl.classList.add('d-none');
+        contenidoEl.classList.remove('d-none');
+
+        // Trabajo de sesión (visible para todos los roles)
+        trabajoEl.textContent = sesion.trabajo_sesion || 'Sin detalle de trabajo registrado.';
+        if (turno && sesion.trabajo_sesion) {
+            turno.trabajo_sesion = sesion.trabajo_sesion;
+        }
+
+        // Validación de secreto profesional (Ítems 9 y 10 Minuta):
+        // Administrador puro solo ve el trabajo administrativo, no resultados ni notas clínicas
+        const esAdminPuro = !estado.esPro && !estado.usuario?.is_superuser;
+        if (esAdminPuro) {
+            seccionClinicaEl.classList.add('d-none');
+            avisoAdminEl.classList.remove('d-none');
+        } else {
+            seccionClinicaEl.classList.remove('d-none');
+            avisoAdminEl.classList.add('d-none');
+            resultadoEl.textContent = sesion.resultado || 'Sin registrar';
+            notaEspecialEl.textContent = sesion.nota_especial || 'Sin notas especiales.';
+        }
+    } catch (error) {
+        cargandoEl.classList.add('d-none');
+        errorEl.classList.remove('d-none');
+        renderizar(errorEl, bloqueError('No se encontró o no se pudo consultar el registro de sesión clínica para este turno.'));
+    }
 }
 
 // ============================================================
 // Visibilidad dinámica de grupos de filtros
 // ============================================================
 function actualizarVisibilidadFiltros() {
+    const formFiltros = $('filtros-reporte');
+    if (formFiltros) {
+        formFiltros.dataset.tipo = estado.tipo;
+    }
     document.querySelectorAll('[data-filtro-grupo]').forEach((campo) => {
         const corresponde = campo.dataset.filtroGrupo === estado.tipo;
         campo.classList.toggle('d-none', !corresponde);
@@ -333,6 +418,7 @@ async function consultarReporte() {
             const estadoId = $('filtro-turno-estado').value;
             const proId = $('filtro-turno-profesional')?.value;
             textoBusqueda = $('filtro-turno-busqueda').value.trim();
+            const textoTrabajo = $('filtro-turno-trabajo')?.value.trim();
 
             if (desde && hasta && desde > hasta) {
                 notificar('La fecha "Desde" no puede ser posterior a la fecha "Hasta".', 'error');
@@ -347,6 +433,7 @@ async function consultarReporte() {
             if (hasta) queryParams.fecha_hasta = hasta;
             if (estadoId) queryParams.estado_id = parseInt(estadoId, 10);
             if (proId && !estado.esPro) queryParams.profesional_id = parseInt(proId, 10);
+            if (textoTrabajo) queryParams.trabajo_sesion = textoTrabajo;
 
             respuesta = await reportes.turnos(queryParams);
             let items = respuesta.resultados || [];
@@ -366,20 +453,39 @@ async function consultarReporte() {
                     )
                 );
             }
+            if (textoTrabajo) {
+                items = items.filter((t) =>
+                    coincideBusquedaReporte([t.trabajo_sesion], textoTrabajo)
+                );
+            }
             estado.resultados = items;
             estado.totalOriginal = respuesta.total;
 
         } else if (estado.tipo === 'pacientes') {
             const estadoId = $('filtro-paciente-estado').value;
             const obraSocialId = $('filtro-paciente-obra-social').value;
+            const altaDesde = $('filtro-paciente-alta-desde')?.value;
+            const altaHasta = $('filtro-paciente-alta-hasta')?.value;
             textoBusqueda = $('filtro-paciente-q').value.trim();
 
             const queryParams = {};
             if (estadoId) queryParams.estado_id = parseInt(estadoId, 10);
             if (obraSocialId) queryParams.obra_social_id = parseInt(obraSocialId, 10);
+            if (altaDesde) queryParams.fecha_alta_desde = altaDesde;
+            if (altaHasta) queryParams.fecha_alta_hasta = altaHasta;
 
             respuesta = await reportes.pacientes(queryParams);
             let items = respuesta.resultados || [];
+
+            if (altaDesde || altaHasta) {
+                items = items.filter((p) => {
+                    const fAlta = p.fecha_alta || p.fecha_ingreso || p.created_at;
+                    if (!fAlta) return true;
+                    if (altaDesde && fAlta < altaDesde) return false;
+                    if (altaHasta && fAlta > altaHasta) return false;
+                    return true;
+                });
+            }
 
             if (textoBusqueda) {
                 items = items.filter((p) =>
@@ -602,10 +708,12 @@ function renderizarTabla() {
     if (estado.tipo === 'turnos') {
         renderizar(thead, html`
             <tr>
-                <th scope="col" style="width: 180px;">Fecha y Hora</th>
+                <th scope="col" style="width: 170px;">Fecha y Hora</th>
                 <th scope="col">Paciente</th>
                 <th scope="col">Profesional</th>
-                <th scope="col" style="width: 170px;">Estado</th>
+                <th scope="col" style="width: 140px;">Estado</th>
+                <th scope="col">Trabajo de Sesión</th>
+                <th scope="col" class="d-print-none text-end" style="width: 120px;">Acciones</th>
             </tr>
         `);
 
@@ -614,6 +722,22 @@ function renderizarTabla() {
             const horaStr = t.hora ? `${String(t.hora).slice(0, 5)} hs` : '—';
             const chipClase = obtenerClaseChipTurno(t.estado?.id);
             const chipIcono = obtenerIconoTurno(t.estado?.id);
+            const esRealizado = t.estado?.id === 4;
+
+            const trabajoTexto = t.trabajo_sesion
+                ? html`<div class="text-truncate" style="max-width: 260px;" title="${t.trabajo_sesion}">${t.trabajo_sesion}</div>`
+                : esRealizado
+                    ? html`<span class="text-muted small fst-italic">Sesión registrada</span>`
+                    : html`<span class="text-muted small">—</span>`;
+
+            const botonAccion = esRealizado
+                ? html`
+                    <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" data-accion="ver-sesion" data-turno-id="${t.id}" title="Consultar notas clínicas de la sesión">
+                        <span class="ms ms-sm" aria-hidden="true">visibility</span>
+                        <span>${estado.esPro ? 'Ver notas' : 'Ver sesión'}</span>
+                    </button>
+                `
+                : html`<span class="text-muted small">—</span>`;
 
             return html`
                 <tr>
@@ -632,6 +756,8 @@ function renderizarTabla() {
                             ${icono(chipIcono)}${t.estado?.nombre || '—'}
                         </span>
                     </td>
+                    <td>${trabajoTexto}</td>
+                    <td class="d-print-none text-end">${botonAccion}</td>
                 </tr>
             `;
         }));
@@ -813,7 +939,7 @@ function exportarCSV(tipo, resultados) {
     const nombreArchivo = `EduGes_Reporte_${tipo}_${hoyISO()}.csv`;
 
     if (tipo === 'turnos') {
-        filas.push(['ID', 'Fecha', 'Hora', 'Paciente', 'Profesional', 'Estado']);
+        filas.push(['ID', 'Fecha', 'Hora', 'Paciente', 'Profesional', 'Estado', 'Trabajo de Sesión']);
         resultados.forEach((t) => {
             filas.push([
                 t.id,
@@ -822,6 +948,7 @@ function exportarCSV(tipo, resultados) {
                 `"${t.paciente?.apellido || ''}, ${t.paciente?.nombre || ''}"`,
                 `"${t.profesional?.apellido || ''}, ${t.profesional?.nombre || ''}"`,
                 `"${t.estado?.nombre || ''}"`,
+                `"${(t.trabajo_sesion || '').replace(/"/g, '""')}"`,
             ]);
         });
     } else if (tipo === 'pacientes') {

@@ -14,9 +14,14 @@
         <span class="eg-eyebrow"><span class="ms" aria-hidden="true">groups</span><span id="pacientes-subtitulo">&nbsp;</span></span>
         <h1 class="eg-title">Pacientes</h1>
     </div>
-    <button type="button" class="eg-btn eg-btn--lg eg-btn--primary" id="btn-nuevo-paciente" hidden>
-        <span class="ms" aria-hidden="true">person_add</span>Nuevo paciente
-    </button>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="eg-btn eg-btn--lg" id="btn-gestionar-obras-sociales" data-bs-toggle="modal" data-bs-target="#modal-obras-sociales" data-requiere-permiso="obras_sociales.edit">
+            <span class="ms" aria-hidden="true">health_and_safety</span>Obras Sociales
+        </button>
+        <button type="button" class="eg-btn eg-btn--lg eg-btn--primary" id="btn-nuevo-paciente" hidden>
+            <span class="ms" aria-hidden="true">person_add</span>Nuevo paciente
+        </button>
+    </div>
 </div>
 
 <!-- Aviso de CUD vencidos o por vencer (lo completa pacientes.js; no se muestra si no hay) -->

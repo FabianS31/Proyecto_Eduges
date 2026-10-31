@@ -36,7 +36,7 @@ export const ESTADO_TURNO = Object.freeze({
 
 // Reglas de la API de turnos (APIs/turnos/services/turno_service.py)
 export const TURNO_DIAS_ANTICIPACION = 30;
-export const TURNO_DURACION_MINUTOS = 60;
+export const TURNO_DURACION_MINUTOS = 40;
 
 // Un CUD que vence dentro de estos meses se muestra como "por vencer" (ERS: aviso con 3 meses de anticipación)
 export const MESES_AVISO_CUD = 3;

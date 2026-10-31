@@ -13,6 +13,7 @@
 // ============================================================
 
 import { guardar, prepararModal } from '../componentes/formularios.js';
+import { prepararMostrarPassword } from '../componentes/mostrar-password.js';
 import {
     enteroDeUrl,
     guardarEnUrl,
@@ -23,12 +24,13 @@ import {
     textoTotal,
 } from '../componentes/listado.js';
 import { PERMISO } from '../constantes.js';
-import { profesionales } from '../endpoints.js';
+import { catalogos, profesionales } from '../endpoints.js';
 import { esAdministrador, obtenerUsuario, tienePermiso } from '../layout.js';
-import { coincideBusqueda, compararTexto } from '../texto.js';
+import { coincideBusqueda, compararTexto, normalizarTexto } from '../texto.js';
 import {
     bloqueCargando,
     bloqueVacio,
+    capitalizar,
     demorar,
     enlaceMail,
     enlaceTelefono,
@@ -311,6 +313,159 @@ function abrirEdicion() {
 }
 
 // ------------------------------------------------------------
+// Alta de nuevo profesional y cuenta de usuario (modal)
+// ------------------------------------------------------------
+let modalAlta = null;
+
+function sugerirNombreUsuario(nombre, apellido) {
+    const n = normalizarTexto(nombre).replace(/[^a-z0-9]/g, '');
+    const a = normalizarTexto(apellido).replace(/[^a-z0-9]/g, '');
+    if (n && a) return `${n}.${a}`;
+    return n || a || '';
+}
+
+function validarAlta(datos, formulario) {
+    const errores = {};
+    const obligatorio = (campo, valor, msg) => {
+        if (!valor) errores[campo] = [msg];
+    };
+
+    obligatorio('nombre', datos.nombre, 'Indicá el nombre.');
+    obligatorio('apellido', datos.apellido, 'Indicá el apellido.');
+    if (!datos.dni) {
+        errores.dni = ['Indicá el DNI.'];
+    } else if (!/^\d{7,8}$/.test(datos.dni)) {
+        errores.dni = ['El DNI tiene que tener 7 u 8 números, sin puntos.'];
+    }
+    obligatorio('matricula', datos.matricula, 'Indicá la matrícula profesional.');
+    obligatorio('especialidad', datos.especialidad, 'Seleccioná la especialidad.');
+
+    if (datos.mail && !formulario.elements.mail.checkValidity()) {
+        errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
+    }
+
+    if (!datos.usuario) {
+        errores.usuario = ['Indicá un nombre de usuario para el ingreso.'];
+    } else if (/\s/.test(datos.usuario)) {
+        errores.usuario = ['El usuario no puede contener espacios.'];
+    }
+
+    if (!datos.password) {
+        errores.password = ['Indicá una contraseña inicial.'];
+    } else if (datos.password.length < 8) {
+        errores.password = ['La contraseña tiene que tener al menos 8 caracteres.'];
+    }
+
+    if (!datos.password_confirm) {
+        errores.password_confirm = ['Confirmá la contraseña.'];
+    } else if (datos.password && datos.password !== datos.password_confirm) {
+        errores.password_confirm = ['Las contraseñas no coinciden.'];
+    }
+
+    return errores;
+}
+
+function prepararAlta() {
+    const btnNuevo = $('btn-nuevo-profesional');
+    const formNuevo = $('form-nuevo-profesional');
+    if (!btnNuevo || !formNuevo) return;
+
+    const selectEspecialidad = $('nuevo-prof-especialidad');
+    const inputNombre = $('nuevo-prof-nombre');
+    const inputApellido = $('nuevo-prof-apellido');
+    const inputUsuario = $('nuevo-prof-usuario');
+
+    prepararMostrarPassword(formNuevo);
+
+    modalAlta = prepararModal({
+        modal: $('modal-nuevo-profesional'),
+        formulario: formNuevo,
+        contenedorErrores: $('form-nuevo-profesional-errores'),
+        alAbrir: async () => {
+            try {
+                const lista = await catalogos.especialidades();
+                if (selectEspecialidad && lista.length) {
+                    selectEspecialidad.innerHTML = '<option value="">Seleccioná especialidad</option>';
+                    lista.forEach((esp) => {
+                        const opt = document.createElement('option');
+                        opt.value = esp.id;
+                        opt.textContent = esp.nombre;
+                        selectEspecialidad.appendChild(opt);
+                    });
+                    selectEspecialidad.value = String(lista[0].id);
+                }
+            } catch {
+                // Mantiene opción por defecto
+            }
+        },
+    });
+
+    btnNuevo.addEventListener('click', () => modalAlta().show());
+
+    // Capitalizar nombre y apellido al salir del campo
+    [inputNombre, inputApellido].forEach((input) => {
+        if (input) {
+            input.addEventListener('blur', () => {
+                if (input.value.trim()) {
+                    input.value = capitalizar(input.value);
+                }
+            });
+        }
+    });
+
+    // Sugerir usuario automáticamente al escribir nombre o apellido
+    let usuarioEditadoManualmente = false;
+    inputUsuario?.addEventListener('input', () => {
+        usuarioEditadoManualmente = Boolean(inputUsuario.value.trim());
+    });
+
+    const actualizarSugerenciaUsuario = () => {
+        if (!usuarioEditadoManualmente) {
+            const sug = sugerirNombreUsuario(inputNombre.value, inputApellido.value);
+            if (inputUsuario) inputUsuario.value = sug;
+        }
+    };
+    inputNombre?.addEventListener('input', actualizarSugerenciaUsuario);
+    inputApellido?.addEventListener('input', actualizarSugerenciaUsuario);
+
+    formNuevo.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        const campo = (nom) => formNuevo.elements[nom]?.value?.trim() ?? '';
+        const datos = {
+            nombre: capitalizar(campo('nombre')),
+            apellido: capitalizar(campo('apellido')),
+            dni: campo('dni'),
+            matricula: campo('matricula'),
+            especialidad: Number(campo('especialidad')) || 1,
+            contacto: campo('contacto') || null,
+            mail: campo('mail') || null,
+            usuario: campo('usuario').toLowerCase(),
+            password: formNuevo.elements.password?.value ?? '',
+            password_confirm: formNuevo.elements.password_confirm?.value ?? '',
+            rol: 2, // Rol Profesional
+            estado_profesional: 1, // Estado Activo
+        };
+
+        guardar({
+            formulario: formNuevo,
+            contenedorErrores: $('form-nuevo-profesional-errores'),
+            boton: $('btn-guardar-nuevo-profesional'),
+            errores: validarAlta(datos, formNuevo),
+            enviar: async () => {
+                const { password_confirm, ...payload } = datos;
+                return await profesionales.crear(payload);
+            },
+            mensajeExito: 'Profesional y cuenta de usuario creados exitosamente.',
+            modal: modalAlta,
+            alGuardar: async () => {
+                usuarioEditadoManualmente = false;
+                await cargarListado();
+            },
+        });
+    });
+}
+
+// ------------------------------------------------------------
 // Eventos
 // ------------------------------------------------------------
 function cambiarFiltros(cambios) {
@@ -399,6 +554,7 @@ async function iniciar() {
 
     if (puedeEditar()) {
         prepararEdicion();
+        prepararAlta();
     }
     if (await cargarListado() && fichaInicial) {
         abrirFicha(fichaInicial);

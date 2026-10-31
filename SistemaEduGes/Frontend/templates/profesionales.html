@@ -13,6 +13,11 @@
         <span class="eg-eyebrow"><span class="ms" aria-hidden="true">badge</span>Equipo terapéutico del centro</span>
         <h1 class="eg-title">Profesionales</h1>
     </div>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="eg-btn eg-btn--lg eg-btn--primary" id="btn-nuevo-profesional" data-requiere-permiso="profesionales.edit">
+            <span class="ms" aria-hidden="true">person_add</span>Nuevo profesional
+        </button>
+    </div>
 </div>
 
 <!-- Búsqueda -->
@@ -144,6 +149,9 @@
         </form>
     </div>
 </div>
+
+<!-- Modal: Nuevo Profesional y Cuenta de Acceso -->
+{% include 'componentes/modal_nuevo_profesional.html' %}
 {% endblock %}
 
 {% block extra_js %}

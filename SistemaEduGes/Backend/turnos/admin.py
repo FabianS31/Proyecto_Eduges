@@ -9,7 +9,7 @@ class TurnoAdmin(admin.ModelAdmin):
 
 @admin.register(RegistroSesion)
 class RegistroSesionAdmin(admin.ModelAdmin):
-    list_display = ('id_registro_sesion', 'nota_clinica')
-    search_fields = ('nota_clinica',)
+    list_display = ('id_registro_sesion', 'trabajo_sesion', 'resultado')
+    search_fields = ('trabajo_sesion', 'resultado')
 
 admin.site.register(EstadoTurno)

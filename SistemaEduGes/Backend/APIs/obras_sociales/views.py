@@ -27,8 +27,13 @@ class ObraSocialListView(APIView):
     authentication_classes = [UsuarioSessionAuthentication]
     permission_classes = [IsAuthenticated, TienePermiso]
 
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        self.permiso_requerido = 'obras_sociales.edit'
+        return [IsAuthenticated(), TienePermiso()]
+
     def get(self, request):
-        self.permiso_requerido = 'obras_sociales.ver'
 
         estado_id = request.query_params.get('estado')
 
@@ -62,8 +67,6 @@ class ObraSocialListView(APIView):
         )
 
     def post(self, request):
-        self.permiso_requerido = 'obras_sociales.edit'
-
         serializer = ObraSocialSerializer(
             data=request.data
         )
@@ -96,6 +99,12 @@ class ObraSocialDetailView(APIView):
     authentication_classes = [UsuarioSessionAuthentication]
     permission_classes = [IsAuthenticated, TienePermiso]
 
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        self.permiso_requerido = 'obras_sociales.edit'
+        return [IsAuthenticated(), TienePermiso()]
+
     def get_object(self, obra_social_id):
         return get_object_or_404(
             ObraSocial.objects.select_related(
@@ -106,8 +115,6 @@ class ObraSocialDetailView(APIView):
         )
 
     def get(self, request, obra_social_id):
-        self.permiso_requerido = 'obras_sociales.ver'
-
         obra_social = self.get_object(
             obra_social_id
         )
@@ -118,8 +125,6 @@ class ObraSocialDetailView(APIView):
         )
 
     def patch(self, request, obra_social_id):
-        self.permiso_requerido = 'obras_sociales.edit'
-
         obra_social = self.get_object(
             obra_social_id
         )

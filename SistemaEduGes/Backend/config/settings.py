@@ -273,6 +273,8 @@ STATICFILES_DIRS = [
     BASE_DIR.parent / 'Frontend' / 'static',
 ]
 
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 
 # ============================================================
 # EMAIL

@@ -38,6 +38,12 @@ class ReporteTurnosFiltroSerializer(serializers.Serializer):
         required=False,
     )
 
+    trabajo_sesion = serializers.CharField(
+        required=False,
+        max_length=200,
+        allow_blank=True,
+    )
+
     fecha_hasta = serializers.DateField(
         required=False,
     )
@@ -92,6 +98,14 @@ class ReporteAlumnosFiltroSerializer(serializers.Serializer):
     estado_id = serializers.IntegerField(
         required=False,
         min_value=1,
+    )
+
+    fecha_alta_desde = serializers.DateField(
+        required=False,
+    )
+
+    fecha_alta_hasta = serializers.DateField(
+        required=False,
     )
 
     obra_social_id = serializers.IntegerField(

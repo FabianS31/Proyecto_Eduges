@@ -10,3 +10,5 @@ __pycache__/
 .env.main
 EntornoEduGes/
 cookies.txt
+staticfiles/
+.eduges_static_hash

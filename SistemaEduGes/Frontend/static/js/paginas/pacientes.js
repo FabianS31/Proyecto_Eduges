@@ -14,6 +14,7 @@
 // ============================================================
 
 import { prepararFormularioPaciente } from '../componentes/formulario-paciente.js?v=20261022_1';
+import { crearCombobox } from '../componentes/combobox.js';
 import { guardar } from '../componentes/formularios.js';
 import {
     enteroDeUrl,
@@ -37,7 +38,7 @@ import {
     yaEmpezo,
 } from '../componentes/turnos.js';
 import { ESTADO_PACIENTE, ESTADO_TURNO, PERMISO } from '../constantes.js';
-import { pacientes, sesiones, tutores } from '../endpoints.js';
+import { catalogos, pacientes, sesiones, tutores } from '../endpoints.js';
 import { aFecha, edad, hoyISO, sumarDias } from '../fechas.js';
 import { esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
 import { coincideBusqueda, compararTexto } from '../texto.js';
@@ -45,6 +46,7 @@ import {
     badgeCud,
     bloqueCargando,
     bloqueVacio,
+    capitalizar,
     celdaCud,
     confirmar,
     CUD,
@@ -498,9 +500,15 @@ function tarjetaEvolucionClinica({ turno: t, sesion }) {
                             <p class="mb-0 text-secondary bg-light p-2 rounded" style="white-space: pre-wrap;">${sesion.resultado}</p>
                         </div>` : ''}
                     ${sesion.nota_especial ? html`
-                        <div class="mb-2">
-                            <span class="fw-bold text-dark d-block mb-1">${icono('lock')} Nota confidencial:</span>
-                            <p class="mb-0 text-muted bg-warning-subtle p-2 rounded border border-warning" style="white-space: pre-wrap;">${sesion.nota_especial}</p>
+                        <div class="mb-2 p-2 rounded-2 border border-warning-subtle bg-warning-subtle bg-opacity-25">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="fw-semibold text-dark small d-flex align-items-center gap-1">
+                                    <span class="ms text-warning-emphasis" style="font-size: 16px;">lock</span>
+                                    <span>Nota confidencial (exclusiva del profesional):</span>
+                                </span>
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 11px;">Privada</span>
+                            </div>
+                            <p class="mb-0 text-dark small" style="white-space: pre-wrap; font-style: italic;">${sesion.nota_especial}</p>
                         </div>` : ''}
                     ${!sesion.resultado && !esProfesional(estado.usuario) ? html`
                         <div class="text-muted fst-italic py-1 small">
@@ -711,8 +719,99 @@ function prepararGestionTutores() {
         return;
     }
 
+    let tutoresDisponibles = null;
+
+    async function sugerirTutoresAgregar(texto) {
+        if (tutoresDisponibles === null) {
+            try {
+                tutoresDisponibles = await tutores.listar();
+            } catch {
+                tutoresDisponibles = [];
+            }
+        }
+        const t = texto.trim();
+        if (!t) return [];
+
+        const idPacienteActual = estado.fichaId;
+
+        return tutoresDisponibles
+            .filter((item) => {
+                const yaEsTutor = (item.relaciones || []).some(
+                    (r) => r.paciente?.id === idPacienteActual && r.activo !== false
+                );
+                if (yaEsTutor) return false;
+
+                const nom = item.nombre || '';
+                const ape = item.apellido || '';
+                const dni = String(item.dni || '');
+                return coincideBusqueda([nom, ape, dni], t);
+            })
+            .map((item) => {
+                const pacientesRel = (item.relaciones || [])
+                    .map((r) => r.paciente)
+                    .filter(Boolean)
+                    .map((p) => `${p.apellido}, ${p.nombre}`)
+                    .join(', ');
+
+                const detallePartes = [];
+                if (item.dni) detallePartes.push(`DNI ${item.dni}`);
+                if (pacientesRel) detallePartes.push(`Tutor de: ${pacientesRel}`);
+
+                return {
+                    valor: item.id,
+                    texto: `${item.nombre} ${item.apellido}`.trim(),
+                    detalle: detallePartes.join(' · '),
+                    tutor: item,
+                };
+            });
+    }
+
+    const comboboxAddTutor = crearCombobox($('add-tutor-nombre'), {
+        buscar: sugerirTutoresAgregar,
+        textoLibre: true,
+        minimo: 1,
+        mensajeVacio: 'No se encontraron tutores con ese nombre o DNI.',
+        alElegir: (opcion) => {
+            if (opcion && opcion.tutor) {
+                const t = opcion.tutor;
+                $('add-tutor-nombre').value = t.nombre || '';
+                $('add-tutor-apellido').value = t.apellido || '';
+                $('add-tutor-dni').value = t.dni || '';
+                if (t.telefono) $('add-tutor-telefono').value = t.telefono;
+                if (t.movil) $('add-tutor-movil').value = t.movil;
+                if (t.mail) $('add-tutor-mail').value = t.mail;
+                if (t.domicilio) $('add-tutor-domicilio').value = t.domicilio;
+
+                const selectParentesco = $('add-tutor-parentesco');
+                const primerParentesco = (t.relaciones || [])[0]?.parentesco?.id;
+                if (primerParentesco && !selectParentesco.value) {
+                    selectParentesco.value = primerParentesco;
+                }
+                selectParentesco.focus();
+            }
+        },
+    });
+
+    async function cargarParentescosModal(select) {
+        if (!select || select.dataset.cargado === 'true') return;
+        try {
+            const lista = await catalogos.parentescos();
+            select.innerHTML = '<option value="">Seleccioná un parentesco</option>';
+            lista.forEach((item) => {
+                const opt = document.createElement('option');
+                opt.value = item.id;
+                opt.textContent = item.nombre;
+                select.appendChild(opt);
+            });
+            select.dataset.cargado = 'true';
+        } catch {
+            // Mantiene opciones estáticas
+        }
+    }
+
     // Al cerrar modales hijos, mantener scroll en la ficha
     $('modal-agregar-tutor').addEventListener('hidden.bs.modal', () => {
+        comboboxAddTutor.limpiar();
         if ($('ficha-paciente').classList.contains('show')) {
             document.body.classList.add('modal-open');
         }
@@ -723,18 +822,29 @@ function prepararGestionTutores() {
         }
     });
 
+    ['add-tutor-nombre', 'add-tutor-apellido', 'edit-tutor-nombre', 'edit-tutor-apellido'].forEach((id) => {
+        const input = $(id);
+        if (input) {
+            input.addEventListener('blur', () => {
+                if (input.value.trim()) {
+                    input.value = capitalizar(input.value);
+                }
+            });
+        }
+    });
+
     formAgregar.addEventListener('submit', (evento) => {
         evento.preventDefault();
         const campo = (nom) => formAgregar.elements[nom]?.value?.trim() ?? '';
         const datos = {
-            nombre: campo('nombre'),
-            apellido: campo('apellido'),
+            nombre: capitalizar(campo('nombre')),
+            apellido: capitalizar(campo('apellido')),
             dni: campo('dni'),
             parentesco_id: Number(campo('parentesco_id')) || null,
             telefono: campo('telefono'),
             movil: campo('movil') || null,
-            mail: campo('mail') || null,
-            domicilio: campo('domicilio') || null,
+            mail: campo('mail'),
+            domicilio: campo('domicilio'),
             paciente_id: estado.fichaId,
             responsable_principal: false,
         };
@@ -745,6 +855,12 @@ function prepararGestionTutores() {
         if (!datos.dni) errores.dni = ['Indicá el DNI.'];
         if (!datos.parentesco_id) errores.parentesco_id = ['Seleccioná el parentesco.'];
         if (!datos.telefono) errores.telefono = ['Indicá un teléfono.'];
+        if (!datos.mail) {
+            errores.mail = ['Indicá el mail.'];
+        } else if (!formAgregar.elements.mail.checkValidity()) {
+            errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
+        }
+        if (!datos.domicilio) errores.domicilio = ['Indicá el domicilio.'];
 
         guardar({
             formulario: formAgregar,
@@ -763,17 +879,23 @@ function prepararGestionTutores() {
         const campo = (nom) => formEditar.elements[nom]?.value?.trim() ?? '';
         const idTutor = Number(campo('tutor_id'));
         const datos = {
-            nombre: campo('nombre'),
-            apellido: campo('apellido'),
+            nombre: capitalizar(campo('nombre')),
+            apellido: capitalizar(campo('apellido')),
             telefono: campo('telefono') || null,
             movil: campo('movil') || null,
-            mail: campo('mail') || null,
-            domicilio: campo('domicilio') || null,
+            mail: campo('mail'),
+            domicilio: campo('domicilio'),
         };
 
         const errores = {};
         if (!datos.nombre) errores.nombre = ['Indicá el nombre.'];
         if (!datos.apellido) errores.apellido = ['Indicá el apellido.'];
+        if (!datos.mail) {
+            errores.mail = ['Indicá el mail.'];
+        } else if (!formEditar.elements.mail.checkValidity()) {
+            errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
+        }
+        if (!datos.domicilio) errores.domicilio = ['Indicá el domicilio.'];
 
         guardar({
             formulario: formEditar,
@@ -791,6 +913,9 @@ function prepararGestionTutores() {
         const btnAgregar = evento.target.closest('[data-accion="agregar-tutor"]');
         if (btnAgregar) {
             formAgregar.reset();
+            comboboxAddTutor.limpiar();
+            tutoresDisponibles = null;
+            cargarParentescosModal($('add-tutor-parentesco'));
             erroresAgregar.innerHTML = '';
             $('add-tutor-paciente-id').value = estado.fichaId;
             modalAgregar().show();

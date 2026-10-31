@@ -1,4 +1,3 @@
-
 from rest_framework import serializers
 
 from pacientes.models import (
@@ -88,6 +87,10 @@ class TutorSerializer(serializers.ModelSerializer):
             .select_related('paciente', 'parentesco')
             .order_by('id_paciente_tutor')
         )
+
+        pacientes_ids = self.context.get('pacientes_ids')
+        if pacientes_ids is not None:
+            relaciones = relaciones.filter(paciente_id__in=pacientes_ids)
 
         return RelacionTutorSerializer(
             relaciones,

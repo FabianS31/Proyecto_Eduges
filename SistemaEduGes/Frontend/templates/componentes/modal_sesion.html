@@ -45,12 +45,11 @@
                     <!-- Trabajo realizado (visible para todos los roles autorizados) -->
                     <div class="mb-3">
                         <label for="sesion-trabajo" class="form-label small fw-semibold">Trabajo realizado en sesión *</label>
-                        <textarea class="form-control" id="sesion-trabajo" name="trabajo_sesion" rows="3" maxlength="225" required
+                        <textarea class="form-control" id="sesion-trabajo" name="trabajo_sesion" rows="3" required
                                   placeholder="Describí las actividades, técnicas o dinámicas abordadas en el encuentro..."
                                   aria-describedby="sesion-trabajo-ayuda"></textarea>
-                        <div class="d-flex justify-content-between form-text" id="sesion-trabajo-ayuda">
+                        <div class="form-text" id="sesion-trabajo-ayuda">
                             <span id="sesion-trabajo-desc">Resumen de tareas y actividades desarrolladas.</span>
-                            <span id="sesion-trabajo-contador" class="text-muted small">0 / 225</span>
                         </div>
                     </div>
 
@@ -63,23 +62,21 @@
 
                         <div class="mb-3">
                             <label for="sesion-resultado" class="form-label small fw-semibold">Resultado y evolución *</label>
-                            <textarea class="form-control" id="sesion-resultado" name="resultado" rows="3" maxlength="225" required
+                            <textarea class="form-control" id="sesion-resultado" name="resultado" rows="3" required
                                       placeholder="Logros observados, respuestas ante los estímulos, avances o dificultades..."
                                       aria-describedby="sesion-resultado-ayuda"></textarea>
-                            <div class="d-flex justify-content-between form-text" id="sesion-resultado-ayuda">
+                            <div class="form-text" id="sesion-resultado-ayuda">
                                 <span>Evolución y desempeño del paciente durante la sesión.</span>
-                                <span id="sesion-resultado-contador" class="text-muted small">0 / 225</span>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label for="sesion-nota-especial" class="form-label small fw-semibold">Nota especial / confidencial *</label>
-                            <textarea class="form-control" id="sesion-nota-especial" name="nota_especial" rows="2" maxlength="225" required
+                            <label for="sesion-nota-especial" class="form-label small fw-semibold">Nota especial / confidencial <span class="text-muted fw-normal">(opcional)</span></label>
+                            <textarea class="form-control" id="sesion-nota-especial" name="nota_especial" rows="2"
                                       placeholder="Anotaciones privadas, pautas para la próxima sesión o indicaciones internas..."
                                       aria-describedby="sesion-nota-ayuda"></textarea>
-                            <div class="d-flex justify-content-between form-text" id="sesion-nota-ayuda">
-                                <span>Anotaciones privadas del profesional.</span>
-                                <span id="sesion-nota-contador" class="text-muted small">0 / 225</span>
+                            <div class="form-text" id="sesion-nota-ayuda">
+                                <span>Anotaciones privadas del profesional (opcional).</span>
                             </div>
                         </div>
                     </div>
@@ -90,7 +87,7 @@
                         <span>Por secreto profesional y confidencialidad médica, los resultados y notas clínicas son de acceso reservado al profesional tratante.</span>
                     </div>
 
-                    <p class="small text-muted mt-3 mb-0" id="sesion-ayuda-obligatorios">* Campos obligatorios (máximo 225 caracteres cada uno).</p>
+                    <p class="small text-muted mt-3 mb-0" id="sesion-ayuda-obligatorios">* Campos obligatorios.</p>
                 </div>
             </div>
             <div class="modal-footer bg-light">
@@ -128,7 +125,7 @@
                     </div>
                     <div class="col-sm-4 col-md-3">
                         <label for="pend-paciente-id" class="form-label small fw-semibold">ID Paciente</label>
-                        <input type="number" class="form-control form-control-sm" id="pend-paciente-id" name="paciente_id" placeholder="Ej.: 2">
+                        <input type="number" class="form-control form-control-sm" id="pend-paciente-id" name="paciente_id" placeholder="N° de identificación">
                     </div>
                     <div class="col-sm-12 col-md-3 d-flex gap-2">
                         <button type="submit" class="btn btn-sm btn-outline-primary w-100">

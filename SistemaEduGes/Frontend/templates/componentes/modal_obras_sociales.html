@@ -1,0 +1,132 @@
+<!-- ============================================================
+     EduGes - Modal de Gestión de Obras Sociales (CA y Minuta)
+     Acceso exclusivo: Administrador y SuperAdministrador
+     Permite dar de alta coberturas, desactivarlas, reactivarlas
+     y auditar la cantidad de pacientes asociados a cada una.
+     ============================================================ -->
+
+<div class="modal fade" id="modal-obras-sociales" tabindex="-1" aria-labelledby="modal-obras-sociales-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            
+            <!-- Encabezado del Modal -->
+            <div class="modal-header bg-light">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="p-2 rounded bg-primary-subtle text-primary d-flex align-items-center justify-content-center">
+                        <span class="ms fs-5" aria-hidden="true">health_and_safety</span>
+                    </div>
+                    <div>
+                        <h2 class="modal-title fs-6 fw-bold mb-0" id="modal-obras-sociales-titulo">
+                            Gestión de Obras Sociales y Coberturas
+                        </h2>
+                        <span class="text-muted small">Administración institucional de coberturas médicas habilitadas</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <!-- Cuerpo del Modal -->
+            <div class="modal-body p-4">
+
+                <!-- SECCIÓN 1: Alta Rápida de Obra Social -->
+                <div class="card border border-light-subtle bg-light p-3 mb-4 rounded-3 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="fw-bold small text-dark d-flex align-items-center gap-1">
+                            <span class="ms text-primary" aria-hidden="true">add_circle</span>Nueva Obra Social / Cobertura
+                        </span>
+                        <span class="text-muted small" style="font-size: 0.75rem;">* Campo obligatorio</span>
+                    </div>
+
+                    <form id="form-crear-obra-social" novalidate>
+                        <div id="form-os-errores" class="mb-2"></div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-5">
+                                <label for="os-nombre" class="form-label small fw-semibold mb-1">Nombre de la Obra Social *</label>
+                                <input type="text" class="form-control form-control-sm" id="os-nombre" name="nombre" placeholder="Ej.: OSDE 310, Swiss Medical, Galeno" required maxlength="150" autocomplete="off">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="os-contacto" class="form-label small fw-semibold mb-1">Teléfono / Contacto</label>
+                                <input type="text" class="form-control form-control-sm" id="os-contacto" name="contacto" placeholder="Ej.: 0810-555-6733" maxlength="150" autocomplete="off">
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-sm btn-primary w-100 d-flex align-items-center justify-content-center gap-1" id="btn-guardar-os">
+                                    <span class="ms ms-sm" aria-hidden="true">add</span>
+                                    <span>Agregar</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-6">
+                                <label for="os-mail" class="form-label small fw-semibold mb-1">Email de contacto (opcional)</label>
+                                <input type="email" class="form-control form-control-sm" id="os-mail" name="mail" placeholder="prestadores@cobertura.com" maxlength="150" autocomplete="off">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="os-web" class="form-label small fw-semibold mb-1">Sitio web / Portal (opcional)</label>
+                                <input type="url" class="form-control form-control-sm" id="os-web" name="web" placeholder="https://www.cobertura.com.ar" maxlength="150" autocomplete="off">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- SECCIÓN 2: Padrón y Filtros -->
+                <div>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <strong class="fs-6 text-dark">Padrón de Coberturas</strong>
+                            <span class="badge bg-secondary-subtle text-secondary border" id="os-contador-total">0 coberturas</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="input-group input-group-sm" style="width: 220px;">
+                                <span class="input-group-text bg-white border-end-0"><span class="ms ms-sm text-muted" aria-hidden="true">search</span></span>
+                                <input type="search" class="form-control border-start-0" id="os-filtro-busqueda" placeholder="Buscar cobertura…" aria-label="Buscar obra social">
+                            </div>
+                            <select class="form-select form-select-sm" id="os-filtro-estado" style="width: 140px;">
+                                <option value="">Todas</option>
+                                <option value="1" selected>Solo Activas</option>
+                                <option value="2">Solo Inactivas</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Estado cargando -->
+                    <div id="os-cargando" class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <span class="small text-muted ms-2">Cargando coberturas…</span>
+                    </div>
+
+                    <!-- Contenedor de la tabla -->
+                    <div id="os-tabla-contenedor" class="table-responsive border rounded-3 d-none">
+                        <table class="table table-hover align-middle mb-0" id="tabla-obras-sociales" style="font-size: 0.9rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" style="width: 40%;">Obra Social</th>
+                                    <th scope="col" style="width: 25%;">Pacientes Asociados</th>
+                                    <th scope="col" style="width: 15%;">Estado</th>
+                                    <th scope="col" class="text-end" style="width: 20%;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="os-tabla-cuerpo">
+                                <!-- Filas inyectadas por JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Estado vacío -->
+                    <div id="os-vacio" class="text-center py-4 d-none text-muted small">
+                        <span class="ms fs-2 d-block mb-1 text-muted" aria-hidden="true">search_off</span>
+                        No se encontraron coberturas coincidentes.
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Pie del Modal -->
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <span class="text-muted small">
+                    <span class="ms align-middle me-1" style="font-size: 14px;">info</span>Las coberturas inactivas no se ofrecen para nuevos pacientes pero conservan su historial.
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>

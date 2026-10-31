@@ -45,9 +45,6 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
     const resultadoInput = $('sesion-resultado');
     const notaInput = $('sesion-nota-especial');
 
-    const contadorTrabajo = $('sesion-trabajo-contador');
-    const contadorResultado = $('sesion-resultado-contador');
-    const contadorNota = $('sesion-nota-contador');
 
     const camposClinicos = $('sesion-campos-clinicos');
     const avisoAdmin = $('sesion-aviso-admin');
@@ -65,19 +62,6 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
 
     const rolNombre = usuario?.rol?.nombre ?? usuario?.rol ?? '';
     const esAdmin = rolNombre === 'Administrador';
-
-    // Actualiza los contadores de caracteres (máx 225)
-    function actualizarContadores() {
-        if (contadorTrabajo && trabajoInput) contadorTrabajo.textContent = `${trabajoInput.value.length} / 225`;
-        if (contadorResultado && resultadoInput) contadorResultado.textContent = `${resultadoInput.value.length} / 225`;
-        if (contadorNota && notaInput) contadorNota.textContent = `${notaInput.value.length} / 225`;
-    }
-
-    [trabajoInput, resultadoInput, notaInput].forEach((input) => {
-        if (input) {
-            input.addEventListener('input', actualizarContadores);
-        }
-    });
 
     const obtenerModal = prepararModal({
         modal: modalElemento,
@@ -108,20 +92,10 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
         const errores = {};
         if (!datos.trabajo_sesion) {
             errores.trabajo_sesion = ['Describí las actividades realizadas en la sesión.'];
-        } else if (datos.trabajo_sesion.length > 225) {
-            errores.trabajo_sesion = ['El trabajo en sesión no puede superar los 225 caracteres.'];
         }
 
         if (!datos.resultado) {
             errores.resultado = ['Indicá la evolución o resultado del paciente.'];
-        } else if (datos.resultado.length > 225) {
-            errores.resultado = ['El resultado no puede superar los 225 caracteres.'];
-        }
-
-        if (!datos.nota_especial) {
-            errores.nota_especial = ['Ingresá una nota u observación de la sesión.'];
-        } else if (datos.nota_especial.length > 225) {
-            errores.nota_especial = ['La nota especial no puede superar los 225 caracteres.'];
         }
 
         const esCreacion = modo === 'creacion';
@@ -150,7 +124,7 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
                         await turnos.cambiarEstado(turnoId, ESTADO_TURNO.REALIZADO);
                         sePudoPasarARealizado = true;
                     } catch {
-                        // El backend no permite pasar a Realizado hasta que transcurran los 60 min del turno
+                        // El backend no permite pasar a Realizado hasta que transcurran los 40 min del turno
                         sePudoPasarARealizado = false;
                     }
                 }
@@ -159,7 +133,7 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
             mensajeExito: () => {
                 const estadoId = turnoActual?.estado?.id ?? turnoActual?.estado?.ID_EstadoTurno;
                 if (estadoId === ESTADO_TURNO.CONFIRMADO && !sePudoPasarARealizado) {
-                    return 'Nota clínica guardada. El turno se marcará como Realizado al cumplirse los 60 min de atención.';
+                    return 'Nota clínica guardada. El turno se marcará como Realizado al cumplirse los 40 min de atención.';
                 }
                 return esCreacion
                     ? 'Registro de sesión creado correctamente.'
@@ -207,7 +181,6 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
         trabajoInput.value = '';
         resultadoInput.value = '';
         notaInput.value = '';
-        actualizarContadores();
         renderizar(contenedorErrores, '');
 
         // Ajustar interfaz según rol
@@ -242,7 +215,6 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
                 resultadoInput.value = sesionExistente.resultado ?? '';
                 notaInput.value = sesionExistente.nota_especial ?? '';
             }
-            actualizarContadores();
         } catch (error) {
             if (error instanceof ApiError && error.status === 404) {
                 // No hay registro previo: modo creación

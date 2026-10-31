@@ -9,6 +9,7 @@
 // ============================================================
 
 import { ApiError } from './api.js';
+import { inicializarModalObrasSociales } from './componentes/obras-sociales-modal.js';
 import { prepararMostrarPassword } from './componentes/mostrar-password.js';
 import { CONFIG } from './config.js';
 import { PERMISO } from './constantes.js';
@@ -260,6 +261,7 @@ async function iniciar() {
     const botonSalir = document.getElementById('btn-cerrar-sesion');
     botonSalir?.addEventListener('click', () => cerrarSesion(botonSalir));
     prepararCambioPassword();
+    inicializarModalObrasSociales();
 
     try {
         const usuario = await obtenerUsuario();

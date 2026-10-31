@@ -1,0 +1,100 @@
+<!-- ============================================================
+     EduGes - Modal: Nuevo Profesional y Cuenta de Acceso
+     Permite al Administrador registrar un profesional y generarle
+     sus credenciales de ingreso (usuario y contraseña inicial).
+     ============================================================ -->
+
+<div class="modal fade" id="modal-nuevo-profesional" tabindex="-1" aria-labelledby="modal-nuevo-profesional-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <form class="modal-content border-0 shadow" id="form-nuevo-profesional" novalidate>
+            <div class="modal-header">
+                <h2 class="modal-title fs-6 fw-bold" id="modal-nuevo-profesional-titulo">
+                    <span class="ms me-1" aria-hidden="true">person_add</span>Nuevo profesional y cuenta de acceso
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="form-nuevo-profesional-errores"></div>
+
+                <!-- Bloque 1: Datos Personales y Profesionales -->
+                <fieldset class="mb-4">
+                    <legend class="fs-6 fw-bold mb-3 d-flex align-items-center">
+                        <span class="ms me-1" aria-hidden="true">badge</span>Datos del Profesional
+                    </legend>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="nuevo-prof-nombre" class="form-label small fw-semibold">Nombre *</label>
+                            <input type="text" class="form-control" id="nuevo-prof-nombre" name="nombre" maxlength="100" required autocomplete="off">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="nuevo-prof-apellido" class="form-label small fw-semibold">Apellido *</label>
+                            <input type="text" class="form-control" id="nuevo-prof-apellido" name="apellido" maxlength="100" required autocomplete="off">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="nuevo-prof-dni" class="form-label small fw-semibold">DNI *</label>
+                            <input type="text" class="form-control" id="nuevo-prof-dni" name="dni" maxlength="8" inputmode="numeric" required
+                                   autocomplete="off" aria-describedby="nuevo-prof-dni-ayuda">
+                            <div class="form-text" id="nuevo-prof-dni-ayuda">Sin puntos, 7 u 8 dígitos.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="nuevo-prof-matricula" class="form-label small fw-semibold">Matrícula *</label>
+                            <input type="text" class="form-control" id="nuevo-prof-matricula" name="matricula" maxlength="50" required
+                                   autocomplete="off" placeholder="ej. MP-12345">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="nuevo-prof-especialidad" class="form-label small fw-semibold">Especialidad *</label>
+                            <select class="form-select" id="nuevo-prof-especialidad" name="especialidad" required>
+                                <option value="">Seleccioná especialidad</option>
+                                <option value="1" selected>Psicopedagogo/a</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="nuevo-prof-contacto" class="form-label small fw-semibold">Teléfono / Móvil</label>
+                            <input type="tel" class="form-control" id="nuevo-prof-contacto" name="contacto" maxlength="50" autocomplete="off" placeholder="ej. 11 2345-6789">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="nuevo-prof-mail" class="form-label small fw-semibold">Mail</label>
+                            <input type="email" class="form-control" id="nuevo-prof-mail" name="mail" maxlength="100" autocomplete="off" placeholder="ej. profesional@rinconpsi.com">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Bloque 2: Cuenta de Usuario y Contraseña -->
+                <fieldset class="mb-2">
+                    <legend class="fs-6 fw-bold mb-2 d-flex align-items-center">
+                        <span class="ms me-1" aria-hidden="true">key</span>Cuenta de Ingreso al Sistema
+                    </legend>
+                    <p class="small text-muted mb-3">
+                        El profesional usará estas credenciales para acceder a EduGes. Al ingresar por primera vez podrá modificar su contraseña si lo desea.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label for="nuevo-prof-usuario" class="form-label small fw-semibold">Nombre de usuario *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><span class="ms ms-chico" aria-hidden="true">account_circle</span></span>
+                                <input type="text" class="form-control" id="nuevo-prof-usuario" name="usuario" maxlength="50" required
+                                       autocomplete="off" placeholder="ej. pablo.perez">
+                            </div>
+                            <div class="form-text">Sin espacios ni mayúsculas. Se sugiere automáticamente al escribir el nombre.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="nuevo-prof-password" class="form-label small fw-semibold">Contraseña inicial *</label>
+                            <input type="password" class="form-control" id="nuevo-prof-password" name="password" minlength="8" required
+                                   autocomplete="new-password" placeholder="Mínimo 8 caracteres" data-mostrar-password>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="nuevo-prof-password-confirm" class="form-label small fw-semibold">Confirmar contraseña *</label>
+                            <input type="password" class="form-control" id="nuevo-prof-password-confirm" name="password_confirm" minlength="8" required
+                                   autocomplete="new-password" placeholder="Repetí la contraseña" data-mostrar-password>
+                        </div>
+                    </div>
+                </fieldset>
+                <p class="small text-muted mt-3 mb-0">* Campos obligatorios.</p>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-nuevo-profesional">Crear profesional</button>
+            </div>
+        </form>
+    </div>
+</div>

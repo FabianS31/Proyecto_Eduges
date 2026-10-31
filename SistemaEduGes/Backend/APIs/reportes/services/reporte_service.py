@@ -26,6 +26,7 @@ class ReportesService:
                 'estado',
                 'paciente',
                 'profesional',
+                'registro_sesion',
             )
             .all()
         )
@@ -124,6 +125,11 @@ class ReportesService:
                 fecha__gte=filtros['fecha_desde']
             )
 
+        if filtros.get('trabajo_sesion'):
+            consulta = consulta.filter(
+                registro_sesion__trabajo_sesion__icontains=filtros['trabajo_sesion']
+            )
+
         if 'fecha_hasta' in filtros:
             consulta = consulta.filter(
                 fecha__lte=filtros['fecha_hasta']
@@ -154,6 +160,11 @@ class ReportesService:
                     'nombre': turno.profesional.nombre,
                     'apellido': turno.profesional.apellido,
                 },
+                'trabajo_sesion': (
+                    turno.registro_sesion.trabajo_sesion
+                    if turno.registro_sesion
+                    else None
+                ),
             }
             for turno in consulta
         ]

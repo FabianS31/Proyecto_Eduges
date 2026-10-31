@@ -10,10 +10,19 @@ class TutorService:
     @transaction.atomic
     def crear_tutor(datos_tutor, datos_relacion):
         """
-        Crea un tutor y su relación inicial en una transacción.
+        Crea un tutor o actualiza sus datos si ya existe por DNI,
+        y crea/reactiva su relación con el paciente en una transacción.
         """
+        dni = datos_tutor.get('dni')
+        tutor = Tutor.objects.filter(dni=dni).first() if dni else None
 
-        tutor = Tutor.objects.create(**datos_tutor)
+        if tutor:
+            for campo, valor in datos_tutor.items():
+                if valor is not None:
+                    setattr(tutor, campo, valor)
+            tutor.save()
+        else:
+            tutor = Tutor.objects.create(**datos_tutor)
 
         TutorService.crear_relacion(
             tutor=tutor,

@@ -71,15 +71,27 @@ class ObraSocialSerializer(serializers.ModelSerializer):
         source='tipo',
         queryset=TipoObraSocial.objects.all(),
         write_only=True,
-        required=True
+        required=False
     )
 
     estado_id = serializers.PrimaryKeyRelatedField(
         source='estado',
         queryset=EstadoObraSocial.objects.all(),
         write_only=True,
-        required=True
+        required=False
     )
+
+    cantidad_pacientes = serializers.SerializerMethodField()
+
+    def get_cantidad_pacientes(self, obj):
+        return getattr(obj, 'pacientes_count', None) or obj.paciente_set.count()
+
+    def create(self, validated_data):
+        if 'tipo' not in validated_data:
+            validated_data['tipo'] = TipoObraSocial.objects.first()
+        if 'estado' not in validated_data:
+            validated_data['estado'] = EstadoObraSocial.objects.get(pk=1)
+        return super().create(validated_data)
 
     class Meta:
         model = ObraSocial
@@ -94,12 +106,10 @@ class ObraSocialSerializer(serializers.ModelSerializer):
             'estado',
             'tipo_id',
             'estado_id',
+            'cantidad_pacientes',
         ]
 
     def validate_nombre(self, value):
-
-        print("NOMBRE RECIBIDO:", repr(value))
-
         duplicado = ObraSocialService.nombre_duplicado(
             nombre=value,
             excluir_id=(
@@ -108,8 +118,6 @@ class ObraSocialSerializer(serializers.ModelSerializer):
                 else None
             )
         )
-
-        print("DUPLICADO:", duplicado)
 
         if duplicado:
             raise serializers.ValidationError(
