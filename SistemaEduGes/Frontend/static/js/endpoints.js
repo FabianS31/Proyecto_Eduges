@@ -86,7 +86,7 @@ export const pacientes = {
 // La API devuelve todos los turnos juntos (sin filtros por fecha en el servidor):
 // se piden una vez por página y se reutilizan; se vuelven a pedir después de un cambio.
 // Reglas que valida la API: hasta 30 días hacia adelante, nunca un horario pasado,
-// duración fija de 1 hora, sin superponerse con otro turno del profesional ni del paciente,
+// duración fija de 40 minutos, sin superponerse con otro turno del profesional ni del paciente,
 // y solo con pacientes asignados al profesional.
 let turnosEnMemoria = null;
 
@@ -120,7 +120,7 @@ export const turnos = {
     cancelar: (id) => cambiarTurnos(() => api.delete(`/turnos/${id}/`)),
 
     // Cambios permitidos (los valida la API): Pendiente → Confirmado; Confirmado → Ausente
-    // (desde la hora del turno) o Realizado (pasada la hora de duración); Ausente → Realizado.
+    // (desde la hora del turno) o Realizado (pasados los 40 minutos de duración); Ausente → Realizado.
     // Ausente y Realizado: solo el profesional del turno o el SuperAdministrador.
     cambiarEstado: (id, estado) => cambiarTurnos(() => api.patch(`/turnos/${id}/estado/`, { ID_EstadoTurno: estado })),
 };

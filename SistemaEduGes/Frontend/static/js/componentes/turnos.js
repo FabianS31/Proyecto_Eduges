@@ -12,7 +12,7 @@
 //   acciones.abrirNuevo({ fecha, paciente });         // los dos son opcionales
 //
 // Reglas de la API (APIs/turnos/services/turno_service.py): hasta 30 días hacia adelante,
-// nunca un horario pasado, 1 hora de duración, sin superponerse con otro turno del
+// nunca un horario pasado, 40 minutos de duración, sin superponerse con otro turno del
 // profesional ni del paciente. Se validan también acá para avisar antes y con más detalle.
 // ============================================================
 
@@ -82,7 +82,7 @@ export const estaCancelado = (turno) => idEstado(turno) === ESTADO_TURNO.CANCELA
 export const yaEmpezo = (turno) => turno.fecha < hoyISO()
     || (turno.fecha === hoyISO() && formatearHora(turno.hora) <= ahoraHora());
 
-// Pasó la hora de duración del turno (recién ahí se puede marcar como realizado)
+// Pasaron los 40 minutos de duración del turno (recién ahí se puede marcar como realizado)
 const yaTermino = (turno) => turno.fecha < hoyISO()
     || (turno.fecha === hoyISO() && sumarMinutos(formatearHora(turno.hora), TURNO_DURACION_MINUTOS) <= ahoraHora());
 
@@ -742,16 +742,14 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
 
             // Ítem 3 Minuta: Pasar de pendiente a confirmado en la BD
             try {
-                if (Array.isArray(resultado)) {
-                    for (const t of resultado) {
-                        const id = t.id_turno ?? t.id;
-                        if (id) {
-                            await turnos.cambiarEstado(id, ESTADO_TURNO.CONFIRMADO);
-                        }
+                const listaCreados = Array.isArray(resultado)
+                    ? resultado
+                    : (Array.isArray(resultado?.turnos) ? resultado.turnos : (resultado ? [resultado] : []));
+                for (const t of listaCreados) {
+                    const id = t.id_turno ?? t.id;
+                    if (id) {
+                        await turnos.cambiarEstado(id, ESTADO_TURNO.CONFIRMADO);
                     }
-                } else if (resultado?.id_turno || resultado?.id) {
-                    const id = resultado.id_turno ?? resultado.id;
-                    await turnos.cambiarEstado(id, ESTADO_TURNO.CONFIRMADO);
                 }
             } catch (errEstado) {
                 console.warn('El turno fue creado pero no pudo cambiarse de estado:', errEstado);

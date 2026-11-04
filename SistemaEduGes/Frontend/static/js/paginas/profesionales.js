@@ -547,8 +547,9 @@ async function iniciar() {
         return;
     }
 
-    if (!tienePermiso(estado.usuario, PERMISO.PROFESIONALES_VER)) {
-        renderizar($('profesionales-estado'), bloqueVacio('No tenés acceso al listado de profesionales.', 'lock'));
+    if (!esAdministrador(estado.usuario)) {
+        renderizar($('profesionales-estado'), bloqueVacio('El módulo de profesionales es exclusivo para administradores.', 'lock'));
+        window.location.replace('/dashboard/');
         return;
     }
 
