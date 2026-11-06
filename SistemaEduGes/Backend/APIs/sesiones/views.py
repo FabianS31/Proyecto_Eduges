@@ -74,8 +74,8 @@ class RegistroSesionCrearView(APIView):
         registro = SesionesService.registrar_sesion(
             turno_id=turno.pk,
             trabajo_sesion=datos['trabajo_sesion'],
-            resultado=datos['resultado'],
-            nota_especial=datos.get('nota_especial'),
+            diagnostico=datos['diagnostico'],
+            nota_sesion=datos.get('nota_sesion'),
             usuario=request.user,
         )
 
@@ -87,6 +87,8 @@ class RegistroSesionCrearView(APIView):
                     f'{turno.pk}'
                 ),
                 'trabajo_sesion': registro.trabajo_sesion,
+                'diagnostico': registro.diagnostico,
+                'nota_sesion': registro.nota_sesion,
                 'mensaje': 'Registro de sesión creado correctamente.',
             },
             status=status.HTTP_201_CREATED,

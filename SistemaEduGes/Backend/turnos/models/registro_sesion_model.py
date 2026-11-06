@@ -13,12 +13,12 @@ class RegistroSesion(models.Model):
         db_column='TrabajoSesion'
     )
 
-    resultado = models.TextField(
-        db_column='Resultado'
+    diagnostico = models.TextField(
+        db_column='Diagnostico'
     )
 
-    nota_especial = models.TextField(
-        db_column='NotaEspecial',
+    nota_sesion = models.TextField(
+        db_column='NotaSesion',
         null=True,
         blank=True
     )

@@ -19,11 +19,11 @@ class RegistroSesionEntradaSerializer(serializers.Serializer):
 
     trabajo_sesion = serializers.CharField()
 
-    resultado = serializers.CharField(
+    diagnostico = serializers.CharField(
         write_only=True,
     )
 
-    nota_especial = serializers.CharField(
+    nota_sesion = serializers.CharField(
         required=False,
         allow_null=True,
         allow_blank=True,
@@ -49,8 +49,8 @@ class RegistroSesionProfesionalSerializer(
         fields = [
             'id',
             'trabajo_sesion',
-            'resultado',
-            'nota_especial',
+            'diagnostico',
+            'nota_sesion',
         ]
         read_only_fields = fields
 
@@ -60,7 +60,7 @@ class RegistroSesionResumenSerializer(
 ):
     """
     Respuesta general sin información privada.
-    No expone resultado ni nota_especial.
+    No expone diagnostico ni nota_sesion.
     """
 
     id = serializers.IntegerField(

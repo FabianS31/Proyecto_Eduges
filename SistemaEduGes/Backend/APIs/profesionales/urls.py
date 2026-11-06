@@ -1,8 +1,10 @@
+
 from django.urls import path
 
 from .views import (
-ProfesionalListCreateView,
-ProfesionalDetailView,
+    ProfesionalListCreateView,
+    ProfesionalDetailView,
+    ProfesionalEstadoView,
 )
 
 urlpatterns = [
@@ -17,5 +19,11 @@ urlpatterns = [
         '<int:pk>/',
         ProfesionalDetailView.as_view(),
         name='profesionales-detail'
+    ),
+
+    path(
+        '<int:pk>/estado/',
+        ProfesionalEstadoView.as_view(),
+        name='profesionales-estado'
     ),
 ]

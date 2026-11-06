@@ -192,8 +192,8 @@ class SesionesService:
         *,
         turno_id,
         trabajo_sesion,
-        resultado,
-        nota_especial,
+        diagnostico,
+        nota_sesion,
         usuario,
     ):
         turno = cls.obtener_turno(
@@ -219,8 +219,8 @@ class SesionesService:
 
         registro = RegistroSesion.objects.create(
             trabajo_sesion=trabajo_sesion,
-            resultado=resultado,
-            nota_especial=nota_especial,
+            diagnostico=diagnostico,
+            nota_sesion=nota_sesion,
         )
 
         turno.registro_sesion = registro
@@ -268,8 +268,8 @@ class SesionesService:
 
         campos_permitidos = {
             'trabajo_sesion',
-            'resultado',
-            'nota_especial',
+            'diagnostico',
+            'nota_sesion',
         }
 
         campos_recibidos = set(datos.keys())

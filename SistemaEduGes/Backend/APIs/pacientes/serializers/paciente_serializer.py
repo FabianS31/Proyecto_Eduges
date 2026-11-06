@@ -149,6 +149,7 @@ class PacienteSerializer(serializers.ModelSerializer):
             'apellido',
             'dni',
             'fecha_nacimiento',
+            'fecha_alta',
             'direccion',
             'mail',
             'consentimiento',
@@ -163,6 +164,7 @@ class PacienteSerializer(serializers.ModelSerializer):
 
         read_only_fields = [
             'id_paciente',
+            'fecha_alta',
             'profesional_responsable',
         ]
 

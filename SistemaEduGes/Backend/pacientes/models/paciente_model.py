@@ -1,5 +1,6 @@
 
 from django.db import models
+from django.utils import timezone
 
 
 class EstadoPaciente(models.Model):
@@ -42,6 +43,13 @@ class Paciente(models.Model):
 
     fecha_nacimiento = models.DateField(
         db_column='FechaNacimiento'
+    )
+
+    fecha_alta = models.DateField(
+        db_column='FechaAlta',
+        null=True,
+        blank=True,
+        default=timezone.localdate
     )
 
     direccion = models.CharField(

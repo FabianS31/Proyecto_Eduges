@@ -1,4 +1,3 @@
-
 from datetime import datetime, timedelta
 
 from django.db import transaction
@@ -17,7 +16,7 @@ from profesionales.models.asignacion_model import (
 class TurnoService:
 
     DURACION_MINUTOS = 40
-    DIAS_ANTICIPACION = 30
+    ANIOS_ANTICIPACION = 1
 
     ESTADOS_EDITABLES = (
         'Pendiente',
@@ -159,15 +158,24 @@ class TurnoService:
     def validar_fecha_hora(fecha, hora):
         hoy = timezone.localdate()
 
-        fecha_maxima = hoy + timedelta(
-            days=TurnoService.DIAS_ANTICIPACION
-        )
+        try:
+            fecha_maxima = hoy.replace(
+                year=hoy.year + TurnoService.ANIOS_ANTICIPACION
+            )
+        except ValueError:
+            # Si hoy es 29 de febrero, el año siguiente no tendrá
+            # esa fecha; en ese caso el límite será el 28 de febrero.
+            fecha_maxima = hoy.replace(
+                year=hoy.year + TurnoService.ANIOS_ANTICIPACION,
+                month=2,
+                day=28,
+            )
 
         if fecha < hoy or fecha > fecha_maxima:
             raise serializers.ValidationError({
                 'fecha': (
                     'El turno debe estar entre hoy '
-                    'y los próximos 30 días.'
+                    'y la misma fecha del próximo año.'
                 )
             })
 

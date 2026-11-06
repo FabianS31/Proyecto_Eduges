@@ -102,8 +102,8 @@ class ProfesionalSerializer(serializers.ModelSerializer):
     )
 
     estado_profesional = RelatedObjectField(
-        queryset=EstadoProfesional.objects.all(),
-        serializer_class=EstadoProfesionalSerializer,
+    serializer_class=EstadoProfesionalSerializer,
+    read_only=True,
     )
 
     usuario = serializers.CharField(
@@ -151,6 +151,15 @@ class ProfesionalSerializer(serializers.ModelSerializer):
                 'usuario': 'El nombre de usuario ya existe.'
             })
 
+        try:
+            estado_activo = EstadoProfesional.objects.get(
+                estado='Activo'
+            )
+        except EstadoProfesional.DoesNotExist:
+            raise serializers.ValidationError(
+                'No existe el estado Activo para profesionales.'
+            )
+
         usuario = Usuario.objects.create(
             usuario=nombre_usuario,
             password=make_password(password),
@@ -160,6 +169,7 @@ class ProfesionalSerializer(serializers.ModelSerializer):
 
         profesional = Profesional.objects.create(
             usuario=usuario,
+            estado_profesional=estado_activo,
             **validated_data,
         )
 
