@@ -7,23 +7,12 @@ from rest_framework.exceptions import (
 )
 
 from turnos.models import Turno, RegistroSesion
+from profesionales.models.asignacion_model import (
+    AsignacionProfesional
+)
 
 
 class SesionesService:
-    """
-    Reglas de negocio para los registros de sesión.
-
-    Profesional:
-    - Consulta los registros de sus propios turnos.
-    - Puede crear y modificar sus registros.
-
-    Administrador:
-    - Puede consultar los registros para elaborar informes.
-    - No puede crear ni modificar registros.
-
-    SuperAdministrador:
-    - Puede consultar, crear y modificar cualquier registro.
-    """
 
     @staticmethod
     def obtener_rol(usuario):
@@ -33,15 +22,10 @@ class SesionesService:
             None,
         )
 
-    # --------------------------------------------------
-    # VALIDAR AL PROFESIONAL ASIGNADO AL TURNO
-    # --------------------------------------------------
-
     @staticmethod
     def validar_profesional_autorizado(turno, usuario):
         rol = SesionesService.obtener_rol(usuario)
 
-        # El SuperAdministrador tiene acceso completo.
         if rol == 'SuperAdministrador':
             return None
 
@@ -59,37 +43,11 @@ class SesionesService:
 
         if profesional.pk != turno.profesional_id:
             raise PermissionDenied(
-                'No podés acceder al registro de sesión '
+                'No podés modificar registros de sesión '
                 'de otro profesional.'
             )
 
         return profesional
-
-    # --------------------------------------------------
-    # VALIDAR PERMISOS DE LECTURA
-    # --------------------------------------------------
-
-    @classmethod
-    def validar_acceso_lectura(cls, turno, usuario):
-        rol = cls.obtener_rol(usuario)
-
-        if rol in ('Administrador', 'SuperAdministrador'):
-            return
-
-        if rol == 'Profesional':
-            cls.validar_profesional_autorizado(
-                turno,
-                usuario,
-            )
-            return
-
-        raise PermissionDenied(
-            'No tenés permisos para consultar este registro.'
-        )
-
-    # --------------------------------------------------
-    # OBTENER TURNO
-    # --------------------------------------------------
 
     @staticmethod
     def obtener_turno(turno_id, bloquear=False):
@@ -101,6 +59,8 @@ class SesionesService:
             turnos = turnos.select_related(
                 'profesional',
                 'registro_sesion',
+                'paciente',
+                'estado',
             )
 
         try:
@@ -109,10 +69,6 @@ class SesionesService:
             raise NotFound(
                 'El turno solicitado no existe.'
             )
-
-    # --------------------------------------------------
-    # VALIDAR QUE EL TURNO NO ESTÉ CANCELADO
-    # --------------------------------------------------
 
     @staticmethod
     def validar_turno_no_cancelado(turno):
@@ -123,10 +79,6 @@ class SesionesService:
                     'una sesión de un turno cancelado.'
                 )
             })
-
-    # --------------------------------------------------
-    # LISTAR TURNOS SIN REGISTRO DE SESIÓN
-    # --------------------------------------------------
 
     @classmethod
     def listar_turnos_pendientes(
@@ -181,10 +133,6 @@ class SesionesService:
             .order_by('fecha', 'hora')
         )
 
-    # --------------------------------------------------
-    # REGISTRAR UNA SESIÓN
-    # --------------------------------------------------
-
     @classmethod
     @transaction.atomic
     def registrar_sesion(
@@ -201,7 +149,6 @@ class SesionesService:
             bloquear=True,
         )
 
-        # No se permite registrar sesiones de turnos cancelados.
         cls.validar_turno_no_cancelado(turno)
 
         cls.validar_profesional_autorizado(
@@ -228,10 +175,6 @@ class SesionesService:
 
         return registro
 
-    # --------------------------------------------------
-    # MODIFICAR UN REGISTRO EXISTENTE
-    # --------------------------------------------------
-
     @classmethod
     @transaction.atomic
     def modificar_sesion(
@@ -246,11 +189,8 @@ class SesionesService:
             bloquear=True,
         )
 
-        # No se permite modificar sesiones de turnos cancelados.
         cls.validar_turno_no_cancelado(turno)
 
-        # Solo el profesional asignado o el
-        # SuperAdministrador pueden modificar.
         cls.validar_profesional_autorizado(
             turno,
             usuario,
@@ -296,18 +236,9 @@ class SesionesService:
 
         return registro
 
-    # --------------------------------------------------
-    # OBTENER UN REGISTRO EXISTENTE
-    # --------------------------------------------------
-
     @classmethod
     def obtener_sesion(cls, turno_id, usuario):
         turno = cls.obtener_turno(turno_id)
-
-        cls.validar_acceso_lectura(
-            turno,
-            usuario,
-        )
 
         if turno.registro_sesion_id is None:
             raise NotFound(
@@ -315,4 +246,46 @@ class SesionesService:
                 'un registro de sesión.'
             )
 
-        return turno.registro_sesion
+        rol = cls.obtener_rol(usuario)
+
+        # Administrador: acceso únicamente al diagnóstico.
+        if rol == 'Administrador':
+            return turno.registro_sesion, False
+
+        # SuperAdministrador: acceso completo.
+        if rol == 'SuperAdministrador':
+            return turno.registro_sesion, True
+
+        if rol != 'Profesional':
+            raise PermissionDenied(
+                'No tenés permisos para consultar este registro.'
+            )
+
+        try:
+            profesional = usuario.profesional
+        except Exception:
+            raise PermissionDenied(
+                'El usuario no está vinculado a un profesional.'
+            )
+
+        # El profesional del turno conserva el acceso completo.
+        if profesional.pk == turno.profesional_id:
+            return turno.registro_sesion, True
+
+        # Un profesional nuevo asignado al paciente puede ver
+        # únicamente el diagnóstico de los registros históricos.
+        tiene_asignacion_activa = (
+            AsignacionProfesional.objects.filter(
+                paciente_id=turno.paciente_id,
+                profesional=profesional,
+                fecha_fin__isnull=True,
+            ).exists()
+        )
+
+        if tiene_asignacion_activa:
+            return turno.registro_sesion, False
+
+        raise PermissionDenied(
+            'No tenés autorización para consultar '
+            'el registro de sesión de este paciente.'
+        )

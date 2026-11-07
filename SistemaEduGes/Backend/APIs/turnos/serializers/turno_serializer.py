@@ -1,4 +1,3 @@
-
 from rest_framework import serializers
 
 from turnos.models import Turno, EstadoTurno
@@ -81,8 +80,6 @@ class RelatedObjectField(serializers.PrimaryKeyRelatedField):
         super().__init__(*args, **kwargs)
 
     def use_pk_only_optimization(self):
-        # Necesitamos el objeto relacionado completo
-        # para generar su representación descriptiva.
         return False
 
     def to_representation(self, value):
@@ -98,20 +95,17 @@ class TurnoSerializer(serializers.ModelSerializer):
     fecha = serializers.DateField(required=False)
     hora = serializers.TimeField(required=False)
 
-    # Recibe un ID y devuelve los datos del paciente.
     paciente = RelatedObjectField(
         queryset=Paciente.objects.all(),
         serializer_class=PacienteTurnoSerializer,
     )
 
-    # Recibe un ID y devuelve los datos del profesional.
     profesional = RelatedObjectField(
         queryset=Profesional.objects.all(),
         serializer_class=ProfesionalTurnoSerializer,
         required=False,
     )
 
-    # Permite crear varios turnos en una solicitud.
     turnos = serializers.ListField(
         child=serializers.DictField(),
         write_only=True,
@@ -121,6 +115,10 @@ class TurnoSerializer(serializers.ModelSerializer):
     estado = EstadoTurnoSerializer(
         read_only=True,
     )
+
+    tiene_conflicto_horario = serializers.SerializerMethodField()
+
+    conflictos_horario = serializers.SerializerMethodField()
 
     class Meta:
         model = Turno
@@ -132,13 +130,29 @@ class TurnoSerializer(serializers.ModelSerializer):
             'paciente',
             'profesional',
             'estado',
+            'tiene_conflicto_horario',
+            'conflictos_horario',
             'turnos',
         ]
 
         read_only_fields = [
             'id_turno',
             'estado',
+            'tiene_conflicto_horario',
+            'conflictos_horario',
         ]
+
+    # -----------------------------------------------------
+    # INFORMACIÓN DE CONFLICTOS
+    # -----------------------------------------------------
+
+    def get_conflictos_horario(self, obj):
+        return TurnoService.obtener_conflictos_horario(obj)
+
+    def get_tiene_conflicto_horario(self, obj):
+        return bool(
+            TurnoService.obtener_conflictos_horario(obj)
+        )
 
     # -----------------------------------------------------
     # VALIDACIONES GENERALES
@@ -146,7 +160,6 @@ class TurnoSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
 
-        # Edición de un turno existente: PUT o PATCH.
         if self.instance is not None:
 
             if 'turnos' in attrs:
@@ -194,7 +207,6 @@ class TurnoSerializer(serializers.ModelSerializer):
 
             return attrs
 
-        # Creación de turnos: POST individual o múltiple.
         tiene_lista = 'turnos' in attrs
         tiene_fecha = 'fecha' in attrs
         tiene_hora = 'hora' in attrs
@@ -261,6 +273,7 @@ class TurnoSerializer(serializers.ModelSerializer):
         usuario = self.context['request'].user
 
         paciente = validated_data.pop('paciente')
+
         profesional = validated_data.pop(
             'profesional',
             None,

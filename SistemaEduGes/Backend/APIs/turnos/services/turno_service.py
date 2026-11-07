@@ -38,7 +38,7 @@ class TurnoService:
     }
 
     # ---------------------------------------------------------
-    # OBTENER PROFESIONAL DEL USUARIO
+    # OBTENER DATOS Y VALIDAR
     # ---------------------------------------------------------
 
     @staticmethod
@@ -47,7 +47,6 @@ class TurnoService:
             return Profesional.objects.select_related(
                 'estado_profesional'
             ).get(usuario=usuario)
-
         except Profesional.DoesNotExist:
             raise serializers.ValidationError({
                 'profesional': (
@@ -56,17 +55,10 @@ class TurnoService:
                 )
             })
 
-    # ---------------------------------------------------------
-    # OBTENER ESTADOS
-    # ---------------------------------------------------------
-
     @staticmethod
     def obtener_estado(nombre_estado):
         try:
-            return EstadoTurno.objects.get(
-                estado=nombre_estado
-            )
-
+            return EstadoTurno.objects.get(estado=nombre_estado)
         except EstadoTurno.DoesNotExist:
             raise serializers.ValidationError({
                 'estado': (
@@ -82,10 +74,6 @@ class TurnoService:
     @classmethod
     def obtener_estado_cancelado(cls):
         return cls.obtener_estado('Cancelado')
-
-    # ---------------------------------------------------------
-    # VALIDAR ROLES
-    # ---------------------------------------------------------
 
     @classmethod
     def obtener_rol_autorizado(cls, usuario):
@@ -103,10 +91,6 @@ class TurnoService:
             })
 
         return nombre_rol
-
-    # ---------------------------------------------------------
-    # VALIDAR ESTADOS DEL PROFESIONAL Y DEL PACIENTE
-    # ---------------------------------------------------------
 
     @staticmethod
     def validar_profesional_activo(profesional):
@@ -128,10 +112,6 @@ class TurnoService:
                 )
             })
 
-    # ---------------------------------------------------------
-    # VALIDAR ASIGNACIÓN DEL PACIENTE
-    # ---------------------------------------------------------
-
     @staticmethod
     def validar_paciente_asignado(profesional, paciente):
         asignacion_activa = (
@@ -150,10 +130,6 @@ class TurnoService:
                 )
             })
 
-    # ---------------------------------------------------------
-    # VALIDAR FECHA Y HORA PARA CREAR O REPROGRAMAR
-    # ---------------------------------------------------------
-
     @staticmethod
     def validar_fecha_hora(fecha, hora):
         hoy = timezone.localdate()
@@ -163,8 +139,6 @@ class TurnoService:
                 year=hoy.year + TurnoService.ANIOS_ANTICIPACION
             )
         except ValueError:
-            # Si hoy es 29 de febrero, el año siguiente no tendrá
-            # esa fecha; en ese caso el límite será el 28 de febrero.
             fecha_maxima = hoy.replace(
                 year=hoy.year + TurnoService.ANIOS_ANTICIPACION,
                 month=2,
@@ -194,7 +168,7 @@ class TurnoService:
             })
 
     # ---------------------------------------------------------
-    # CALCULAR INICIO Y FIN DEL TURNO
+    # FECHA Y DURACIÓN DE TURNOS
     # ---------------------------------------------------------
 
     @classmethod
@@ -216,7 +190,259 @@ class TurnoService:
         )
 
     # ---------------------------------------------------------
-    # VALIDAR SOLAPAMIENTO CON OTROS TURNOS
+    # DETECCIÓN DE CONFLICTOS HORARIOS
+    # ---------------------------------------------------------
+
+    @classmethod
+    def obtener_conflictos_horario(cls, turno):
+        """
+        Devuelve los turnos Pendientes o Confirmados del mismo
+        profesional que se superponen con el turno recibido.
+
+        La detección es dinámica: no guarda marcas en la base.
+        """
+
+        inicio = datetime.combine(
+            turno.fecha,
+            turno.hora.replace(tzinfo=None),
+        )
+
+        fin = inicio + timedelta(
+            minutes=cls.DURACION_MINUTOS
+        )
+
+        turnos_existentes = (
+            Turno.objects
+            .filter(
+                profesional_id=turno.profesional_id,
+                fecha=turno.fecha,
+                estado__estado__in=cls.ESTADOS_EDITABLES,
+            )
+            .exclude(pk=turno.pk)
+            .select_related(
+                'estado',
+                'paciente',
+            )
+        )
+
+        conflictos = []
+
+        for existente in turnos_existentes:
+            inicio_existente = datetime.combine(
+                existente.fecha,
+                existente.hora.replace(tzinfo=None),
+            )
+
+            fin_existente = inicio_existente + timedelta(
+                minutes=cls.DURACION_MINUTOS
+            )
+
+            if (
+                inicio < fin_existente
+                and inicio_existente < fin
+            ):
+                conflictos.append({
+                    'id_turno': existente.id_turno,
+                    'fecha': existente.fecha,
+                    'hora': existente.hora,
+                    'estado': existente.estado.estado,
+                })
+
+        return conflictos
+
+    @classmethod
+    def tiene_conflicto_horario(cls, turno):
+        return bool(cls.obtener_conflictos_horario(turno))
+
+    # ---------------------------------------------------------
+    # REASIGNACIÓN DE PACIENTE
+    # ---------------------------------------------------------
+
+    @classmethod
+    @transaction.atomic
+    def reasignar_paciente(
+        cls,
+        *,
+        paciente_id,
+        profesional_destino_id,
+        usuario,
+    ):
+        """
+        Reasigna un paciente desde su profesional actual
+        hacia otro profesional activo.
+
+        Transfiere los turnos futuros Pendientes y Confirmados.
+        Los turnos históricos no se modifican.
+        """
+
+        nombre_rol = cls.obtener_rol_autorizado(usuario)
+
+        if nombre_rol != 'Profesional':
+            raise serializers.ValidationError({
+                'detail': (
+                    'Solo el profesional actualmente responsable '
+                    'puede reasignar un paciente.'
+                )
+            })
+
+        profesional_actual = cls.obtener_profesional_usuario(
+            usuario
+        )
+
+        profesional_actual = (
+            Profesional.objects
+            .select_for_update()
+            .select_related('estado_profesional')
+            .get(pk=profesional_actual.pk)
+        )
+
+        cls.validar_profesional_activo(profesional_actual)
+
+        try:
+            paciente = (
+                Paciente.objects
+                .select_for_update()
+                .select_related('estado')
+                .get(pk=paciente_id)
+            )
+        except Paciente.DoesNotExist:
+            raise serializers.ValidationError({
+                'paciente': 'El paciente indicado no existe.'
+            })
+
+        cls.validar_paciente_activo(paciente)
+
+        try:
+            profesional_destino = (
+                Profesional.objects
+                .select_for_update()
+                .select_related('estado_profesional')
+                .get(pk=profesional_destino_id)
+            )
+        except Profesional.DoesNotExist:
+            raise serializers.ValidationError({
+                'profesional_id': (
+                    'El profesional de destino no existe.'
+                )
+            })
+
+        cls.validar_profesional_activo(profesional_destino)
+
+        if profesional_destino.pk == profesional_actual.pk:
+            raise serializers.ValidationError({
+                'profesional_id': (
+                    'El paciente ya está asignado a este profesional.'
+                )
+            })
+
+        asignacion_actual = (
+            AsignacionProfesional.objects
+            .select_for_update()
+            .filter(
+                paciente=paciente,
+                profesional=profesional_actual,
+                fecha_fin__isnull=True,
+            )
+            .first()
+        )
+
+        if asignacion_actual is None:
+            raise serializers.ValidationError({
+                'paciente': (
+                    'No podés reasignar este paciente porque '
+                    'no está actualmente asignado a vos.'
+                )
+            })
+
+        asignacion_destino_existente = (
+            AsignacionProfesional.objects
+            .filter(
+                paciente=paciente,
+                profesional=profesional_destino,
+                fecha_fin__isnull=True,
+            )
+            .exists()
+        )
+
+        if asignacion_destino_existente:
+            raise serializers.ValidationError({
+                'paciente': (
+                    'El paciente ya tiene una asignación activa '
+                    'con el profesional seleccionado.'
+                )
+            })
+
+        hoy = timezone.localdate()
+
+        asignacion_actual.fecha_fin = hoy
+        asignacion_actual.save(
+            update_fields=['fecha_fin']
+        )
+
+        AsignacionProfesional.objects.create(
+            paciente=paciente,
+            profesional=profesional_destino,
+            fecha_inicio=hoy,
+            fecha_fin=None,
+        )
+
+        ahora = timezone.now()
+
+        turnos_candidatos = (
+            Turno.objects
+            .select_for_update()
+            .select_related(
+                'estado',
+                'profesional',
+                'paciente',
+            )
+            .filter(
+                paciente=paciente,
+                profesional=profesional_actual,
+                estado__estado__in=cls.ESTADOS_EDITABLES,
+            )
+            .order_by('fecha', 'hora')
+        )
+
+        turnos_a_transferir = [
+            turno
+            for turno in turnos_candidatos
+            if cls.obtener_inicio_turno(turno) > ahora
+        ]
+
+        ids_turnos = [
+            turno.pk
+            for turno in turnos_a_transferir
+        ]
+
+        if ids_turnos:
+            Turno.objects.filter(
+                pk__in=ids_turnos
+            ).update(
+                profesional=profesional_destino
+            )
+
+        return {
+            'profesional_anterior': profesional_actual,
+            'profesional_nuevo': profesional_destino,
+            'turnos_ids': ids_turnos,
+        }
+
+    @staticmethod
+    def obtener_turnos_reasignados(turnos_ids):
+        return (
+            Turno.objects
+            .filter(pk__in=turnos_ids)
+            .select_related(
+                'estado',
+                'profesional',
+                'paciente',
+            )
+            .order_by('fecha', 'hora')
+        )
+
+    # ---------------------------------------------------------
+    # VALIDACIÓN DE SOLAPAMIENTOS AL CREAR O EDITAR
     # ---------------------------------------------------------
 
     @staticmethod
@@ -279,10 +505,6 @@ class TurnoService:
                     )
                 })
 
-    # ---------------------------------------------------------
-    # VALIDAR SOLAPAMIENTOS ENTRE TURNOS DE UNA SOLICITUD
-    # ---------------------------------------------------------
-
     @classmethod
     def validar_solapamiento_solicitado(cls, turnos):
         turnos_ordenados = sorted(
@@ -297,10 +519,7 @@ class TurnoService:
             turno_actual = turnos_ordenados[indice]
             siguiente_turno = turnos_ordenados[indice + 1]
 
-            if (
-                turno_actual['fecha']
-                != siguiente_turno['fecha']
-            ):
+            if turno_actual['fecha'] != siguiente_turno['fecha']:
                 continue
 
             inicio_actual = datetime.combine(
@@ -326,7 +545,7 @@ class TurnoService:
                 })
 
     # ---------------------------------------------------------
-    # OBTENER TURNO BLOQUEADO PARA OPERACIONES
+    # OBTENER Y VALIDAR TURNOS
     # ---------------------------------------------------------
 
     @staticmethod
@@ -342,15 +561,10 @@ class TurnoService:
                 )
                 .get(pk=turno_id)
             )
-
         except Turno.DoesNotExist:
             raise serializers.ValidationError({
                 'turno': 'El turno indicado no existe.'
             })
-
-    # ---------------------------------------------------------
-    # VALIDAR QUE EL TURNO PUEDA EDITARSE O CANCELARSE
-    # ---------------------------------------------------------
 
     @classmethod
     def validar_turno_editable(cls, turno):
@@ -363,7 +577,7 @@ class TurnoService:
             })
 
     # ---------------------------------------------------------
-    # VALIDAR QUIÉN PUEDE GESTIONAR UN TURNO
+    # PERMISOS SOBRE TURNOS
     # ---------------------------------------------------------
 
     @classmethod
@@ -374,11 +588,9 @@ class TurnoService:
         usuario,
         nombre_rol,
     ):
-        # El SuperAdministrador puede gestionar cualquier turno.
         if nombre_rol == 'SuperAdministrador':
             return None
 
-        # Los administradores no están limitados a un profesional.
         if nombre_rol != 'Profesional':
             return None
 
@@ -386,9 +598,7 @@ class TurnoService:
             usuario
         )
 
-        cls.validar_profesional_activo(
-            profesional_usuario
-        )
+        cls.validar_profesional_activo(profesional_usuario)
 
         if turno.profesional_id != profesional_usuario.pk:
             raise serializers.ValidationError({
@@ -400,9 +610,40 @@ class TurnoService:
 
         return profesional_usuario
 
-    # ---------------------------------------------------------
-    # VALIDAR QUIÉN PUEDE MARCAR AUSENTE O REALIZADO
-    # ---------------------------------------------------------
+    @classmethod
+    def validar_permiso_confirmacion(
+        cls,
+        *,
+        turno,
+        usuario,
+        nombre_rol,
+    ):
+        if nombre_rol == 'SuperAdministrador':
+            return None
+
+        if nombre_rol != 'Profesional':
+            raise serializers.ValidationError({
+                'detail': (
+                    'El Administrador no puede confirmar turnos. '
+                    'Esta acción está reservada al Profesional '
+                    'responsable.'
+                )
+            })
+
+        profesional_usuario = cls.obtener_profesional_usuario(
+            usuario
+        )
+
+        cls.validar_profesional_activo(profesional_usuario)
+
+        if turno.profesional_id != profesional_usuario.pk:
+            raise serializers.ValidationError({
+                'detail': (
+                    'Solo podés confirmar turnos que estén asignados a vos.'
+                )
+            })
+
+        return profesional_usuario
 
     @classmethod
     def validar_permiso_asistencia(
@@ -412,11 +653,9 @@ class TurnoService:
         usuario,
         nombre_rol,
     ):
-        # El SuperAdministrador puede realizar todas las acciones.
         if nombre_rol == 'SuperAdministrador':
             return None
 
-        # Solo el profesional responsable puede registrar asistencia.
         if nombre_rol != 'Profesional':
             raise serializers.ValidationError({
                 'detail': (
@@ -429,9 +668,7 @@ class TurnoService:
             usuario
         )
 
-        cls.validar_profesional_activo(
-            profesional_usuario
-        )
+        cls.validar_profesional_activo(profesional_usuario)
 
         if turno.profesional_id != profesional_usuario.pk:
             raise serializers.ValidationError({
@@ -442,10 +679,6 @@ class TurnoService:
             })
 
         return profesional_usuario
-
-    # ---------------------------------------------------------
-    # VALIDAR TRANSICIÓN DE ESTADO Y CONDICIONES HORARIAS
-    # ---------------------------------------------------------
 
     @classmethod
     def validar_transicion_estado(
@@ -473,12 +706,20 @@ class TurnoService:
                 )
             })
 
-        if nombre_estado_nuevo in ('Ausente', 'Realizado'):
+        if nombre_estado_nuevo == 'Confirmado':
+            cls.validar_permiso_confirmacion(
+                turno=turno,
+                usuario=usuario,
+                nombre_rol=nombre_rol,
+            )
+
+        elif nombre_estado_nuevo in ('Ausente', 'Realizado'):
             cls.validar_permiso_asistencia(
                 turno=turno,
                 usuario=usuario,
                 nombre_rol=nombre_rol,
             )
+
         else:
             cls.validar_acceso_turno(
                 turno=turno,
@@ -512,7 +753,7 @@ class TurnoService:
                 })
 
     # ---------------------------------------------------------
-    # CAMBIAR EL ESTADO DE UN TURNO
+    # CAMBIAR ESTADO DE TURNO
     # ---------------------------------------------------------
 
     @classmethod
@@ -866,6 +1107,7 @@ class TurnoService:
 
         cls.validar_profesional_activo(profesional)
         cls.validar_paciente_activo(paciente)
+
         cls.validar_fecha_hora(fecha, hora)
 
         cambio_de_asignacion = (
@@ -907,7 +1149,7 @@ class TurnoService:
         return turno
 
     # ---------------------------------------------------------
-    # CANCELAR UN TURNO SIN BORRARLO
+    # CANCELAR UN TURNO
     # ---------------------------------------------------------
 
     @classmethod
@@ -933,9 +1175,6 @@ class TurnoService:
         estado_cancelado = cls.obtener_estado_cancelado()
 
         turno.estado = estado_cancelado
-
-        turno.save(
-            update_fields=['estado']
-        )
+        turno.save(update_fields=['estado'])
 
         return turno

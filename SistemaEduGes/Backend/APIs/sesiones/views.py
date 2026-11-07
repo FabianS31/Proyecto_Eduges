@@ -18,6 +18,7 @@ from APIs.sesiones.services.sesiones_services import (
 
 
 class TurnosPendientesSesionView(APIView):
+
     authentication_classes = [UsuarioSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -55,9 +56,6 @@ class TurnosPendientesSesionView(APIView):
 
 
 class RegistroSesionCrearView(APIView):
-    """
-    Crea un registro para un turno que todavía no tenga uno.
-    """
 
     authentication_classes = [UsuarioSessionAuthentication]
     permission_classes = [IsAuthenticated]
@@ -96,25 +94,20 @@ class RegistroSesionCrearView(APIView):
 
 
 class RegistroSesionDetalleView(APIView):
-    """
-    Consulta y modifica registros de sesión según el rol.
-    """
 
     authentication_classes = [UsuarioSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, turno_id):
-        registro = SesionesService.obtener_sesion(
+        registro, acceso_completo = SesionesService.obtener_sesion(
             turno_id=turno_id,
             usuario=request.user,
         )
 
-        rol = SesionesService.obtener_rol(request.user)
-
-        if rol == 'Administrador':
-            serializer = RegistroSesionResumenSerializer(registro)
-        else:
+        if acceso_completo:
             serializer = RegistroSesionProfesionalSerializer(registro)
+        else:
+            serializer = RegistroSesionResumenSerializer(registro)
 
         return Response(serializer.data)
 

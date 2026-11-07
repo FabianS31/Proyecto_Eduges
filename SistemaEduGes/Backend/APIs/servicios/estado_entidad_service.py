@@ -70,7 +70,12 @@ class EstadoEntidadService:
 
     @classmethod
     @transaction.atomic
-    def cambiar_estado_paciente(cls, id_paciente, nuevo_estado):
+    def cambiar_estado_paciente(
+        cls,
+        id_paciente,
+        nuevo_estado,
+        profesional=None
+    ):
         if nuevo_estado not in (
             cls.ESTADO_ACTIVO,
             cls.ESTADO_INACTIVO
@@ -88,22 +93,66 @@ class EstadoEntidadService:
                 'No se encontró el paciente.'
             )
 
+        estado_actual = paciente.estado.estado
+
         estado = cls.obtener_estado(
             EstadoPaciente,
             nuevo_estado
         )
 
-        paciente.estado = estado
-        paciente.save(update_fields=['estado'])
+        if nuevo_estado == cls.ESTADO_ACTIVO:
 
-        if nuevo_estado == cls.ESTADO_INACTIVO:
-            cls.cancelar_turnos_futuros(
-                paciente=paciente
+            if profesional is None:
+                raise serializers.ValidationError(
+                    'Se necesita un Profesional para reactivar '
+                    'y asignar el paciente.'
+                )
+
+            if profesional.estado_profesional.estado != 'Activo':
+                raise serializers.ValidationError(
+                    'El profesional debe estar activo para '
+                    'reactivar un paciente.'
+                )
+
+            if estado_actual == cls.ESTADO_ACTIVO:
+                raise serializers.ValidationError(
+                    'El paciente ya se encuentra activo.'
+                )
+
+            asignacion_activa = (
+                AsignacionProfesional.objects.filter(
+                    paciente=paciente,
+                    fecha_fin__isnull=True
+                ).exists()
             )
 
-            cls.cerrar_asignaciones(
-                paciente=paciente
+            if asignacion_activa:
+                raise serializers.ValidationError(
+                    'El paciente ya tiene una asignación activa.'
+                )
+
+            paciente.estado = estado
+            paciente.save(update_fields=['estado'])
+
+            AsignacionProfesional.objects.create(
+                paciente=paciente,
+                profesional=profesional,
+                fecha_inicio=timezone.localdate()
             )
+
+        else:
+
+            paciente.estado = estado
+            paciente.save(update_fields=['estado'])
+
+            if estado_actual != cls.ESTADO_INACTIVO:
+                cls.cancelar_turnos_futuros(
+                    paciente=paciente
+                )
+
+                cls.cerrar_asignaciones(
+                    paciente=paciente
+                )
 
         return paciente
 
