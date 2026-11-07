@@ -16,7 +16,7 @@
                 </h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-3 p-sm-4">
                 <div id="form-turno-errores"></div>
                 <div class="mb-3">
                     <label for="turno-paciente" class="form-label small fw-semibold">Paciente *</label>
@@ -39,7 +39,7 @@
                 </div>
                 <fieldset class="mb-3">
                     <legend class="form-label small fw-semibold mb-2">¿En cuántas fechas?</legend>
-                    <div class="btn-group w-100" role="group">
+                    <div class="btn-group eg-selector-modo-turno w-100" role="group" aria-label="Cantidad de fechas">
                         <input type="radio" class="btn-check" name="modo" id="turno-modo-uno" value="uno" checked>
                         <label class="btn btn-outline-primary" for="turno-modo-uno">
                             <span class="ms" aria-hidden="true">event</span>Una fecha
@@ -48,17 +48,36 @@
                         <label class="btn btn-outline-primary" for="turno-modo-varios">
                             <span class="ms" aria-hidden="true">date_range</span>Varias fechas
                         </label>
+                        <input type="radio" class="btn-check" name="modo" id="turno-modo-anual" value="anual">
+                        <label class="btn btn-outline-primary" for="turno-modo-anual">
+                            <span class="ms" aria-hidden="true">event_repeat</span>Semanal (1 año)
+                        </label>
                     </div>
                 </fieldset>
                 <div class="mb-3" id="turno-una-fecha">
                     <label for="turno-fecha" class="form-label small fw-semibold">Fecha *</label>
                     <input type="date" class="form-control" id="turno-fecha" name="fecha" required aria-describedby="turno-fecha-ayuda">
-                    <div class="form-text" id="turno-fecha-ayuda">Se pueden dar turnos hasta 30 días hacia adelante.</div>
+                    <div class="form-text" id="turno-fecha-ayuda">Se pueden dar turnos hasta 1 año hacia adelante.</div>
                 </div>
                 <div class="mb-3" id="turno-varias-fechas" hidden>
                     <span class="form-label small fw-semibold d-block">Fechas *</span>
                     <!-- name="turnos": los errores de las fechas se muestran debajo del calendario -->
                     <div id="turno-selector-fechas" name="turnos" tabindex="-1"></div>
+                </div>
+                <div class="mb-3 p-3 rounded bg-light border" id="turno-recurrente-anual" hidden>
+                    <div class="d-flex align-items-center gap-2 mb-2 text-primary fw-semibold small">
+                        <span class="ms flex-shrink-0" aria-hidden="true">event_repeat</span>
+                        <span>Programación recurrente semanal durante 1 año</span>
+                    </div>
+                    <div class="mb-2">
+                        <label for="turno-fecha-inicio-anual" class="form-label small fw-semibold">Fecha del primer turno *</label>
+                        <input type="date" class="form-control" id="turno-fecha-inicio-anual" name="fecha_inicio_anual" aria-describedby="turno-anual-ayuda">
+                        <div class="form-text" id="turno-anual-ayuda">Elegí la fecha inicial. Se agendará ese mismo día de la semana todas las semanas durante 1 año (52 turnos en total).</div>
+                    </div>
+                    <div class="alert alert-primary py-2 px-3 small mb-0 d-flex align-items-start gap-2" id="turno-resumen-anual" hidden>
+                        <span class="ms text-primary flex-shrink-0 mt-1" aria-hidden="true">info</span>
+                        <span id="turno-resumen-anual-texto"></span>
+                    </div>
                 </div>
                 <div class="mb-1">
                     <label for="turno-hora" class="form-label small fw-semibold">Hora *</label>
@@ -99,7 +118,7 @@
                 </h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-3 p-sm-4">
                 <div id="form-reprogramar-errores"></div>
                 <p class="mb-3" id="reprogramar-detalle"></p>
                 <div class="row g-3">
@@ -113,7 +132,7 @@
                                placeholder="hh:mm">
                     </div>
                 </div>
-                <p class="small text-muted mt-3 mb-0">Se pueden dar turnos hasta 30 días hacia adelante. Cada turno dura 40 minutos.</p>
+                <p class="small text-muted mt-3 mb-0">Se pueden dar turnos hasta 1 año hacia adelante. Cada turno dura 40 minutos.</p>
             </div>
             <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Volver</button>
@@ -138,7 +157,7 @@
                 </h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-3 p-sm-4">
                 <p class="text-muted small mb-3">Revisá los datos antes de confirmar el turno. Al confirmar, el turno quedará registrado en estado <strong>Confirmado</strong>.</p>
                 
                 <div class="card border rounded-3 p-3 bg-light">

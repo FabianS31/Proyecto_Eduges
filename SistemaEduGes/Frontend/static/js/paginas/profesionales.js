@@ -23,14 +23,16 @@ import {
     prepararPaginacion,
     textoTotal,
 } from '../componentes/listado.js';
-import { PERMISO } from '../constantes.js';
+import { ESTADO_PROFESIONAL, PERMISO } from '../constantes.js';
 import { catalogos, profesionales } from '../endpoints.js';
 import { esAdministrador, obtenerUsuario, tienePermiso } from '../layout.js';
 import { coincideBusqueda, compararTexto, normalizarTexto } from '../texto.js';
 import {
     bloqueCargando,
     bloqueVacio,
+    botonCargando,
     capitalizar,
+    confirmar,
     demorar,
     enlaceMail,
     enlaceTelefono,
@@ -39,6 +41,8 @@ import {
     iniciales,
     mostrarError,
     nombreCompleto,
+    notificar,
+    notificarError,
     renderizar,
 } from '../ui.js';
 
@@ -120,14 +124,18 @@ function contacto(p) {
 
 function filaProfesional(p) {
     const yo = esUsuarioActual(p);
-    const especialidad = yo ? estado.usuario.profesional.especialidad?.nombre : null;
+    const especialidad = yo ? estado.usuario.profesional.especialidad?.nombre : (p.especialidad?.nombre || null);
+    const esActivo = p.estado_profesional?.id === ESTADO_PROFESIONAL.ACTIVO || p.estado_profesional?.nombre === 'Activo' || p.estado_profesional === 1;
     return html`
         <div class="eg-table__row${yo ? ' is-me' : ''}" role="row" data-profesional-id="${p.id_profesional}">
             <div class="eg-table__main" role="cell">
                 <div>
-                    <div class="eg-table__name">
-                        ${nombreCompleto(p, { apellidoPrimero: true })}
-                        ${yo && html`<span class="eg-badge-me">Vos</span>`}
+                    <div class="eg-table__name d-flex align-items-center gap-2 flex-wrap">
+                        <span>${nombreCompleto(p, { apellidoPrimero: true })}</span>
+                        ${yo ? html`<span class="eg-badge-me">Vos</span>` : ''}
+                        <span class="eg-chip ${esActivo ? 'eg-chip--ok' : 'eg-chip--err'}">
+                            ${icono(esActivo ? 'check_circle' : 'cancel')}${esActivo ? 'Activo' : 'Inactivo'}
+                        </span>
                     </div>
                     <div class="eg-table__meta">${especialidad ? `${especialidad} · ` : ''}Mat. ${p.matricula}</div>
                 </div>
@@ -192,21 +200,31 @@ function abrirFicha(id) {
     }
 
     // La especialidad solo viene con nombre en /me: se conoce únicamente la del usuario actual
-    const especialidad = esUsuarioActual(p) ? estado.usuario.profesional.especialidad?.nombre : null;
+    const especialidad = esUsuarioActual(p) ? estado.usuario.profesional.especialidad?.nombre : (p.especialidad?.nombre || null);
+    const esActivo = p.estado_profesional?.id === ESTADO_PROFESIONAL.ACTIVO || p.estado_profesional?.nombre === 'Activo' || p.estado_profesional === 1;
     $('ficha-titulo').textContent = nombreCompleto(p);
     $('ficha-subtitulo').textContent = especialidad ?? `Matrícula ${p.matricula}`;
 
     renderizar($('ficha-cuerpo'), html`
         <div class="eg-ficha eg-ficha--una">
             <div class="eg-ficha__datos">
-                ${(esUsuarioActual(p) || puedeEditar()) && html`
-                    <div class="eg-ficha__chips">
-                        ${esUsuarioActual(p) && html`<span class="eg-chip eg-chip--info">${icono('person_check')}Este es tu perfil</span>`}
-                        ${puedeEditar() && html`
-                            <button type="button" class="eg-btn ms-auto" data-accion="editar">
+                <div class="eg-ficha__chips d-flex align-items-center gap-2 flex-wrap">
+                    ${esUsuarioActual(p) ? html`<span class="eg-chip eg-chip--info">${icono('person_check')}Este es tu perfil</span>` : ''}
+                    <span class="eg-chip ${esActivo ? 'eg-chip--ok' : 'eg-chip--err'}">
+                        ${icono(esActivo ? 'check_circle' : 'cancel')}${esActivo ? 'Activo' : 'Inactivo'}
+                    </span>
+                    ${puedeEditar() ? html`
+                        <div class="d-flex align-items-center gap-2 ms-auto">
+                            <button type="button" class="eg-btn" data-accion="editar">
                                 ${icono('edit')}Editar datos
-                            </button>`}
-                    </div>`}
+                            </button>
+                            ${!esUsuarioActual(p) ? html`
+                                <button type="button" class="btn btn-sm ${esActivo ? 'btn-outline-danger' : 'btn-outline-success'}" data-accion="cambiar-estado">
+                                    ${icono(esActivo ? 'person_off' : 'person_check')}${esActivo ? 'Dar de baja' : 'Reactivar'}
+                                </button>
+                            ` : ''}
+                        </div>` : ''}
+                </div>
                 <section class="eg-ficha__bloque" aria-labelledby="ficha-datos-titulo">
                     <h3 id="ficha-datos-titulo">${icono('badge')}Datos profesionales</h3>
                     <dl class="ficha-dato row g-0">
@@ -304,6 +322,49 @@ function prepararEdicion() {
             },
         });
     });
+}
+
+
+async function cambiarEstadoProfesional(p, boton) {
+    const esActivo = p.estado_profesional?.id === ESTADO_PROFESIONAL.ACTIVO || p.estado_profesional?.nombre === 'Activo' || p.estado_profesional?.estado === 'Activo' || p.estado_profesional === 1 || p.estado_profesional === 'Activo';
+    const nuevoEstado = esActivo ? 'Inactivo' : 'Activo';
+    const nombre = nombreCompleto(p);
+
+    const confirmado = await confirmar({
+        titulo: esActivo ? `¿Dar de baja a ${nombre}?` : `¿Reactivar a ${nombre}?`,
+        mensaje: esActivo
+            ? `Al dar de baja a ${nombre}, se cancelarán sus turnos futuros pendientes y se cerrarán sus asignaciones activas.`
+            : `El profesional volverá a estar disponible para recibir pacientes y asignar turnos.`,
+        textoAceptar: esActivo ? 'Dar de baja' : 'Reactivar',
+        textoCancelar: 'Cancelar',
+        peligro: esActivo,
+    });
+
+    if (!confirmado) return;
+
+    const textoOriginal = boton.innerHTML;
+    boton.disabled = true;
+    boton.textContent = 'Guardando...';
+
+    try {
+        await profesionales.cambiarEstado(p.id_profesional, nuevoEstado);
+        // Actualizamos en memoria
+        if (typeof p.estado_profesional === 'object' && p.estado_profesional !== null) {
+            p.estado_profesional.estado = nuevoEstado;
+            p.estado_profesional.nombre = nuevoEstado;
+            p.estado_profesional.id = nuevoEstado === 'Activo' ? ESTADO_PROFESIONAL.ACTIVO : ESTADO_PROFESIONAL.INACTIVO;
+        } else {
+            p.estado_profesional = nuevoEstado === 'Activo' ? ESTADO_PROFESIONAL.ACTIVO : ESTADO_PROFESIONAL.INACTIVO;
+        }
+        notificar(nuevoEstado === 'Activo' ? `Se reactivó a ${nombre}.` : `Se dio de baja a ${nombre}.`);
+        mostrarListado();
+        abrirFicha(p.id_profesional);
+    } catch (error) {
+        notificarError(error);
+    } finally {
+        boton.disabled = false;
+        boton.innerHTML = textoOriginal;
+    }
 }
 
 function abrirEdicion() {
@@ -511,6 +572,11 @@ function prepararEventos() {
     $('ficha-cuerpo').addEventListener('click', (evento) => {
         if (evento.target.closest('[data-accion="editar"]')) {
             abrirEdicion();
+        }
+        const btnEstado = evento.target.closest('[data-accion="cambiar-estado"]');
+        if (btnEstado && estado.fichaId) {
+            const p = estado.todos.find((prof) => prof.id_profesional === estado.fichaId);
+            if (p) cambiarEstadoProfesional(p, btnEstado);
         }
     });
 

@@ -48,6 +48,14 @@ export const profesionales = {
     // Cambia solo los campos enviados y devuelve el profesional actualizado.
     // Solo el SuperAdministrador tiene permiso (403 para el resto). 400 → errores por campo (ej.: matricula).
     actualizar: (id, datos) => api.patch(`/profesionales/${id}/`, datos),
+
+
+    // Cambia el estado del profesional (Activo / Inactivo).
+    // Al inactivar, el backend cancela turnos futuros y cierra asignaciones.
+    cambiarEstado: (id, estado) => {
+        const estadoTexto = estado === 1 || estado === 'Activo' ? 'Activo' : 'Inactivo';
+        return api.patch(`/profesionales/${id}/estado/`, { estado: estadoTexto });
+    },
 };
 
 // ------------------------------------------------------------

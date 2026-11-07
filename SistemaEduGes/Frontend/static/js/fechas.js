@@ -39,6 +39,7 @@ export function sumarMeses(iso, meses) {
 
 // Años cumplidos a hoy: "2017-03-10" → 9
 export function edad(nacimiento) {
+    if (!nacimiento) return 0;
     const [anio, mes, dia] = nacimiento.split('-').map(Number);
     const hoy = new Date();
     const yaCumplio = hoy.getMonth() + 1 > mes || (hoy.getMonth() + 1 === mes && hoy.getDate() >= dia);
@@ -47,6 +48,7 @@ export function edad(nacimiento) {
 
 // Días desde "desde" hasta "hasta" (negativo si "hasta" es anterior)
 export function diasEntre(desde, hasta) {
+    if (!desde || !hasta) return 0;
     const [a1, m1, d1] = desde.split('-').map(Number);
     const [a2, m2, d2] = hasta.split('-').map(Number);
     return Math.round((Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86400000);

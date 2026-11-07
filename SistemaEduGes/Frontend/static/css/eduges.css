@@ -357,6 +357,40 @@ h1, h2 { margin: 0; }
 .eg-slot.is-cancelled .eg-slot__time { color: var(--eg-err); }
 .eg-slot.is-cancelled .eg-slot__name { text-decoration: line-through; }
 
+/* ---------- Agenda mensual (tipo calendario moderno) ---------- */
+.eg-month { display: flex; flex-direction: column; background: var(--eg-border-soft); gap: 1px; border-radius: var(--eg-r); overflow: hidden; }
+.eg-month__header { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); background: var(--eg-surface-2); gap: 1px; border-bottom: 1px solid var(--eg-border); }
+.eg-month__col-title { padding: 10px 8px; text-align: center; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--eg-muted); }
+.eg-month__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--eg-border-soft); }
+.eg-month__day { background: #fff; min-height: 110px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; transition: background 0.15s ease; position: relative; cursor: pointer; text-decoration: none; color: inherit; }
+.eg-month__day:hover { background: #f8fafc; }
+.eg-month__day.is-other-month { background: #fafbfc; opacity: 0.6; }
+.eg-month__day.is-other-month:hover { background: #f1f5f9; opacity: 0.9; }
+.eg-month__day.is-today { background: #f0f7ff; }
+.eg-month__day-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.eg-month__num { font-size: 14px; font-weight: 700; color: var(--eg-ink-2); width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
+.eg-month__day.is-today .eg-month__num { background: var(--eg-primary); color: #fff; }
+.eg-month__badge-count { font-size: 11px; font-weight: 700; color: var(--eg-muted); background: var(--eg-bg); padding: 2px 6px; border-radius: 10px; }
+.eg-month__turnos { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.eg-month__slot { border-radius: 6px; padding: 3px 6px; font-size: 12px; line-height: 1.25; border-left: 3px solid #9fb9dc; background: #f1f5fb; color: var(--eg-ink); display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; border-top: none; border-right: none; border-bottom: none; cursor: pointer; width: 100%; transition: transform 0.1s ease, filter 0.1s ease; }
+.eg-month__slot:hover { filter: brightness(0.95); transform: translateY(-1px); }
+.eg-month__slot-time { font-weight: 800; color: var(--eg-ink-2); font-size: 11px; flex-shrink: 0; }
+.eg-month__slot-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.eg-month__slot.is-next { background: var(--eg-primary-soft); border-color: var(--eg-primary); }
+.eg-month__slot.is-next .eg-month__slot-time { color: var(--eg-primary); }
+.eg-month__slot.is-done { background: var(--eg-bg); border-color: #cfd8e3; color: var(--eg-muted); }
+.eg-month__slot.is-cancelled { background: #fdf1f0; border-color: var(--eg-err-bar); color: var(--eg-muted); }
+.eg-month__slot.is-cancelled .eg-month__slot-name { text-decoration: line-through; }
+.eg-month__more { font-size: 11px; font-weight: 700; color: var(--eg-primary); background: transparent; border: none; padding: 2px 4px; text-align: left; cursor: pointer; border-radius: 4px; }
+.eg-month__more:hover { text-decoration: underline; background: var(--eg-primary-soft); }
+
+@media (max-width: 768px) {
+  .eg-month__col-title { font-size: 11px; padding: 6px 2px; }
+  .eg-month__day { min-height: 75px; padding: 4px; }
+  .eg-month__slot-name { display: none; }
+  .eg-month__slot { justify-content: center; padding: 2px 4px; }
+}
+
 .eg-legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; color: var(--eg-ink-2); }
 .eg-legend span { display: flex; align-items: center; gap: 6px; }
 .eg-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
@@ -988,6 +1022,42 @@ textarea.form-control { min-height: 96px; }
 }
 
 @media (max-width: 576px) {
+  /* Selector de modo en modal de turnos: vertical apilado y táctil en celular */
+  .btn-group.eg-selector-modo-turno {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .btn-group.eg-selector-modo-turno > .btn {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    border-radius: var(--eg-r-md, 8px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 10px 14px !important;
+    min-height: 46px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    text-align: left !important;
+    margin-left: 0 !important;
+    border: 1.5px solid var(--eg-border-input) !important;
+  }
+  .btn-group.eg-selector-modo-turno > .btn .ms {
+    font-size: 20px !important;
+    margin-right: 8px !important;
+    flex-shrink: 0 !important;
+  }
+  .btn-group.eg-selector-modo-turno > .btn-check:checked + .btn {
+    background-color: var(--eg-primary) !important;
+    border-color: var(--eg-primary) !important;
+    color: #fff !important;
+    box-shadow: 0 2px 4px rgba(31, 95, 174, 0.25) !important;
+  }
+  .btn-group.eg-selector-modo-turno > .btn-check:checked + .btn .ms {
+    color: #fff !important;
+  }
+
   /* En pantallas chicas, fechas apiladas limpias */
   .eg-rango-fechas {
     flex-direction: column !important;
@@ -1061,4 +1131,36 @@ textarea.form-control { min-height: 96px; }
 .eg-filters .combobox-opcion.activa {
   background-color: var(--eg-primary-soft);
   color: var(--eg-primary);
+}
+
+@media (min-width: 576px) {
+  .btn-group.eg-selector-modo-turno > .btn {
+    font-size: 13.5px !important;
+    padding: 0 8px !important;
+    min-height: 42px !important;
+    white-space: nowrap !important;
+  }
+  .btn-group.eg-selector-modo-turno > .btn .ms {
+    font-size: 18px !important;
+    margin-right: 4px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .eg-segmented label {
+    font-size: 13px !important;
+    padding: 0 6px !important;
+    gap: 4px !important;
+    height: 40px !important;
+  }
+  .eg-segmented label .ms {
+    font-size: 18px !important;
+  }
+  .eg-month__col-title { font-size: 10px !important; padding: 4px 1px !important; }
+  .eg-month__day { min-height: 52px !important; padding: 2px !important; }
+  .eg-month__num { font-size: 12px !important; width: 20px !important; height: 20px !important; }
+  .eg-month__badge-count { font-size: 9px !important; padding: 1px 4px !important; }
+  .eg-month__slot { padding: 1px 2px !important; font-size: 10px !important; border-left-width: 2px !important; }
+  .eg-month__slot-time { font-size: 10px !important; }
+  .eg-month__more { font-size: 9px !important; padding: 1px 2px !important; }
 }

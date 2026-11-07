@@ -2,8 +2,8 @@
      EduGes - Modal de Registro de Sesiones Clínicas (APIs/sesiones/)
      Permite registrar y consultar notas de evolución de una sesión.
      Respeta el secreto profesional según el rol del usuario:
-     - Profesional / SuperAdmin: edición y lectura completa (trabajo, resultado, notas).
-     - Administrador: solo lectura de "trabajo_sesion".
+     - Profesional / SuperAdmin: edición y lectura completa (trabajo, diagnóstico, notas).
+     - Administrador: solo lectura de "diagnostico".
      ============================================================ -->
 <div class="modal fade" id="modal-sesion" tabindex="-1" aria-labelledby="modal-sesion-titulo" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
@@ -42,8 +42,8 @@
                 <div id="sesion-campos">
                     <input type="hidden" id="sesion-turno-id" name="turno_id">
 
-                    <!-- Trabajo realizado (visible para todos los roles autorizados) -->
-                    <div class="mb-3">
+                    <!-- Trabajo realizado en sesión (Exclusivo de Profesional y SuperAdmin) -->
+                    <div class="mb-3" id="sesion-seccion-trabajo">
                         <label for="sesion-trabajo" class="form-label small fw-semibold">Trabajo realizado en sesión *</label>
                         <textarea class="form-control" id="sesion-trabajo" name="trabajo_sesion" rows="3" required
                                   placeholder="Describí las actividades, técnicas o dinámicas abordadas en el encuentro..."
@@ -53,26 +53,27 @@
                         </div>
                     </div>
 
+                    <!-- Diagnóstico (Obligatorio - Visible para Profesional, SuperAdmin y Administrador) -->
+                    <div class="mb-3" id="sesion-seccion-diagnostico">
+                        <label for="sesion-diagnostico" class="form-label small fw-semibold">Diagnóstico *</label>
+                        <textarea class="form-control" id="sesion-diagnostico" name="diagnostico" rows="3" required
+                                  placeholder="Diagnóstico clínico, observaciones y evaluación del paciente en la sesión..."
+                                  aria-describedby="sesion-diagnostico-ayuda"></textarea>
+                        <div class="form-text" id="sesion-diagnostico-ayuda">
+                            <span>Diagnóstico clínico y evolución del paciente durante la sesión.</span>
+                        </div>
+                    </div>
+
                     <!-- Campos confidenciales (exclusivos de Profesional asignado y SuperAdmin) -->
                     <div id="sesion-campos-clinicos">
                         <div class="alert alert-secondary py-2 px-3 small mb-3 d-flex align-items-center gap-2">
                             <span class="ms text-primary" aria-hidden="true">lock</span>
-                            <span><strong>Secreto profesional:</strong> Los resultados y notas clínicas detalladas son de acceso reservado al equipo tratante.</span>
+                            <span><strong>Secreto profesional:</strong> Las notas privadas de la sesión son de acceso reservado al profesional tratante.</span>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="sesion-resultado" class="form-label small fw-semibold">Resultado y evolución *</label>
-                            <textarea class="form-control" id="sesion-resultado" name="resultado" rows="3" required
-                                      placeholder="Logros observados, respuestas ante los estímulos, avances o dificultades..."
-                                      aria-describedby="sesion-resultado-ayuda"></textarea>
-                            <div class="form-text" id="sesion-resultado-ayuda">
-                                <span>Evolución y desempeño del paciente durante la sesión.</span>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="sesion-nota-especial" class="form-label small fw-semibold">Nota especial / confidencial <span class="text-muted fw-normal">(opcional)</span></label>
-                            <textarea class="form-control" id="sesion-nota-especial" name="nota_especial" rows="2"
+                        <div class="mb-3" id="sesion-seccion-nota">
+                            <label for="sesion-nota-sesion" class="form-label small fw-semibold">Nota especial / confidencial <span class="text-muted fw-normal">(opcional)</span></label>
+                            <textarea class="form-control" id="sesion-nota-sesion" name="nota_sesion" rows="2"
                                       placeholder="Anotaciones privadas, pautas para la próxima sesión o indicaciones internas..."
                                       aria-describedby="sesion-nota-ayuda"></textarea>
                             <div class="form-text" id="sesion-nota-ayuda">
@@ -83,8 +84,8 @@
 
                     <!-- Aviso de confidencialidad para perfil Administrador -->
                     <div id="sesion-aviso-admin" class="alert alert-info py-2 px-3 small mb-0 d-flex align-items-center gap-2" hidden>
-                        <span class="ms" aria-hidden="true">visibility_off</span>
-                        <span>Por secreto profesional y confidencialidad médica, los resultados y notas clínicas son de acceso reservado al profesional tratante.</span>
+                        <span class="ms" aria-hidden="true">visibility</span>
+                        <span><strong>Vista de Administrador:</strong> Por secreto profesional, el acceso administrativo está reservado únicamente a la lectura del Diagnóstico de la sesión.</span>
                     </div>
 
                     <p class="small text-muted mt-3 mb-0" id="sesion-ayuda-obligatorios">* Campos obligatorios.</p>

@@ -818,22 +818,25 @@
                 <div id="det-sesion-error" class="d-none"></div>
 
                 <div id="det-sesion-contenido" class="d-none">
-                    <div class="mb-3">
+                    <!-- Diagnóstico clínico (Visible para Profesional, SuperAdmin y Administrador) -->
+                    <div class="mb-3" id="det-sesion-seccion-diagnostico">
+                        <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
+                            <span class="ms text-info" aria-hidden="true">insights</span>Diagnóstico clínico
+                        </label>
+                        <div class="p-3 rounded bg-white border" id="det-sesion-resultado" style="white-space: pre-wrap; min-height: 50px;">—</div>
+                    </div>
+
+                    <!-- Trabajo realizado en sesión (Exclusivo de Profesional y SuperAdmin) -->
+                    <div class="mb-3" id="det-sesion-seccion-trabajo">
                         <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
                             <span class="ms text-primary" aria-hidden="true">task_alt</span>Trabajo realizado en sesión
                         </label>
                         <div class="p-3 rounded bg-white border" id="det-sesion-trabajo" style="white-space: pre-wrap; min-height: 50px;">—</div>
                     </div>
 
+                    <!-- Nota especial (Exclusiva de Profesional y SuperAdmin) -->
                     <div id="det-sesion-seccion-clinica">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
-                                <span class="ms text-info" aria-hidden="true">insights</span>Resultado y evolución
-                            </label>
-                            <div class="p-3 rounded bg-white border" id="det-sesion-resultado" style="white-space: pre-wrap; min-height: 50px;">—</div>
-                        </div>
-
-                        <div class="mb-3">
+                        <div class="mb-3" id="det-sesion-seccion-nota">
                             <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
                                 <span class="ms text-warning" aria-hidden="true">lock</span>Nota especial / confidencial
                             </label>
@@ -841,9 +844,10 @@
                         </div>
                     </div>
 
+                    <!-- Aviso para Administrador -->
                     <div id="det-sesion-aviso-admin" class="alert alert-info py-2 px-3 small mb-0 d-none d-flex align-items-center gap-2">
-                        <span class="ms" aria-hidden="true">visibility_off</span>
-                        <span><strong>Secreto profesional:</strong> Por confidencialidad médica y secreto profesional, los resultados clínicos y notas de evolución son de acceso exclusivo del profesional tratante.</span>
+                        <span class="ms" aria-hidden="true">visibility</span>
+                        <span><strong>Vista de Administrador:</strong> Por secreto profesional, el acceso administrativo está reservado únicamente a la lectura del Diagnóstico de la sesión.</span>
                     </div>
                 </div>
             </div>

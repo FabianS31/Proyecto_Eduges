@@ -468,7 +468,7 @@ function errorDeFecha(fecha) {
         return 'La fecha no puede ser anterior a hoy.';
     }
     if (fecha > fechaMaximaTurno()) {
-        return `Se pueden dar turnos hasta ${TURNO_DIAS_ANTICIPACION} días hacia adelante (hasta el ${formatearFecha(fechaMaximaTurno())}).`;
+        return `Se pueden dar turnos hasta 1 año hacia adelante (hasta el ${formatearFecha(fechaMaximaTurno())}).`;
     }
     return null;
 }
@@ -593,134 +593,252 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
             formulario.querySelector('#turno-selector-fechas ~ [data-error-de-campo]')?.remove();
         },
     });
-    const modoVarios = () => $('turno-modo-varios').checked;
-    const actualizarModo = () => {
-        $('turno-una-fecha').hidden = modoVarios();
-        $('turno-varias-fechas').hidden = !modoVarios();
-    };
-    let inicial = {};
-
-    const obtenerModalNuevo = prepararModal({
-        modal: modalNuevo,
-        formulario,
-        contenedorErrores: $('form-turno-errores'),
-        comboboxes: [paciente, hora, profesional, tutorCombobox].filter(Boolean),
-        alAbrir: () => {
-            const fecha = $('turno-fecha');
-            fecha.min = hoyISO();
-            fecha.max = fechaMaximaTurno();
-            fecha.value = inicial.fecha && inicial.fecha >= hoyISO() && inicial.fecha <= fecha.max ? inicial.fecha : hoyISO();
-            calendario.limpiar();
-            actualizarModo();
-            if (switchReunion) switchReunion.checked = false;
-            if (tutorCampo) tutorCampo.hidden = true;
-            if (tutorCombobox) tutorCombobox.limpiar();
-            if (inicial.paciente) {
-                paciente.elegir(opcionPaciente(inicial.paciente));
-            }
-        },
-    });
-    // Con el paciente ya elegido (desde su ficha), el foco va al primer dato que falta
-    modalNuevo.addEventListener('shown.bs.modal', () => {
-        if (inicial.paciente) {
-            $('turno-fecha').focus();
-        }
-    });
-    formulario.elements.modo.forEach((opcion) => opcion.addEventListener('change', actualizarModo));
-
-    formulario.addEventListener('submit', (evento) => {
-        evento.preventDefault();
-        const varios = modoVarios();
-        const fechas = varios ? calendario.fechas() : [formulario.elements.fecha.value];
-        const datos = {
-            paciente: paciente.valor(),
-            hora: normalizarHora(hora.valor()),
-            ...(deProfesional ? {} : { profesional: profesional.valor() }),
-        };
-        const idProfesional = deProfesional ? usuario.profesional.id : datos.profesional;
-        const choque = (f, h) => turnosQueSePisan(f, h, { profesional: idProfesional, paciente: datos.paciente });
-
-        let errores = {};
-        if (!varios) {
-            errores = erroresFechaYHora(fechas[0], datos.hora, hora.valor(), choque, idProfesional);
-        } else {
-            if (!datos.hora) {
-                errores.hora = [hora.valor() ? MENSAJE_HORA_INVALIDA : 'Indicá la hora.'];
-            }
-            if (fechas.length === 0) {
-                errores.turnos = ['Tocá en el calendario los días en los que querés dar turno.'];
-            } else if (datos.hora && fechas.some((f) => horaYaPaso(f, datos.hora))) {
-                errores.turnos = ['A esa hora, el turno de hoy ya pasó. Sacá el día de hoy o elegí una hora más tarde.'];
-            } else if (datos.hora) {
-                const pisadas = fechas.filter((f) => choque(f, datos.hora).length > 0);
-                if (pisadas.length > 0) {
-                    errores.turnos = [`${deProfesional ? 'Ya tenés' : 'Hay'} un turno a esa hora el ${pisadas.map(formatearFecha).join(', el ')}. `
-                        + 'Sacá esas fechas o elegí otra hora.'];
-                }
-            }
-        }
-        if (!datos.paciente) {
-            errores.paciente = [$('turno-paciente').value.trim() ? 'Elegí el paciente de la lista de sugerencias.' : 'Indicá el paciente.'];
-        }
-        if (!deProfesional && !datos.profesional) {
-            errores.profesional = [$('turno-profesional-elegir').value.trim()
-                ? 'Elegí el profesional de la lista de sugerencias.'
-                : 'Indicá el profesional.'];
-        }
-
-        // Un turno: { paciente, fecha, hora }. Varios: { paciente, turnos: [{ fecha, hora }] }
-        // (la API los crea todos o ninguno). Un profesional no manda "profesional": la API usa el logueado.
-        const { hora: horaElegida, ...resto } = datos;
-        const cuerpo = varios
-            ? { ...resto, turnos: fechas.map((fecha) => ({ fecha, hora: horaElegida })) }
-            : { ...datos, fecha: fechas[0] };
-
-        limpiarErroresFormulario(formulario);
-        if (Object.keys(errores).length > 0) {
-            mostrarErroresFormulario(formulario, errores);
-            return;
-        }
-
-        // Resumen para modal de confirmación (Ítems 2 y 3 Minuta)
-        const esReunion = switchReunion?.checked;
-        const nombrePacienteTexto = $('turno-paciente')?.value || '';
-        const nombreProfTexto = deProfesional
-            ? `${nombreCompleto(usuario.profesional)} (vos)`
-            : ($('turno-profesional-elegir')?.value || 'Profesional asignado');
-        const horaFin = sumarMinutos(datos.hora, TURNO_DURACION_MINUTOS);
-
-        const textoFecha = varios
-            ? `${fechas.length} fechas: ${fechas.map(formatearFecha).join(', ')}`
-            : formatearFechaLarga(fechas[0]);
-        const textoHorario = `${datos.hora} a ${horaFin} hs`;
-
-        if ($('resumen-turno-paciente')) $('resumen-turno-paciente').textContent = nombrePacienteTexto;
-        if ($('resumen-turno-profesional')) $('resumen-turno-profesional').textContent = nombreProfTexto;
-        if ($('resumen-turno-fecha')) $('resumen-turno-fecha').textContent = textoFecha;
-        if ($('resumen-turno-horario')) $('resumen-turno-horario').textContent = textoHorario;
-
-        const tutorTexto = $('turno-tutor')?.value?.trim();
-        const modalidadEl = $('resumen-turno-modalidad');
-        if (modalidadEl) {
-            if (esReunion) {
-                modalidadEl.className = 'badge bg-primary-subtle text-primary border border-primary-subtle';
-                modalidadEl.textContent = tutorTexto ? `Reunión de padres / tutores (Tutor: ${tutorTexto})` : 'Reunión de padres / tutores';
-            } else {
-                modalidadEl.className = 'badge bg-secondary-subtle text-secondary border';
-                modalidadEl.textContent = 'Sesión clínica individual';
-            }
-        }
-
-        if ($('confirmar-turno-error')) $('confirmar-turno-error').innerHTML = '';
-
-        turnoPendienteDeConfirmar = {
-            cuerpo,
-            fechas,
-            varios,
-        };
-
-        obtenerModalNuevo().hide();
-        const modalConfirmar = window.bootstrap?.Modal?.getOrCreateInstance($('modal-confirmar-turno'));
+    function generarFechasSemanales(fechaInicio, totalSemanas = 52) {
+        const lista = [];
+        for (let i = 0; i < totalSemanas; i++) {
+            lista.push(sumarDias(fechaInicio, i * 7));
+        }
+        return lista;
+    }
+
+    function diaSemanaPlural(fechaIso) {
+        if (!fechaIso) return '';
+        try {
+            const d = aFecha(fechaIso);
+            const nombres = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
+            return nombres[d.getDay()] || '';
+        } catch {
+            return '';
+        }
+    }
+
+    const modoVarios = () => $('turno-modo-varios')?.checked;
+    const modoAnual = () => $('turno-modo-anual')?.checked;
+
+    const actualizarResumenAnual = () => {
+        const fechaInicio = $('turno-fecha-inicio-anual')?.value;
+        const horaElegida = $('turno-hora')?.value?.trim();
+        const resumenEl = $('turno-resumen-anual');
+        const resumenTexto = $('turno-resumen-anual-texto');
+        if (!resumenEl || !resumenTexto) return;
+
+        if (!fechaInicio) {
+            resumenEl.hidden = true;
+            return;
+        }
+
+        const plural = diaSemanaPlural(fechaInicio);
+        const fechaFin = sumarDias(fechaInicio, 51 * 7);
+        const horaTexto = horaElegida ? ` a las ${horaElegida} hs` : '';
+        resumenTexto.textContent = `52 turnos programados: todos los ${plural} desde el ${formatearFecha(fechaInicio)} hasta el ${formatearFecha(fechaFin)}${horaTexto}.`;
+        resumenEl.hidden = false;
+    };
+
+    const actualizarModo = () => {
+        const esVarios = Boolean(modoVarios());
+        const esAnual = Boolean(modoAnual());
+        const esUno = !esVarios && !esAnual;
+
+        $('turno-una-fecha').hidden = !esUno;
+        $('turno-varias-fechas').hidden = !esVarios;
+        const panelAnual = $('turno-recurrente-anual');
+        if (panelAnual) panelAnual.hidden = !esAnual;
+
+        if (esAnual) {
+            actualizarResumenAnual();
+        }
+    };
+
+    let inicial = {};
+
+    const obtenerModalNuevo = prepararModal({
+        modal: modalNuevo,
+        formulario,
+        contenedorErrores: $('form-turno-errores'),
+        comboboxes: [paciente, hora, profesional, tutorCombobox].filter(Boolean),
+        alAbrir: () => {
+            const fecha = $('turno-fecha');
+            fecha.min = hoyISO();
+            fecha.max = fechaMaximaTurno();
+            fecha.value = inicial.fecha && inicial.fecha >= hoyISO() && inicial.fecha <= fecha.max ? inicial.fecha : hoyISO();
+
+            const fechaAnual = $('turno-fecha-inicio-anual');
+            if (fechaAnual) {
+                fechaAnual.min = hoyISO();
+                fechaAnual.max = fechaMaximaTurno();
+                fechaAnual.value = fecha.value;
+            }
+
+            if ($('turno-modo-uno')) $('turno-modo-uno').checked = true;
+
+            calendario.limpiar();
+            actualizarModo();
+            if (switchReunion) switchReunion.checked = false;
+            if (tutorCampo) tutorCampo.hidden = true;
+            if (tutorCombobox) tutorCombobox.limpiar();
+            if (inicial.paciente) {
+                paciente.elegir(opcionPaciente(inicial.paciente));
+            }
+        },
+    });
+
+    // Con el paciente ya elegido (desde su ficha), el foco va al primer dato que falta
+    modalNuevo.addEventListener('shown.bs.modal', () => {
+        if (inicial.paciente) {
+            $('turno-fecha').focus();
+        }
+    });
+
+    formulario.elements.modo.forEach((opcion) => opcion.addEventListener('change', actualizarModo));
+
+    $('turno-fecha-inicio-anual')?.addEventListener('input', () => {
+        actualizarResumenAnual();
+        $('turno-fecha-inicio-anual').classList.remove('is-invalid');
+        formulario.querySelector('#turno-fecha-inicio-anual ~ [data-error-de-campo]')?.remove();
+    });
+    $('turno-fecha-inicio-anual')?.addEventListener('change', () => {
+        actualizarResumenAnual();
+    });
+    $('turno-hora')?.addEventListener('input', () => {
+        if (modoAnual()) actualizarResumenAnual();
+    });
+    $('turno-hora')?.addEventListener('change', () => {
+        if (modoAnual()) actualizarResumenAnual();
+    });
+
+    formulario.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        const varios = modoVarios();
+        const anual = modoAnual();
+
+        let fechas = [];
+        if (anual) {
+            const fInicio = $('turno-fecha-inicio-anual')?.value;
+            fechas = fInicio ? generarFechasSemanales(fInicio, 52) : [];
+        } else if (varios) {
+            fechas = calendario.fechas();
+        } else {
+            fechas = [formulario.elements.fecha.value];
+        }
+
+        const datos = {
+            paciente: paciente.valor(),
+            hora: normalizarHora(hora.valor()),
+            ...(deProfesional ? {} : { profesional: profesional.valor() }),
+        };
+        const idProfesional = deProfesional ? usuario.profesional.id : datos.profesional;
+        const choque = (f, h) => turnosQueSePisan(f, h, { profesional: idProfesional, paciente: datos.paciente });
+
+        let errores = {};
+        if (anual) {
+            const fInicio = $('turno-fecha-inicio-anual')?.value;
+            if (!fInicio) {
+                errores.fecha_inicio_anual = ['Indicá la fecha del primer turno.'];
+            } else if (fInicio < hoyISO()) {
+                errores.fecha_inicio_anual = ['La fecha de inicio no puede ser anterior a hoy.'];
+            } else if (fInicio > fechaMaximaTurno()) {
+                errores.fecha_inicio_anual = [`Se pueden dar turnos hasta 1 año hacia adelante (hasta el ${formatearFecha(fechaMaximaTurno())}).`];
+            }
+
+            if (!datos.hora) {
+                errores.hora = [hora.valor() ? MENSAJE_HORA_INVALIDA : 'Indicá la hora.'];
+            } else if (fInicio && horaYaPaso(fInicio, datos.hora)) {
+                errores.hora = [MENSAJE_HORA_PASADA];
+            } else if (datos.hora && fechas.length > 0) {
+                const pisadas = fechas.filter((f) => choque(f, datos.hora).length > 0);
+                if (pisadas.length > 0) {
+                    if (pisadas.length <= 3) {
+                        errores.fecha_inicio_anual = [`${deProfesional ? 'Ya tenés' : 'Hay'} turnos ocupados a esa hora el ${pisadas.map(formatearFecha).join(', el ')}. Elegí otro horario o fecha de inicio.`];
+                    } else {
+                        errores.fecha_inicio_anual = [`${deProfesional ? 'Ya tenés' : 'Hay'} turnos ocupados a esa hora en ${pisadas.length} semanas (primer conflicto: el ${formatearFecha(pisadas[0])}). Elegí otro horario o fecha de inicio.`];
+                    }
+                }
+            }
+        } else if (!varios) {
+            errores = erroresFechaYHora(fechas[0], datos.hora, hora.valor(), choque, idProfesional);
+        } else {
+            if (!datos.hora) {
+                errores.hora = [hora.valor() ? MENSAJE_HORA_INVALIDA : 'Indicá la hora.'];
+            }
+            if (fechas.length === 0) {
+                errores.turnos = ['Tocá en el calendario los días en los que querés dar turno.'];
+            } else if (datos.hora && fechas.some((f) => horaYaPaso(f, datos.hora))) {
+                errores.turnos = ['A esa hora, el turno de hoy ya pasó. Sacá el día de hoy o elegí una hora más tarde.'];
+            } else if (datos.hora) {
+                const pisadas = fechas.filter((f) => choque(f, datos.hora).length > 0);
+                if (pisadas.length > 0) {
+                    errores.turnos = [`${deProfesional ? 'Ya tenés' : 'Hay'} un turno a esa hora el ${pisadas.map(formatearFecha).join(', el ')}. `
+                        + 'Sacá esas fechas o elegí otra hora.'];
+                }
+            }
+        }
+
+        if (!datos.paciente) {
+            errores.paciente = [$('turno-paciente').value.trim() ? 'Elegí el paciente de la lista de sugerencias.' : 'Indicá el paciente.'];
+        }
+        if (!deProfesional && !datos.profesional) {
+            errores.profesional = [$('turno-profesional-elegir').value.trim()
+                ? 'Elegí el profesional de la lista de sugerencias.'
+                : 'Indicá el profesional.'];
+        }
+
+        const { hora: horaElegida, ...resto } = datos;
+        const cuerpo = (varios || anual)
+            ? { ...resto, turnos: fechas.map((fecha) => ({ fecha, hora: horaElegida })) }
+            : { ...datos, fecha: fechas[0] };
+
+        limpiarErroresFormulario(formulario);
+        if (Object.keys(errores).length > 0) {
+            mostrarErroresFormulario(formulario, new ApiError(400, errores));
+            return;
+        }
+
+        // Resumen para modal de confirmación (Ítems 2 y 3 Minuta)
+        const esReunion = switchReunion?.checked;
+        const nombrePacienteTexto = $('turno-paciente')?.value || '';
+        const nombreProfTexto = deProfesional
+            ? `${nombreCompleto(usuario.profesional)} (vos)`
+            : ($('turno-profesional-elegir')?.value || 'Profesional asignado');
+        const horaFin = sumarMinutos(datos.hora, TURNO_DURACION_MINUTOS);
+
+        let textoFecha = '';
+        if (anual) {
+            const plural = diaSemanaPlural(fechas[0]);
+            textoFecha = `Recurrente anual (52 turnos): todos los ${plural} del ${formatearFecha(fechas[0])} al ${formatearFecha(fechas[fechas.length - 1])}`;
+        } else if (varios) {
+            textoFecha = `${fechas.length} fechas: ${fechas.map(formatearFecha).join(', ')}`;
+        } else {
+            textoFecha = formatearFechaLarga(fechas[0]);
+        }
+        const textoHorario = `${datos.hora} a ${horaFin} hs`;
+
+        if ($('resumen-turno-paciente')) $('resumen-turno-paciente').textContent = nombrePacienteTexto;
+        if ($('resumen-turno-profesional')) $('resumen-turno-profesional').textContent = nombreProfTexto;
+        if ($('resumen-turno-fecha')) $('resumen-turno-fecha').textContent = textoFecha;
+        if ($('resumen-turno-horario')) $('resumen-turno-horario').textContent = textoHorario;
+
+        const tutorTexto = $('turno-tutor')?.value?.trim();
+        const modalidadEl = $('resumen-turno-modalidad');
+        if (modalidadEl) {
+            if (esReunion) {
+                modalidadEl.className = 'badge bg-primary-subtle text-primary border border-primary-subtle';
+                modalidadEl.textContent = tutorTexto ? `Reunión de padres / tutores (Tutor: ${tutorTexto})` : 'Reunión de padres / tutores';
+            } else {
+                modalidadEl.className = 'badge bg-secondary-subtle text-secondary border';
+                modalidadEl.textContent = 'Sesión clínica individual';
+            }
+        }
+
+        if ($('confirmar-turno-error')) $('confirmar-turno-error').innerHTML = '';
+
+        turnoPendienteDeConfirmar = {
+            cuerpo,
+            fechas,
+            varios: (varios || anual),
+        };
+
+        obtenerModalNuevo().hide();
+        const modalConfirmar = window.bootstrap?.Modal?.getOrCreateInstance($('modal-confirmar-turno'));
         modalConfirmar?.show();
     });
 

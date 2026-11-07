@@ -72,6 +72,6 @@ class RegistroSesionResumenSerializer(
         model = RegistroSesion
         fields = [
             'id',
-            'trabajo_sesion',
+            'diagnostico',
         ]
         read_only_fields = fields

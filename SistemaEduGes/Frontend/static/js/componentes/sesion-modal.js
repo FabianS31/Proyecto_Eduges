@@ -6,13 +6,13 @@
 // Reglas de negocio y privacidad:
 //   - Profesional asignado / SuperAdmin:
 //       * Crea registro inicial (POST /api/sesiones/)
-//       * Consulta datos completos (GET /api/sesiones/<turno_id>/)
+//       * Consulta datos completos (GET /api/sesiones/<turno_id>/): trabajo, diagnóstico y notas
 //       * Modifica registro existente (PATCH /api/sesiones/<turno_id>/)
 //   - Administrador:
-//       * Consulta solo lectura de "trabajo_sesion" (GET /api/sesiones/<turno_id>/)
-//       * No tiene acceso a "resultado" ni "nota_especial"
+//       * Consulta solo lectura de "diagnostico" (GET /api/sesiones/<turno_id>/)
+//       * No tiene acceso a "trabajo_sesion" ni "nota_sesion" (secreto profesional)
 //       * No puede crear ni editar (botones ocultos)
-//   - Validación: campos con longitud máxima de 225 caracteres
+//   - Validación: diagnóstico obligatorio
 // ============================================================
 
 import { ApiError } from '../api.js';
@@ -42,10 +42,12 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
 
     const turnoIdInput = $('sesion-turno-id');
     const trabajoInput = $('sesion-trabajo');
-    const resultadoInput = $('sesion-resultado');
-    const notaInput = $('sesion-nota-especial');
+    const diagnosticoInput = $('sesion-diagnostico') || $('sesion-resultado');
+    const notaInput = $('sesion-nota-sesion') || $('sesion-nota-especial');
 
-
+    const seccionTrabajo = $('sesion-seccion-trabajo');
+    const seccionDiagnostico = $('sesion-seccion-diagnostico');
+    const seccionNota = $('sesion-seccion-nota');
     const camposClinicos = $('sesion-campos-clinicos');
     const avisoAdmin = $('sesion-aviso-admin');
     const ayudaObligatorios = $('sesion-ayuda-obligatorios');
@@ -84,9 +86,9 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
 
         const datos = {
             turno_id: turnoActual?.id_turno ?? turnoActual?.id,
-            trabajo_sesion: trabajoInput.value.trim(),
-            resultado: resultadoInput.value.trim(),
-            nota_especial: notaInput.value.trim(),
+            trabajo_sesion: trabajoInput ? trabajoInput.value.trim() : '',
+            diagnostico: diagnosticoInput ? diagnosticoInput.value.trim() : '',
+            nota_sesion: notaInput ? notaInput.value.trim() : '',
         };
 
         const errores = {};
@@ -94,8 +96,8 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
             errores.trabajo_sesion = ['Describí las actividades realizadas en la sesión.'];
         }
 
-        if (!datos.resultado) {
-            errores.resultado = ['Indicá la evolución o resultado del paciente.'];
+        if (!datos.diagnostico) {
+            errores.diagnostico = ['El diagnóstico de la sesión es obligatorio.'];
         }
 
         const esCreacion = modo === 'creacion';
@@ -113,8 +115,8 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
                     ? await sesiones.crear(datos)
                     : await sesiones.actualizar(turnoId, {
                         trabajo_sesion: datos.trabajo_sesion,
-                        resultado: datos.resultado,
-                        nota_especial: datos.nota_especial,
+                        diagnostico: datos.diagnostico,
+                        nota_sesion: datos.nota_sesion,
                     });
                 // Si el turno estaba Confirmado, intentamos pasarlo a Realizado automáticamente
                 const estadoId = turnoActual?.estado?.id ?? turnoActual?.estado?.ID_EstadoTurno;
@@ -178,24 +180,34 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
         }
 
         turnoIdInput.value = turnoId;
-        trabajoInput.value = '';
-        resultadoInput.value = '';
-        notaInput.value = '';
+        if (trabajoInput) trabajoInput.value = '';
+        if (diagnosticoInput) diagnosticoInput.value = '';
+        if (notaInput) notaInput.value = '';
         renderizar(contenedorErrores, '');
 
-        // Ajustar interfaz según rol
+        // Ajustar interfaz según rol:
+        // El administrador SOLAMENTE puede ver "DIAGNÓSTICO" (modo sólo lectura).
+        // No tiene acceso a trabajo_sesion ni nota_sesion.
         if (esAdmin) {
+            if (seccionTrabajo) seccionTrabajo.hidden = true;
             if (camposClinicos) camposClinicos.hidden = true;
+            if (seccionNota) seccionNota.hidden = true;
+            if (seccionDiagnostico) seccionDiagnostico.hidden = false;
+            if (diagnosticoInput) diagnosticoInput.readOnly = true;
             if (avisoAdmin) avisoAdmin.hidden = false;
             if (btnGuardar) btnGuardar.hidden = true;
             if (ayudaObligatorios) ayudaObligatorios.hidden = true;
-            trabajoInput.readOnly = true;
         } else {
+            if (seccionTrabajo) seccionTrabajo.hidden = false;
             if (camposClinicos) camposClinicos.hidden = false;
+            if (seccionNota) seccionNota.hidden = false;
+            if (seccionDiagnostico) seccionDiagnostico.hidden = false;
+            if (trabajoInput) trabajoInput.readOnly = false;
+            if (diagnosticoInput) diagnosticoInput.readOnly = false;
+            if (notaInput) notaInput.readOnly = false;
             if (avisoAdmin) avisoAdmin.hidden = true;
             if (btnGuardar) btnGuardar.hidden = false;
             if (ayudaObligatorios) ayudaObligatorios.hidden = false;
-            trabajoInput.readOnly = false;
         }
 
         // Abrir modal y mostrar estado de carga
@@ -210,18 +222,20 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
             tituloTexto.textContent = esAdmin ? 'Consulta de Sesión' : 'Evolución de Sesión';
             if (btnGuardarTexto) btnGuardarTexto.textContent = 'Actualizar registro';
 
-            trabajoInput.value = sesionExistente.trabajo_sesion ?? '';
+            if (diagnosticoInput) {
+                diagnosticoInput.value = sesionExistente.diagnostico ?? '';
+            }
             if (!esAdmin) {
-                resultadoInput.value = sesionExistente.resultado ?? '';
-                notaInput.value = sesionExistente.nota_especial ?? '';
+                if (trabajoInput) trabajoInput.value = sesionExistente.trabajo_sesion ?? '';
+                if (notaInput) notaInput.value = sesionExistente.nota_sesion ?? '';
             }
         } catch (error) {
             if (error instanceof ApiError && error.status === 404) {
                 // No hay registro previo: modo creación
                 if (esAdmin) {
                     modo = 'lectura';
-                    tituloTexto.textContent = 'Consulta de Sesión';
-                    trabajoInput.value = 'Este turno aún no cuenta con un registro de sesión cargado.';
+                    tituloTexto.textContent = 'Consulta de Diagnóstico';
+                    if (diagnosticoInput) diagnosticoInput.value = 'Este turno aún no cuenta con un diagnóstico cargado.';
                 } else {
                     modo = 'creacion';
                     tituloTexto.textContent = 'Nuevo Registro de Sesión';

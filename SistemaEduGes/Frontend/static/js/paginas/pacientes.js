@@ -126,7 +126,7 @@ function filtrados() {
     const { q, cud, orden } = estado.filtros;
     return estado.todos
         .filter((p) => !q.trim() || coincide(p, q))
-        .filter((p) => !cud || p.cud.clave === cud || (cud === ALERTA && p.cud.clave !== CUD.VIGENTE))
+        .filter((p) => !cud || p.cud.clave === cud || (cud === ALERTA && (p.cud.clave === CUD.VENCIDO || p.cud.clave === CUD.POR_VENCER)))
         .sort(CRITERIOS[orden]);
 }
 
@@ -327,6 +327,7 @@ function abrirFicha(id) {
                     <dl class="ficha-dato row g-0">
                         <div class="col-6"><dt>Nacimiento</dt><dd>${formatearFecha(p.fecha_nacimiento)}</dd></div>
                         <div class="col-6"><dt>Edad</dt><dd>${textoEdad(p.edad)}</dd></div>
+                        ${p.fecha_alta ? html`<div class="col-6"><dt>Fecha de alta</dt><dd>${formatearFecha(p.fecha_alta)}</dd></div>` : ''}
                         <div class="col-12"><dt>Dirección</dt><dd>${p.direccion}</dd></div>
                         <div class="col-12"><dt>Mail</dt><dd>${enlaceMail(p.mail)}</dd></div>
                     </dl>
@@ -490,16 +491,17 @@ function tarjetaEvolucionClinica({ turno: t, sesion }) {
 
             ${sesion ? html`
                 <div class="small mb-3">
-                    <div class="mb-2">
-                        <span class="fw-bold text-dark d-block mb-1">Trabajo en sesión:</span>
-                        <p class="mb-0 text-secondary bg-light p-2 rounded" style="white-space: pre-wrap;">${sesion.trabajo_sesion}</p>
-                    </div>
-                    ${sesion.resultado ? html`
+                    ${sesion.diagnostico ? html`
                         <div class="mb-2">
-                            <span class="fw-bold text-dark d-block mb-1">Resultado clínico:</span>
-                            <p class="mb-0 text-secondary bg-light p-2 rounded" style="white-space: pre-wrap;">${sesion.resultado}</p>
+                            <span class="fw-bold text-dark d-block mb-1">Diagnóstico clínico:</span>
+                            <p class="mb-0 text-secondary bg-light p-2 rounded" style="white-space: pre-wrap;">${sesion.diagnostico}</p>
                         </div>` : ''}
-                    ${sesion.nota_especial ? html`
+                    ${sesion.trabajo_sesion ? html`
+                        <div class="mb-2">
+                            <span class="fw-bold text-dark d-block mb-1">Trabajo en sesión:</span>
+                            <p class="mb-0 text-secondary bg-light p-2 rounded" style="white-space: pre-wrap;">${sesion.trabajo_sesion}</p>
+                        </div>` : ''}
+                    ${sesion.nota_sesion ? html`
                         <div class="mb-2 p-2 rounded-2 border border-warning-subtle bg-warning-subtle bg-opacity-25">
                             <div class="d-flex align-items-center justify-content-between mb-1">
                                 <span class="fw-semibold text-dark small d-flex align-items-center gap-1">
@@ -508,26 +510,28 @@ function tarjetaEvolucionClinica({ turno: t, sesion }) {
                                 </span>
                                 <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 11px;">Privada</span>
                             </div>
-                            <p class="mb-0 text-dark small" style="white-space: pre-wrap; font-style: italic;">${sesion.nota_especial}</p>
+                            <p class="mb-0 text-dark small" style="white-space: pre-wrap; font-style: italic;">${sesion.nota_sesion}</p>
                         </div>` : ''}
-                    ${!sesion.resultado && !esProfesional(estado.usuario) ? html`
+                    ${!esProfesional(estado.usuario) && !estado.usuario?.is_superuser ? html`
                         <div class="text-muted fst-italic py-1 small">
-                            ${icono('privacy_tip')} Los resultados clínicos y notas privadas están reservados al profesional tratante.
+                            ${icono('privacy_tip')} Vista de Administrador: Por secreto profesional, el trabajo en sesión y notas privadas están reservados al profesional tratante.
                         </div>` : ''}
                 </div>
                 <div class="d-flex justify-content-end">
                     <button type="button" class="eg-btn eg-btn--ghost" data-accion="sesion" data-turno="${t.id_turno}"
-                            aria-label="Modificar nota clínica de la sesión del ${diaEnTexto(t.fecha)}">
-                        ${icono('edit')}Modificar nota
+                            aria-label="${esProfesional(estado.usuario) || estado.usuario?.is_superuser ? 'Modificar nota clínica de la sesión del ' + diaEnTexto(t.fecha) : 'Ver diagnóstico de la sesión del ' + diaEnTexto(t.fecha)}">
+                        ${icono(esProfesional(estado.usuario) || estado.usuario?.is_superuser ? 'edit' : 'visibility')}
+                        ${esProfesional(estado.usuario) || estado.usuario?.is_superuser ? 'Modificar nota' : 'Ver diagnóstico'}
                     </button>
                 </div>
             ` : html`
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-1">
                     <p class="mb-0 text-muted small">Esta sesión no tiene el registro de notas de evolución completado.</p>
+                    ${(esProfesional(estado.usuario) || estado.usuario?.is_superuser) ? html`
                     <button type="button" class="eg-btn eg-btn--primary" data-accion="sesion" data-turno="${t.id_turno}"
                             aria-label="Escribir nota clínica para la sesión del ${diaEnTexto(t.fecha)}">
                         ${icono('edit_note')}Escribir nota clínica
-                    </button>
+                    </button>` : ''}
                 </div>
             `}
         </article>`;

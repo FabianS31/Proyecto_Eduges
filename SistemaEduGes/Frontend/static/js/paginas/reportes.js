@@ -343,23 +343,28 @@ async function abrirDetalleSesion(turnoId) {
         cargandoEl.classList.add('d-none');
         contenidoEl.classList.remove('d-none');
 
-        // Trabajo de sesión (visible para todos los roles)
-        trabajoEl.textContent = sesion.trabajo_sesion || 'Sin detalle de trabajo registrado.';
-        if (turno && sesion.trabajo_sesion) {
-            turno.trabajo_sesion = sesion.trabajo_sesion;
-        }
+        const seccionTrabajoEl = $('det-sesion-seccion-trabajo');
 
-        // Validación de secreto profesional (Ítems 9 y 10 Minuta):
-        // Administrador puro solo ve el trabajo administrativo, no resultados ni notas clínicas
+        // Diagnóstico (visible para todos los roles autorizados)
+        resultadoEl.textContent = sesion.diagnostico || 'Sin registrar';
+
+        // Validación de secreto profesional:
+        // Administrador puro SOLAMENTE puede ver Diagnóstico.
+        // No tiene acceso a trabajo de sesión ni notas confidenciales.
         const esAdminPuro = !estado.esPro && !estado.usuario?.is_superuser;
         if (esAdminPuro) {
+            if (seccionTrabajoEl) seccionTrabajoEl.classList.add('d-none');
             seccionClinicaEl.classList.add('d-none');
             avisoAdminEl.classList.remove('d-none');
         } else {
+            if (seccionTrabajoEl) seccionTrabajoEl.classList.remove('d-none');
+            trabajoEl.textContent = sesion.trabajo_sesion || 'Sin detalle de trabajo registrado.';
+            if (turno && sesion.trabajo_sesion) {
+                turno.trabajo_sesion = sesion.trabajo_sesion;
+            }
             seccionClinicaEl.classList.remove('d-none');
             avisoAdminEl.classList.add('d-none');
-            resultadoEl.textContent = sesion.resultado || 'Sin registrar';
-            notaEspecialEl.textContent = sesion.nota_especial || 'Sin notas especiales.';
+            notaEspecialEl.textContent = sesion.nota_sesion || 'Sin notas especiales.';
         }
     } catch (error) {
         cargandoEl.classList.add('d-none');
@@ -474,8 +479,27 @@ async function consultarReporte() {
             if (altaDesde) queryParams.fecha_alta_desde = altaDesde;
             if (altaHasta) queryParams.fecha_alta_hasta = altaHasta;
 
+            // Enriquecemos con los datos completos de pacientes (fecha_alta y profesional_responsable)
+            let mapaPacientes = new Map();
+            try {
+                const listaCompleta = await pacientes.listar();
+                listaCompleta.forEach((p) => {
+                    const id = p.id_paciente || p.id;
+                    if (id) mapaPacientes.set(id, p);
+                });
+            } catch (errPacientes) {
+                console.warn('No se pudieron obtener datos enriquecidos de pacientes:', errPacientes);
+            }
+
             respuesta = await reportes.pacientes(queryParams);
-            let items = respuesta.resultados || [];
+            let items = (respuesta.resultados || []).map((p) => {
+                const completo = mapaPacientes.get(p.id) || {};
+                return {
+                    ...p,
+                    fecha_alta: p.fecha_alta || completo.fecha_alta || null,
+                    profesional_responsable: p.profesional_responsable || completo.profesional_responsable || null,
+                };
+            });
 
             if (altaDesde || altaHasta) {
                 items = items.filter((p) => {
@@ -490,7 +514,15 @@ async function consultarReporte() {
             if (textoBusqueda) {
                 items = items.filter((p) =>
                     coincideBusquedaReporte(
-                        [p.nombre, p.apellido, p.dni, p.obra_social?.nombre, p.numero_afiliado],
+                        [
+                            p.nombre,
+                            p.apellido,
+                            p.dni,
+                            p.obra_social?.nombre,
+                            p.numero_afiliado,
+                            p.profesional_responsable?.nombre,
+                            p.profesional_responsable?.apellido,
+                        ],
                         textoBusqueda
                     )
                 );
@@ -766,11 +798,13 @@ function renderizarTabla() {
         renderizar(thead, html`
             <tr>
                 <th scope="col">Paciente</th>
-                <th scope="col" style="width: 120px;">DNI</th>
-                <th scope="col" style="width: 140px;">Edad / F. Nac.</th>
+                <th scope="col" style="width: 110px;">DNI</th>
+                <th scope="col" style="width: 120px;">F. de Alta</th>
+                <th scope="col">Profesional asignado</th>
+                <th scope="col" style="width: 130px;">Edad / F. Nac.</th>
                 <th scope="col">Obra Social</th>
-                <th scope="col">CUD (Discapacidad)</th>
-                <th scope="col" style="width: 130px;">Estado</th>
+                <th scope="col">CUD</th>
+                <th scope="col" style="width: 120px;">Estado</th>
             </tr>
         `);
 
@@ -782,6 +816,15 @@ function renderizarTabla() {
                 : html`<span class="text-muted small">Sin CUD</span>`;
             const esActivo = p.estado?.id === 1;
 
+            const fechaAltaStr = p.fecha_alta ? formatearFecha(p.fecha_alta) : '—';
+            const pro = p.profesional_responsable;
+            const proNombre = pro
+                ? (pro.apellido ? `${pro.apellido}, ${pro.nombre}` : (pro.nombre || 'Asignado'))
+                : null;
+            const proHtml = proNombre
+                ? html`<div class="fw-semibold text-primary d-flex align-items-center gap-1">${icono('person')}<span>${proNombre}</span></div>`
+                : html`<span class="text-muted small fst-italic">Sin asignar</span>`;
+
             return html`
                 <tr>
                     <td>
@@ -789,6 +832,12 @@ function renderizarTabla() {
                         ${p.mail ? html`<div class="text-muted small">${p.mail}</div>` : ''}
                     </td>
                     <td><span class="eg-table__num">${p.dni || '—'}</span></td>
+                    <td>
+                        <div class="fw-medium">${fechaAltaStr}</div>
+                    </td>
+                    <td>
+                        ${proHtml}
+                    </td>
                     <td>
                         <div>${edadAnios}</div>
                         <div class="text-muted small">${fechaNac}</div>
@@ -952,13 +1001,17 @@ function exportarCSV(tipo, resultados) {
             ]);
         });
     } else if (tipo === 'pacientes') {
-        filas.push(['ID', 'Apellido', 'Nombre', 'DNI', 'Fecha Nacimiento', 'Obra Social', 'Nro Afiliado', 'CUD Vencimiento', 'Estado']);
+        filas.push(['ID', 'Apellido', 'Nombre', 'DNI', 'Fecha Alta', 'Profesional Asignado', 'Fecha Nacimiento', 'Obra Social', 'Nro Afiliado', 'CUD Vencimiento', 'Estado']);
         resultados.forEach((p) => {
+            const pro = p.profesional_responsable;
+            const proNombre = pro ? (pro.apellido ? `${pro.apellido}, ${pro.nombre}` : (pro.nombre || 'Asignado')) : 'Sin asignar';
             filas.push([
                 p.id,
                 `"${p.apellido || ''}"`,
                 `"${p.nombre || ''}"`,
                 `"${p.dni || ''}"`,
+                p.fecha_alta || '',
+                `"${proNombre}"`,
                 p.fecha_nacimiento || '',
                 `"${p.obra_social?.nombre || ''}"`,
                 `"${p.numero_afiliado || ''}"`,

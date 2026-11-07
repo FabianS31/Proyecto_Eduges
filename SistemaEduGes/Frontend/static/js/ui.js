@@ -143,9 +143,20 @@ export function icono(nombre, clase = '') {
 // Vencido, por vencer (dentro de DIAS_AVISO_CUD días) o vigente,
 // siempre con ícono y texto (no solo color).
 // ============================================================
-export const CUD = Object.freeze({ VENCIDO: 'vencido', POR_VENCER: 'por_vencer', VIGENTE: 'vigente' });
+export const CUD = Object.freeze({ VENCIDO: 'vencido', POR_VENCER: 'por_vencer', VIGENTE: 'vigente', SIN_CUD: 'sin_cud' });
 
 export function estadoCud(vencimiento) {
+    if (!vencimiento) {
+        return {
+            clave: CUD.SIN_CUD,
+            dias: Infinity,
+            texto: 'Sin CUD',
+            corto: 'Sin CUD',
+            fecha: 'Sin CUD cargado',
+            clase: 'eg-chip text-muted',
+            icono: 'help_outline',
+        };
+    }
     const dias = diasEntre(hoyISO(), vencimiento);
     const fecha = formatearFecha(vencimiento);
     if (dias < 0) {
@@ -181,12 +192,21 @@ export function estadoCud(vencimiento) {
 
 // "Vence en 12 días", con color, ícono y texto (nunca solo color)
 export function badgeCud(vencimiento) {
+    if (!vencimiento) {
+        return html`<span class="eg-chip text-muted">${icono('help_outline')}Sin CUD</span>`;
+    }
     const cud = estadoCud(vencimiento);
     return html`<span class="eg-chip ${cud.clase}">${icono(cud.icono)}${cud.texto}</span>`;
 }
 
 // Para las tablas: "Por vencer" y debajo "Vence el 02/12/2026"
 export function celdaCud(vencimiento) {
+    if (!vencimiento) {
+        return html`
+            <div class="eg-cud">
+                <span class="text-muted small fst-italic">Sin CUD</span>
+            </div>`;
+    }
     const cud = estadoCud(vencimiento);
     return html`
         <div class="eg-cud">
@@ -325,6 +345,7 @@ export function confirmar({
         const dialogo = document.createElement('div');
         dialogo.className = 'modal fade';
         dialogo.tabIndex = -1;
+        dialogo.style.zIndex = '1070';
         dialogo.setAttribute('aria-labelledby', idTitulo);
         dialogo.setAttribute('aria-hidden', 'true');
         renderizar(dialogo, html`
@@ -348,6 +369,10 @@ export function confirmar({
         const modal = new window.bootstrap.Modal(dialogo);
         let aceptado = false;
         dialogo.addEventListener('shown.bs.modal', () => {
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            if (backdrops.length > 1) {
+                backdrops[backdrops.length - 1].style.zIndex = '1065';
+            }
             dialogo.querySelector('.modal-footer [data-bs-dismiss="modal"]')?.focus();
         });
         dialogo.querySelector('[data-accion="aceptar"]').addEventListener('click', () => {

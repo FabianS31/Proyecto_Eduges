@@ -28,13 +28,13 @@ import {
 } from '../componentes/turnos.js';
 import { PERMISO } from '../constantes.js';
 import { profesionales } from '../endpoints.js';
-import { aFecha, hoyISO, sumarDias } from '../fechas.js';
+import { aFecha, hoyISO, sumarDias, sumarMeses } from '../fechas.js';
 import { esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
 import { bloqueCargando, bloqueVacio, html, icono, mostrarError, nombreCompleto, renderizar } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
 
-const VISTAS = ['dia', 'semana'];
+const VISTAS = ['dia', 'semana', 'mes'];
 const esFechaISO = (valor) => /^\d{4}-\d{2}-\d{2}$/.test(valor ?? '') && !Number.isNaN(aFecha(valor).getTime());
 
 const estado = {
@@ -82,14 +82,34 @@ function diasDelPeriodo() {
     if (vista === 'dia') {
         return [fecha];
     }
-    const lunes = lunesDe(fecha);
-    return Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i));
+    if (vista === 'semana') {
+        const lunes = lunesDe(fecha);
+        return Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i));
+    }
+    // vista === 'mes'
+    const [anio, mes] = fecha.split('-').map(Number);
+    const primerDia = `${fecha.slice(0, 7)}-01`;
+    const ultimoDiaNum = new Date(anio, mes, 0).getDate();
+    const ultimoDia = `${fecha.slice(0, 7)}-${String(ultimoDiaNum).padStart(2, '0')}`;
+    const primerLunes = lunesDe(primerDia);
+    const dias = [];
+    let actual = primerLunes;
+    while (actual <= ultimoDia || dias.length % 7 !== 0) {
+        dias.push(actual);
+        actual = sumarDias(actual, 1);
+        if (dias.length >= 42) break;
+    }
+    return dias;
 }
 
 const FORMATO_DIA_MES = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long' });
+const FORMATO_MES_ANIO = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' });
 
-// "Hoy, miércoles 14 de octubre" / "Semana del 12 al 18 de octubre"
+// "Hoy, miércoles 14 de octubre" / "Semana del 12 al 18 de octubre" / "Noviembre de 2026"
 function textoPeriodo(dias) {
+    if (estado.filtros.vista === 'mes') {
+        return conMayuscula(FORMATO_MES_ANIO.format(aFecha(estado.filtros.fecha)));
+    }
     if (dias.length === 1) {
         const dia = diaEnTexto(dias[0]);
         if (dias[0] === hoyISO()) {
@@ -167,6 +187,58 @@ function vistaSemana(dias, lista, proxima) {
         })}</div>`;
 }
 
+// Vista Mensual (cuadrícula tipo calendario moderno)
+function vistaMes(dias, lista, proxima, fechaReferencia) {
+    const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const mesRef = fechaReferencia.slice(0, 7);
+
+    return html`
+        <div class="eg-month">
+            <div class="eg-month__header" role="row">
+                ${diasSemana.map((d) => html`
+                    <div class="eg-month__col-title" role="columnheader">${d.slice(0, 3)}</div>
+                `)}
+            </div>
+            <div class="eg-month__grid" role="grid">
+                ${dias.map((fecha) => {
+                    const delDia = lista.filter((t) => t.fecha === fecha);
+                    const esHoy = fecha === hoyISO();
+                    const esMesActual = fecha.slice(0, 7) === mesRef;
+                    const numDia = aFecha(fecha).getDate();
+                    const maxSlots = 3;
+                    const visibles = delDia.slice(0, maxSlots);
+                    const restantes = delDia.length - visibles.length;
+
+                    return html`
+                        <article class="eg-month__day${esHoy ? ' is-today' : ''}${!esMesActual ? ' is-other-month' : ''}"
+                                 data-ir-a-dia="${fecha}"
+                                 role="gridcell"
+                                 tabindex="0"
+                                 aria-label="${diaEnTexto(fecha)}${delDia.length ? `, ${delDia.length} turnos` : ', sin turnos'}. Ver el día">
+                            <div class="eg-month__day-top">
+                                <span class="eg-month__num">${numDia}</span>
+                                ${delDia.length > 0 ? html`<span class="eg-month__badge-count">${delDia.length}</span>` : ''}
+                            </div>
+                            <div class="eg-month__turnos">
+                                ${visibles.map((t) => html`
+                                    <button type="button" class="eg-month__slot ${claseTurno(t, { esProxima: t === proxima })}"
+                                            data-ir-a-dia="${fecha}"
+                                            title="${formatearHora(t.hora)} - ${nombrePaciente(t)} (${t.estado?.nombre ?? t.estado?.Estado ?? ''})">
+                                        <span class="eg-month__slot-time">${formatearHora(t.hora)}</span>
+                                        <span class="eg-month__slot-name">${nombrePaciente(t)}</span>
+                                    </button>
+                                `)}
+                                ${restantes > 0 ? html`
+                                    <span class="eg-month__more" data-ir-a-dia="${fecha}">+${restantes} más</span>
+                                ` : ''}
+                            </div>
+                        </article>
+                    `;
+                })}
+            </div>
+        </div>`;
+}
+
 // silencioso: sin el "cargando" (para la actualización automática con la hora)
 async function mostrarTurnos({ silencioso = false } = {}) {
     const pedido = ++estado.pedido;
@@ -174,9 +246,11 @@ async function mostrarTurnos({ silencioso = false } = {}) {
     const dias = diasDelPeriodo();
     const esDia = vista === 'dia';
 
+    const esMes = vista === 'mes';
+
     $('periodo-texto').textContent = textoPeriodo(dias);
-    $('btn-anterior-texto').textContent = esDia ? 'Día anterior' : 'Semana anterior';
-    $('btn-siguiente-texto').textContent = esDia ? 'Día siguiente' : 'Semana siguiente';
+    $('btn-anterior-texto').textContent = esDia ? 'Día anterior' : (esMes ? 'Mes anterior' : 'Semana anterior');
+    $('btn-siguiente-texto').textContent = esDia ? 'Día siguiente' : (esMes ? 'Mes siguiente' : 'Semana siguiente');
     $('btn-hoy').disabled = dias.includes(hoyISO());
     guardarEstadoEnUrl();
     if (!silencioso) {
@@ -194,7 +268,13 @@ async function mostrarTurnos({ silencioso = false } = {}) {
             .filter((t) => !ocultarCancelados || !estaCancelado(t));
         const proxima = proximaDeHoy(lista);
         $('turnos-total').textContent = cantidadTurnos(lista.length);
-        renderizar($('turnos-cuerpo'), esDia ? vistaDia(dias[0], lista, proxima) : vistaSemana(dias, lista, proxima));
+        if (esDia) {
+            renderizar($('turnos-cuerpo'), vistaDia(dias[0], lista, proxima));
+        } else if (esMes) {
+            renderizar($('turnos-cuerpo'), vistaMes(dias, lista, proxima, estado.filtros.fecha));
+        } else {
+            renderizar($('turnos-cuerpo'), vistaSemana(dias, lista, proxima));
+        }
     } catch (error) {
         if (pedido !== estado.pedido) {
             return;
@@ -209,7 +289,15 @@ async function mostrarTurnos({ silencioso = false } = {}) {
 // ------------------------------------------------------------
 function cambiarPeriodo(paso) {
     const f = estado.filtros;
-    f.fecha = paso === 0 ? hoyISO() : sumarDias(f.fecha, paso * (f.vista === 'dia' ? 1 : 7));
+    if (paso === 0) {
+        f.fecha = hoyISO();
+    } else if (f.vista === 'mes') {
+        f.fecha = sumarMeses(f.fecha, paso);
+    } else if (f.vista === 'semana') {
+        f.fecha = sumarDias(f.fecha, paso * 7);
+    } else {
+        f.fecha = sumarDias(f.fecha, paso);
+    }
     mostrarTurnos();
 }
 
@@ -235,7 +323,14 @@ async function prepararFiltroProfesional() {
 
 function prepararEventos() {
     const f = estado.filtros;
-    $(f.vista === 'semana' ? 'vista-semana' : 'vista-dia').checked = true;
+    if (f.vista === 'mes') {
+        const optMes = $('vista-mes');
+        if (optMes) optMes.checked = true;
+    } else if (f.vista === 'semana') {
+        $('vista-semana').checked = true;
+    } else {
+        $('vista-dia').checked = true;
+    }
     $('filtro-cancelados').checked = f.ocultarCancelados;
 
     $('filtros-turnos').addEventListener('submit', (evento) => evento.preventDefault());
@@ -255,9 +350,18 @@ function prepararEventos() {
     $('btn-siguiente').addEventListener('click', () => cambiarPeriodo(1));
     $('btn-hoy').addEventListener('click', () => cambiarPeriodo(0));
     $('turnos-cuerpo').addEventListener('click', (evento) => {
-        const turno = evento.target.closest('[data-ir-a-dia]');
-        if (turno) {
-            irADia(turno.dataset.irADia);
+        const elem = evento.target.closest('[data-ir-a-dia]');
+        if (elem) {
+            irADia(elem.dataset.irADia);
+        }
+    });
+    $('turnos-cuerpo').addEventListener('keydown', (evento) => {
+        if (evento.key === 'Enter' || evento.key === ' ') {
+            const elem = evento.target.closest('[data-ir-a-dia]');
+            if (elem) {
+                evento.preventDefault();
+                irADia(elem.dataset.irADia);
+            }
         }
     });
 }
