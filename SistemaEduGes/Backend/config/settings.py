@@ -14,6 +14,7 @@ import os
 import subprocess
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 
@@ -56,7 +57,16 @@ def obtener_rama_git():
         ) from exc
 
 
-RAMA_GIT = obtener_rama_git()
+# La selección explícita permite desplegar un commit sin una rama activa.
+# También permite usar desarrollo/main desde una rama de trabajo local.
+EDUGES_ENV = os.getenv('EDUGES_ENV', '').strip().lower()
+RAMA_GIT = None
+
+if not EDUGES_ENV:
+    RAMA_GIT = obtener_rama_git()
+    EDUGES_ENV = RAMA_GIT
+
+IS_PRODUCTION = EDUGES_ENV == 'production'
 
 
 AMBIENTES = {
@@ -70,27 +80,33 @@ AMBIENTES = {
         'base_datos': 'EduGes_Main',
         'debug': False,
     },
+    'production': {
+        'archivo_env': None,
+        'base_datos': None,
+        'debug': False,
+    },
 }
 
 
-if RAMA_GIT not in AMBIENTES:
+if EDUGES_ENV not in AMBIENTES:
     raise RuntimeError(
-        f'La rama Git "{RAMA_GIT}" no tiene un ambiente '
-        'configurado para EduGes.'
+        'Ambiente no configurado. Definí EDUGES_ENV como '
+        'desarrollo, main o production.'
     )
 
 
-AMBIENTE = AMBIENTES[RAMA_GIT]
+AMBIENTE = AMBIENTES[EDUGES_ENV]
 
 
 # ============================================================
 # VARIABLES DE ENTORNO
 # ============================================================
 
-load_dotenv(
-    BASE_DIR / AMBIENTE['archivo_env'],
-    override=True,
-)
+if not IS_PRODUCTION:
+    load_dotenv(
+        BASE_DIR / AMBIENTE['archivo_env'],
+        override=False,
+    )
 
 
 # ============================================================
@@ -99,7 +115,13 @@ load_dotenv(
 
 BASE_DE_DATOS_CONFIGURADA = os.getenv('DB_NAME')
 
-if BASE_DE_DATOS_CONFIGURADA != AMBIENTE['base_datos']:
+if not BASE_DE_DATOS_CONFIGURADA:
+    raise ImproperlyConfigured('Falta DB_NAME.')
+
+if (
+    not IS_PRODUCTION
+    and BASE_DE_DATOS_CONFIGURADA != AMBIENTE['base_datos']
+):
     raise RuntimeError(
         '\n'
         '============================================================\n'
@@ -114,10 +136,15 @@ if BASE_DE_DATOS_CONFIGURADA != AMBIENTE['base_datos']:
     )
 
 
-DEBUG_CONFIGURADO = os.getenv(
+DEBUG_TEXTO = os.getenv(
     'DJANGO_DEBUG',
     'False',
-).lower() in (
+).strip().lower()
+
+if DEBUG_TEXTO not in {'1', '0', 'true', 'false', 'yes', 'no'}:
+    raise ImproperlyConfigured('DJANGO_DEBUG no es válido.')
+
+DEBUG_CONFIGURADO = DEBUG_TEXTO in (
     '1',
     'true',
     'yes',
@@ -145,7 +172,7 @@ if DEBUG_CONFIGURADO != AMBIENTE['debug']:
 
 print('')
 print('============================================================')
-print(f'       EDUGES - AMBIENTE: {RAMA_GIT.upper()}')
+print(f'       EDUGES - AMBIENTE: {EDUGES_ENV.upper()}')
 print(f'       BASE DE DATOS:     {BASE_DE_DATOS_CONFIGURADA}')
 print('============================================================')
 print('')
@@ -157,6 +184,15 @@ print('')
 
 SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 
+if IS_PRODUCTION and (
+    len(SECRET_KEY) < 50
+    or len(set(SECRET_KEY)) < 5
+    or SECRET_KEY.startswith('django-insecure-')
+):
+    raise ImproperlyConfigured(
+        'DJANGO_SECRET_KEY debe ser una clave fuerte de producción.'
+    )
+
 DEBUG = DEBUG_CONFIGURADO
 
 ALLOWED_HOSTS = [
@@ -164,6 +200,28 @@ ALLOWED_HOSTS = [
     for host in os.getenv('DJANGO_ALLOWED_HOSTS', '').split(',')
     if host.strip()
 ]
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
+
+if IS_PRODUCTION:
+    if not ALLOWED_HOSTS or '*' in ALLOWED_HOSTS:
+        raise ImproperlyConfigured(
+            'Configurá DJANGO_ALLOWED_HOSTS con hosts explícitos.'
+        )
+
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    CSRF_COOKIE_SAMESITE = 'Lax'
+    # El cliente JS actual necesita leer csrftoken desde la cookie.
+    CSRF_COOKIE_HTTPONLY = False
 
 
 # ============================================================
@@ -193,6 +251,9 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if IS_PRODUCTION:
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 
 
 # ============================================================
@@ -228,6 +289,22 @@ TEMPLATES = [
 # DATABASE
 # ============================================================
 
+DB_SSLMODE = os.getenv(
+    'DB_SSLMODE', 'require' if IS_PRODUCTION else 'prefer'
+).strip().lower()
+
+if DB_SSLMODE not in {
+    'disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full',
+}:
+    raise ImproperlyConfigured('DB_SSLMODE no es válido.')
+
+if IS_PRODUCTION:
+    for variable in ('DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD'):
+        if not os.getenv(variable):
+            raise ImproperlyConfigured(f'Falta {variable}.')
+    if DB_SSLMODE not in {'require', 'verify-ca', 'verify-full'}:
+        raise ImproperlyConfigured('Producción requiere SSL en PostgreSQL.')
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -236,6 +313,7 @@ DATABASES = {
         'PASSWORD': os.environ['DB_PASSWORD'],
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
+        'OPTIONS': {'sslmode': DB_SSLMODE},
     }
 }
 
@@ -267,13 +345,24 @@ USE_TZ = True
 # STATIC FILES
 # ============================================================
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 STATICFILES_DIRS = [
     BASE_DIR.parent / 'Frontend' / 'static',
 ]
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+if IS_PRODUCTION:
+    # Conservar nombres: los módulos JS usan imports relativos.
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        },
+    }
 
 
 # ============================================================
