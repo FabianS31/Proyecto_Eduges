@@ -994,10 +994,10 @@ function exportarCSV(tipo, resultados) {
                 t.id,
                 t.fecha,
                 t.hora ? String(t.hora).slice(0, 5) : '',
-                `"${t.paciente?.apellido || ''}, ${t.paciente?.nombre || ''}"`,
-                `"${t.profesional?.apellido || ''}, ${t.profesional?.nombre || ''}"`,
-                `"${t.estado?.nombre || ''}"`,
-                `"${(t.trabajo_sesion || '').replace(/"/g, '""')}"`,
+                `${t.paciente?.apellido || ''}, ${t.paciente?.nombre || ''}`,
+                `${t.profesional?.apellido || ''}, ${t.profesional?.nombre || ''}`,
+                t.estado?.nombre || '',
+                t.trabajo_sesion || '',
             ]);
         });
     } else if (tipo === 'pacientes') {
@@ -1007,16 +1007,16 @@ function exportarCSV(tipo, resultados) {
             const proNombre = pro ? (pro.apellido ? `${pro.apellido}, ${pro.nombre}` : (pro.nombre || 'Asignado')) : 'Sin asignar';
             filas.push([
                 p.id,
-                `"${p.apellido || ''}"`,
-                `"${p.nombre || ''}"`,
-                `"${p.dni || ''}"`,
+                p.apellido || '',
+                p.nombre || '',
+                p.dni || '',
                 p.fecha_alta || '',
-                `"${proNombre}"`,
+                proNombre,
                 p.fecha_nacimiento || '',
-                `"${p.obra_social?.nombre || ''}"`,
-                `"${p.numero_afiliado || ''}"`,
+                p.obra_social?.nombre || '',
+                p.numero_afiliado || '',
                 p.cud_vencimiento || '',
-                `"${p.estado?.nombre || ''}"`,
+                p.estado?.nombre || '',
             ]);
         });
     } else if (tipo === 'profesionales') {
@@ -1024,20 +1024,21 @@ function exportarCSV(tipo, resultados) {
         resultados.forEach((p) => {
             filas.push([
                 p.id,
-                `"${p.apellido || ''}"`,
-                `"${p.nombre || ''}"`,
-                `"${p.dni || ''}"`,
-                `"${p.matricula || ''}"`,
-                `"${p.especialidad?.nombre || ''}"`,
-                `"${p.contacto || ''}"`,
-                `"${p.mail || ''}"`,
-                `"${p.estado_profesional?.nombre || ''}"`,
+                p.apellido || '',
+                p.nombre || '',
+                p.dni || '',
+                p.matricula || '',
+                p.especialidad?.nombre || '',
+                p.contacto || '',
+                p.mail || '',
+                p.estado_profesional?.nombre || '',
             ]);
         });
     }
 
     // Separador punto y coma (;) y marca de orden de bytes UTF-8 para compatibilidad nativa con Excel
-    const contenidoCSV = filas.map((fila) => fila.join(';')).join('\r\n');
+    const escaparCelda = (valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`;
+    const contenidoCSV = filas.map((fila) => fila.map(escaparCelda).join(';')).join('\r\n');
     const blob = new Blob(['\uFEFF' + contenidoCSV], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

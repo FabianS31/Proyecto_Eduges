@@ -4,6 +4,12 @@ from rest_framework import serializers
 from turnos.models import RegistroSesion, Turno
 
 
+class TurnosPendientesFiltroSerializer(serializers.Serializer):
+    fecha_desde = serializers.DateField(required=False)
+    fecha_hasta = serializers.DateField(required=False)
+    paciente_id = serializers.IntegerField(required=False, min_value=1)
+
+
 class RegistroSesionEntradaSerializer(serializers.Serializer):
     """
     Valida los datos necesarios para registrar una sesión.

@@ -11,6 +11,7 @@ from APIs.sesiones.serializers.sesiones_serializers import (
     RegistroSesionEntradaSerializer,
     RegistroSesionProfesionalSerializer,
     RegistroSesionResumenSerializer,
+    TurnosPendientesFiltroSerializer,
 )
 from APIs.sesiones.services.sesiones_services import (
     SesionesService,
@@ -23,15 +24,18 @@ class TurnosPendientesSesionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        fecha_desde = request.query_params.get('fecha_desde')
-        fecha_hasta = request.query_params.get('fecha_hasta')
-        paciente_id = request.query_params.get('paciente_id')
+        # Los filtros vacíos siguen siendo equivalentes a omitirlos.
+        filtros = TurnosPendientesFiltroSerializer(data={
+            campo: request.query_params[campo]
+            for campo in ('fecha_desde', 'fecha_hasta', 'paciente_id')
+            if campo in request.query_params
+            and request.query_params[campo] != ''
+        })
+        filtros.is_valid(raise_exception=True)
 
         turnos = SesionesService.listar_turnos_pendientes(
             usuario=request.user,
-            fecha_desde=fecha_desde,
-            fecha_hasta=fecha_hasta,
-            paciente_id=paciente_id,
+            **filtros.validated_data,
         )
 
         datos = [

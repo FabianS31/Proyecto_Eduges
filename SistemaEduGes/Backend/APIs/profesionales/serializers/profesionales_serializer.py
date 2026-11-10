@@ -135,6 +135,17 @@ class ProfesionalSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id_profesional']
 
+    def validate(self, attrs):
+        if self.instance is None:
+            faltantes = {
+                campo: 'Este campo es obligatorio.'
+                for campo in ('usuario', 'password')
+                if campo not in attrs
+            }
+            if faltantes:
+                raise serializers.ValidationError(faltantes)
+        return attrs
+
     # -----------------------------------------------------
     # CREAR PROFESIONAL Y USUARIO
     # -----------------------------------------------------
