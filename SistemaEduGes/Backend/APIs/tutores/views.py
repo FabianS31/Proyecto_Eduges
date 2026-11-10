@@ -2,6 +2,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -271,10 +272,27 @@ class RelacionTutorDetailView(APIView):
     permission_classes = [IsAuthenticated, PuedeGestionarTutores]
 
     def get_relacion(self, pk):
-        return get_object_or_404(
+        relacion = get_object_or_404(
             PacienteTutor,
             id_paciente_tutor=pk,
         )
+
+        usuario = self.request.user
+        if getattr(getattr(usuario, 'rol', None), 'rol', None) == 'Profesional':
+            # Autorizar sobre el paciente guardado, nunca sobre el ID del cuerpo.
+            # Se conserva el criterio de asignación vigente usado en el alta.
+            asignado = AsignacionProfesional.objects.filter(
+                profesional__usuario=usuario,
+                paciente_id=relacion.paciente_id,
+                fecha_fin__isnull=True,
+            ).exists()
+            if not asignado:
+                raise PermissionDenied(
+                    'Solo podés gestionar relaciones de tutores de pacientes '
+                    'asignados a vos.'
+                )
+
+        return relacion
 
     def patch(self, request, pk):
         relacion = self.get_relacion(pk)
