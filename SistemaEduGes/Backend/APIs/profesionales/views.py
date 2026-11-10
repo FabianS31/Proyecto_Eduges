@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from profesionales.models.profesional_model import Profesional
 from APIs.profesionales.serializers.profesionales_serializer import ProfesionalSerializer
 from APIs.autenticacion.permisos import TienePermiso
+from APIs.profesionales.permisos import validar_edicion_cuenta
 from APIs.servicios.estado_entidad_service import EstadoEntidadService
 from APIs.turnos.services.turno_service import TurnoService
 from APIs.turnos.serializers.turno_serializer import TurnoSerializer
@@ -32,6 +33,12 @@ class ProfesionalDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = ProfesionalSerializer
     permission_classes = [TienePermiso]
 
+    def get_object(self):
+        profesional = super().get_object()
+        if self.request.method in ('PUT', 'PATCH'):
+            validar_edicion_cuenta(self.request.user, profesional)
+        return profesional
+
     def get_permissions(self):
         if self.request.method in ['PUT', 'PATCH']:
             self.permiso_requerido = 'profesionales.edit'
@@ -49,6 +56,10 @@ class ProfesionalEstadoView(APIView):
         return super().get_permissions()
 
     def patch(self, request, pk):
+        profesional = Profesional.objects.select_related('rol', 'usuario__rol').filter(pk=pk).first()
+        if profesional is not None:
+            validar_edicion_cuenta(request.user, profesional)
+
         nuevo_estado = request.data.get('estado')
 
         if nuevo_estado is None:

@@ -3,6 +3,8 @@ from django.contrib.auth.hashers import make_password
 from django.db import transaction
 
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
+from APIs.profesionales.permisos import es_usuario_tecnico
 
 from profesionales.models.profesional_model import (
     Profesional,
@@ -134,6 +136,26 @@ class ProfesionalSerializer(serializers.ModelSerializer):
             'estado_profesional',
         ]
         read_only_fields = ['id_profesional']
+
+    def get_fields(self):
+        fields = super().get_fields()
+        if self.instance is not None:
+            fields['rol'].required = False
+        return fields
+
+    def validate_rol(self, rol):
+        if self.instance is None:
+            if rol.rol != 'Profesional':
+                raise PermissionDenied('El alta solo permite el rol Profesional.')
+        else:
+            request = self.context.get('request')
+            usuario = getattr(request, 'user', None)
+            if not es_usuario_tecnico(usuario) and (
+                rol.pk != self.instance.rol_id
+                or rol.pk != self.instance.usuario.rol_id
+            ):
+                raise PermissionDenied('No puede cambiar roles desde la gestión de profesionales.')
+        return rol
 
     def validate(self, attrs):
         if self.instance is None:

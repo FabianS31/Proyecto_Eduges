@@ -205,6 +205,14 @@ class CambiarPasswordView(APIView):
 
     def post(self, request):
 
+        # También cubrir cuentas históricas con roles distintos en ambos modelos.
+        from APIs.profesionales.permisos import validar_edicion_cuenta
+        profesional = Profesional.objects.select_related('rol', 'usuario__rol').filter(
+            usuario=request.user
+        ).first()
+        if profesional is not None:
+            validar_edicion_cuenta(request.user, profesional)
+
         serializer = CambiarPasswordSerializer(
             data=request.data,
             context={'request': request}
