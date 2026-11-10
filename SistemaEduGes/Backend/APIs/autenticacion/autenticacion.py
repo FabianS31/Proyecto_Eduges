@@ -1,12 +1,12 @@
 from datetime import timedelta
 
 from django.utils import timezone
-from rest_framework.authentication import BaseAuthentication
+from rest_framework.authentication import SessionAuthentication
 
 from usuarios.models.usuario_model import Usuario
 
 
-class UsuarioSessionAuthentication(BaseAuthentication):
+class UsuarioSessionAuthentication(SessionAuthentication):
 
     TIEMPO_INACTIVIDAD = timedelta(minutes=20)
     CLAVE_ULTIMA_ACTIVIDAD = '_last_activity'
@@ -50,6 +50,9 @@ class UsuarioSessionAuthentication(BaseAuthentication):
         if not usuario.activo:
             request.session.flush()
             return None
+
+        # Una escritura rechazada por CSRF no cuenta como actividad válida.
+        self.enforce_csrf(request)
 
         request.session[self.CLAVE_ULTIMA_ACTIVIDAD] = (
             ahora.isoformat()
