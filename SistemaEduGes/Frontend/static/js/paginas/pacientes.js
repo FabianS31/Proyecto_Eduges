@@ -727,11 +727,7 @@ function prepararGestionTutores() {
 
     async function sugerirTutoresAgregar(texto) {
         if (tutoresDisponibles === null) {
-            try {
-                tutoresDisponibles = await tutores.listar();
-            } catch {
-                tutoresDisponibles = [];
-            }
+            tutoresDisponibles = await tutores.listar();
         }
         const t = texto.trim();
         if (!t) return [];

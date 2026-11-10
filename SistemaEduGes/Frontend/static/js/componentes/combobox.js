@@ -152,6 +152,8 @@ export function crearCombobox(input, {
         } catch (error) {
             const mensaje = mensajeDeError(error);
             if (mensaje !== null && !signal.aborted) {
+                opciones = [];
+                marcarActiva(-1);
                 mostrar(html`<li class="list-group-item small text-danger combobox-mensaje" role="presentation">${mensaje}</li>`, mensaje);
             }
         }

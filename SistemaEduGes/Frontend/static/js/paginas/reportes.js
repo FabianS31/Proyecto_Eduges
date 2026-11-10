@@ -45,6 +45,8 @@ const estado = {
     profesionalesLista: [],
     obrasSocialesLista: [],
     cargando: false,
+    consulta: 0,
+    resultadosVigentes: false,
 };
 
 // Instancias de combobox para búsqueda reactiva con sugerencias
@@ -72,7 +74,7 @@ async function obtenerPacientesOpciones() {
             }));
         } catch (error) {
             console.warn('No se pudieron precargar pacientes para autocompletado:', error);
-            listaPacientesCache = [];
+            throw error;
         }
     }
     return listaPacientesCache;
@@ -95,7 +97,7 @@ async function obtenerProfesionalesOpciones() {
             }));
         } catch (error) {
             console.warn('No se pudieron precargar profesionales para autocompletado:', error);
-            listaProfesionalesCache = [];
+            throw error;
         }
     }
     return listaProfesionalesCache;
@@ -121,6 +123,7 @@ function coincideBusquedaReporte(campos, busqueda) {
 // Inicialización del módulo
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+    invalidarReporte();
     try {
         estado.usuario = await obtenerUsuario();
         estado.esPro = esProfesional(estado.usuario);
@@ -132,6 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Carga inicial del reporte activo (por defecto turnos)
         await consultarReporte();
     } catch (error) {
+        invalidarReporte();
         notificarError(error);
         renderizar($('reporte-estado'), bloqueError('No se pudo inicializar el módulo de reportes.'));
     }
@@ -253,7 +257,6 @@ function conectarEventos() {
     // Cambio de pestaña (Tipo de reporte)
     document.querySelectorAll('input[name="tipo_reporte"]').forEach((radio) => {
         radio.addEventListener('change', async (e) => {
-            if (estado.cargando) return;
             estado.tipo = e.target.value;
             actualizarVisibilidadFiltros();
             await consultarReporte();
@@ -266,6 +269,14 @@ function conectarEventos() {
         await consultarReporte();
     });
 
+    // Los datos visibles solo son vigentes para los filtros consultados.
+    for (const evento of ['input', 'change']) {
+        $('filtros-reporte').addEventListener(evento, () => {
+            invalidarReporte();
+            renderizar($('reporte-estado'), bloqueVacio('Aplicá los filtros para actualizar el reporte.', 'search'));
+        });
+    }
+
     // Botón limpiar filtros
     $('btn-limpiar-filtros').addEventListener('click', async () => {
         $('filtros-reporte').reset();
@@ -277,12 +288,14 @@ function conectarEventos() {
 
     // Botón Imprimir / Guardar en PDF
     $('btn-imprimir').addEventListener('click', () => {
+        if (!estado.resultadosVigentes || estado.cargando) return;
         actualizarMembreteImpresion();
         window.print();
     });
 
     // Botón Exportar CSV
     $('btn-exportar-csv').addEventListener('click', () => {
+        if (!estado.resultadosVigentes || estado.cargando) return;
         exportarCSV(estado.tipo, estado.resultados);
     });
 
@@ -398,7 +411,40 @@ function actualizarVisibilidadFiltros() {
 // ============================================================
 // Consulta del reporte a la API
 // ============================================================
+function invalidarReporte() {
+    estado.consulta += 1;
+    estado.resultadosVigentes = false;
+    estado.resultados = [];
+    estado.totalOriginal = 0;
+    estado.cargando = false;
+    botonCargando($('btn-aplicar-filtros'), false);
+    $('btn-imprimir').disabled = true;
+    $('btn-exportar-csv').disabled = true;
+    $('reporte-tabla-contenedor').classList.add('d-none');
+    $('reporte-estado').classList.remove('d-none');
+    for (const id of ['reporte-cuerpo', 'reporte-thead', 'reporte-kpis', 'reporte-estado']) {
+        renderizar($(id), '');
+    }
+    $('reporte-total').textContent = '—';
+    for (const id of ['reporte-resumen-filtros', 'print-periodo', 'print-criterios', 'print-reporte-titulo']) {
+        $(id).textContent = '';
+    }
+}
+
 async function consultarReporte() {
+    invalidarReporte();
+    const consulta = estado.consulta;
+    const desde = estado.tipo === 'turnos' ? $('filtro-turno-desde').value
+        : estado.tipo === 'pacientes' ? $('filtro-paciente-alta-desde')?.value : '';
+    const hasta = estado.tipo === 'turnos' ? $('filtro-turno-hasta').value
+        : estado.tipo === 'pacientes' ? $('filtro-paciente-alta-hasta')?.value : '';
+    if (desde && hasta && desde > hasta) {
+        const mensaje = 'La fecha "Desde" no puede ser posterior a la fecha "Hasta".';
+        notificar(mensaje, 'error');
+        renderizar($('reporte-estado'), bloqueError(mensaje));
+        return;
+    }
+
     estado.cargando = true;
     const btnSubmit = $('btn-aplicar-filtros');
     botonCargando(btnSubmit, true, 'Consultando…');
@@ -425,14 +471,6 @@ async function consultarReporte() {
             textoBusqueda = $('filtro-turno-busqueda').value.trim();
             const textoTrabajo = $('filtro-turno-trabajo')?.value.trim();
 
-            if (desde && hasta && desde > hasta) {
-                notificar('La fecha "Desde" no puede ser posterior a la fecha "Hasta".', 'error');
-                botonCargando(btnSubmit, false);
-                estado.cargando = false;
-                $('reporte-estado').classList.add('d-none');
-                return;
-            }
-
             const queryParams = {};
             if (desde) queryParams.fecha_desde = desde;
             if (hasta) queryParams.fecha_hasta = hasta;
@@ -441,6 +479,7 @@ async function consultarReporte() {
             if (textoTrabajo) queryParams.trabajo_sesion = textoTrabajo;
 
             respuesta = await reportes.turnos(queryParams);
+            if (consulta !== estado.consulta) return;
             let items = respuesta.resultados || [];
 
             // Filtrado complementario tolerante a mayúsculas/acentos
@@ -490,8 +529,10 @@ async function consultarReporte() {
             } catch (errPacientes) {
                 console.warn('No se pudieron obtener datos enriquecidos de pacientes:', errPacientes);
             }
+            if (consulta !== estado.consulta) return;
 
             respuesta = await reportes.pacientes(queryParams);
+            if (consulta !== estado.consulta) return;
             let items = (respuesta.resultados || []).map((p) => {
                 const completo = mapaPacientes.get(p.id) || {};
                 return {
@@ -540,6 +581,7 @@ async function consultarReporte() {
             if (estadoId) queryParams.estado_id = parseInt(estadoId, 10);
 
             respuesta = await reportes.profesionales(queryParams);
+            if (consulta !== estado.consulta) return;
             let items = respuesta.resultados || [];
 
             if (textoBusqueda) {
@@ -557,16 +599,23 @@ async function consultarReporte() {
         renderizarKPIs();
         renderizarTabla();
         actualizarMembreteImpresion();
+        estado.resultadosVigentes = true;
+        $('btn-imprimir').disabled = false;
+        $('btn-exportar-csv').disabled = false;
 
     } catch (error) {
+        if (consulta !== estado.consulta) return;
+        invalidarReporte();
         console.error('Error al consultar reporte:', error);
         notificarError(error);
         renderizar($('reporte-estado'), bloqueError('No se pudo generar el reporte. Revisá los criterios o intentá de nuevo.'));
         $('reporte-estado').classList.remove('d-none');
         $('reporte-tabla-contenedor').classList.add('d-none');
     } finally {
-        botonCargando(btnSubmit, false);
-        estado.cargando = false;
+        if (consulta === estado.consulta) {
+            botonCargando(btnSubmit, false);
+            estado.cargando = false;
+        }
     }
 }
 

@@ -396,25 +396,21 @@ async function sugerirProfesionales(texto) {
 }
 
 async function sugerirTutoresConPacientes(texto) {
-    try {
-        const listaTutores = await tutores.listar();
-        const opciones = listaTutores.map((t) => {
-            const pacientesRel = (t.relaciones || [])
-                .map((r) => r.paciente)
-                .filter(Boolean);
-            const nombresPacientes = pacientesRel.map((p) => `${p.nombre} ${p.apellido}`).join(', ');
-            return {
-                valor: t.id,
-                texto: `${t.apellido ? `${t.apellido}, ` : ''}${t.nombre}`,
-                detalle: nombresPacientes ? `Paciente(s): ${nombresPacientes}` : (t.dni ? `DNI ${t.dni}` : ''),
-                tutor: t,
-                pacientes: pacientesRel,
-            };
-        });
-        return buscarEnLista(opciones)(texto);
-    } catch {
-        return [];
-    }
+    const listaTutores = await tutores.listar();
+    const opciones = listaTutores.map((t) => {
+        const pacientesRel = (t.relaciones || [])
+            .map((r) => r.paciente)
+            .filter(Boolean);
+        const nombresPacientes = pacientesRel.map((p) => `${p.nombre} ${p.apellido}`).join(', ');
+        return {
+            valor: t.id,
+            texto: `${t.apellido ? `${t.apellido}, ` : ''}${t.nombre}`,
+            detalle: nombresPacientes ? `Paciente(s): ${nombresPacientes}` : (t.dni ? `DNI ${t.dni}` : ''),
+            tutor: t,
+            pacientes: pacientesRel,
+        };
+    });
+    return buscarEnLista(opciones)(texto);
 }
 
 // Horarios cada 30 minutos de 8 a 20. Se puede escribir "9", "930" o "9:30".
