@@ -22,6 +22,7 @@ class PacienteListView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    
     def get(self, request):
 
         usuario = request.user
@@ -37,8 +38,42 @@ class PacienteListView(APIView):
             )
 
         nombre_rol = usuario.rol.rol
-        buscar = request.query_params.get('buscar', '').strip()
 
+        # Parámetros de búsqueda
+        buscar = request.query_params.get(
+            'buscar', ''
+        ).strip()
+
+        nombre = request.query_params.get(
+            'nombre', ''
+        ).strip()
+
+        apellido = request.query_params.get(
+            'apellido', ''
+        ).strip()
+
+        dni = request.query_params.get(
+            'dni', ''
+        ).strip()
+
+        estado = request.query_params.get(
+            'estado', ''
+        ).strip()
+
+        obra_social = request.query_params.get(
+            'obra_social', ''
+        ).strip()
+
+        hay_filtros = any([
+            buscar,
+            nombre,
+            apellido,
+            dni,
+            estado,
+            obra_social,
+        ])
+
+        # Consulta según el rol
         if nombre_rol == 'Profesional':
 
             try:
@@ -69,22 +104,15 @@ class PacienteListView(APIView):
                 estado__estado='Activo'
             )
 
-            if buscar:
-                coincidencia = (
-                    Q(nombre__icontains=buscar)
-                    | Q(apellido__icontains=buscar)
-                    | Q(dni__icontains=buscar)
-                )
+            # Al buscar, también permite encontrar
+            # pacientes inactivos para poder reactivarlos.
+            if hay_filtros:
 
                 pacientes_inactivos = Paciente.objects.filter(
                     estado__estado='Inactivo'
-                ).filter(coincidencia)
-
-                pacientes_activos = pacientes.filter(coincidencia)
-
-                pacientes = (
-                    pacientes_activos | pacientes_inactivos
                 )
+
+                pacientes = pacientes | pacientes_inactivos
 
         elif nombre_rol in (
             'Administrador',
@@ -92,13 +120,6 @@ class PacienteListView(APIView):
         ):
 
             pacientes = Paciente.objects.all()
-
-            if buscar:
-                pacientes = pacientes.filter(
-                    Q(nombre__icontains=buscar)
-                    | Q(apellido__icontains=buscar)
-                    | Q(dni__icontains=buscar)
-                )
 
         else:
             return Response(
@@ -109,6 +130,56 @@ class PacienteListView(APIView):
                     )
                 },
                 status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Filtro general: nombre, apellido o DNI
+        if buscar:
+            pacientes = pacientes.filter(
+                Q(nombre__icontains=buscar)
+                | Q(apellido__icontains=buscar)
+                | Q(dni__icontains=buscar)
+            )
+
+        # Filtros independientes
+        if nombre:
+            pacientes = pacientes.filter(
+                nombre__icontains=nombre
+            )
+
+        if apellido:
+            pacientes = pacientes.filter(
+                apellido__icontains=apellido
+            )
+
+        if dni:
+            pacientes = pacientes.filter(
+                dni__icontains=dni
+            )
+
+        if estado:
+            if estado.isdigit():
+                pacientes = pacientes.filter(
+                    estado_id=int(estado)
+                )
+            else:
+                pacientes = pacientes.filter(
+                    estado__estado__iexact=estado
+                )
+
+        if obra_social:
+            if not obra_social.isdigit():
+                return Response(
+                    {
+                        'detail': (
+                            'El filtro obra_social debe '
+                            'contener un ID numérico.'
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            pacientes = pacientes.filter(
+                obra_social_id=int(obra_social)
             )
 
         pacientes = pacientes.order_by(

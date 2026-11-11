@@ -1,7 +1,12 @@
+
+from django.db.models import Q
+from rest_framework.exceptions import PermissionDenied
+
 from turnos.models.turno_model import Turno
 from pacientes.models.paciente_model import Paciente
 from profesionales.models.profesional_model import Profesional
 from profesionales.models.asignacion_model import AsignacionProfesional
+from pacientes.models.tutor_model import PacienteTutor
 
 
 class ReportesService:
@@ -10,8 +15,6 @@ class ReportesService:
     de turnos, pacientes y profesionales.
 
     Los filtros son opcionales y pueden combinarse.
-    Las claves foráneas se devuelven como objetos con id
-    y nombre descriptivo, siguiendo el formato de EduGes.
     """
 
     # =====================================================
@@ -37,8 +40,15 @@ class ReportesService:
             None,
         )
 
+        profesional = None
+        periodos_asignacion = []
+
+        # Condiciones iniciales vacías.
+        condicion_periodo_propio = Q(pk__in=[])
+        condicion_historicos = Q(pk__in=[])
+
         # -------------------------------------------------
-        # RESTRICCIÓN PARA PROFESIONALES
+        # RESTRICCIONES PARA PROFESIONALES
         # -------------------------------------------------
 
         if rol == 'Profesional':
@@ -46,44 +56,72 @@ class ReportesService:
                 usuario=usuario,
             ).first()
 
-            # Si el usuario no tiene un profesional vinculado,
-            # no puede consultar turnos.
             if profesional is None:
                 consulta = consulta.none()
-            else:
-                # Un profesional nunca puede consultar los
-                # turnos de otro profesional.
-                consulta = consulta.filter(
-                    profesional_id=profesional.id_profesional,
-                )
 
-                # Solo se permiten pacientes que tengan una
-                # asignación vigente con este profesional.
-                pacientes_asignados = (
+            else:
+                periodos_asignacion = list(
                     AsignacionProfesional.objects
                     .filter(
                         profesional_id=profesional.id_profesional,
-                        fecha_fin__isnull=True,
                     )
-                    .values('paciente_id')
+                    .values(
+                        'paciente_id',
+                        'fecha_inicio',
+                        'fecha_fin',
+                    )
                 )
 
+                # -------------------------------------------------
+                # TURNOS PROPIOS DURANTE LOS PERÍODOS DE ASIGNACIÓN
+                # -------------------------------------------------
+
+                for asignacion in periodos_asignacion:
+                    condicion_periodo = Q(
+                        paciente_id=asignacion['paciente_id'],
+                        profesional_id=profesional.id_profesional,
+                        fecha__gte=asignacion['fecha_inicio'],
+                    )
+
+                    # La fecha de finalización es exclusiva.
+                    if asignacion['fecha_fin'] is not None:
+                        condicion_periodo &= Q(
+                            fecha__lt=asignacion['fecha_fin'],
+                        )
+
+                    condicion_periodo_propio |= condicion_periodo
+
+                # -------------------------------------------------
+                # TURNOS HISTÓRICOS DE OTROS PROFESIONALES
+                # -------------------------------------------------
+
+                # Solamente se consideran pacientes que actualmente
+                # están asignados a este profesional.
+                asignaciones_vigentes = [
+                    asignacion
+                    for asignacion in periodos_asignacion
+                    if asignacion['fecha_fin'] is None
+                ]
+
+                for asignacion in asignaciones_vigentes:
+                    condicion_historicos |= (
+                        Q(
+                            paciente_id=asignacion['paciente_id'],
+                            fecha__lt=asignacion['fecha_inicio'],
+                        )
+                        & ~Q(
+                            profesional_id=profesional.id_profesional,
+                        )
+                    )
+
+                # El profesional solamente puede consultar:
+                # 1. Sus propios turnos durante sus asignaciones.
+                # 2. Los turnos históricos de otros profesionales
+                #    anteriores a una asignación vigente.
                 consulta = consulta.filter(
-                    paciente_id__in=pacientes_asignados,
+                    condicion_periodo_propio
+                    | condicion_historicos
                 )
-
-                # Si intenta filtrar por otro profesional,
-                # la consulta no devuelve resultados.
-                profesional_solicitado = filtros.get(
-                    'profesional_id'
-                )
-
-                if (
-                    profesional_solicitado is not None
-                    and profesional_solicitado
-                    != profesional.id_profesional
-                ):
-                    consulta = consulta.none()
 
         # -------------------------------------------------
         # FILTROS DEL REPORTE DE TURNOS
@@ -99,16 +137,31 @@ class ReportesService:
                 paciente_id=filtros['paciente_id']
             )
 
-        # El filtro de profesional solo se aplica directamente
-        # para roles distintos de Profesional. Para este último,
-        # la restricción ya se aplicó con el usuario autenticado.
-        if (
-            'profesional_id' in filtros
-            and rol != 'Profesional'
-        ):
-            consulta = consulta.filter(
-                profesional_id=filtros['profesional_id']
+        if 'tutor_id' in filtros:
+            pacientes_del_tutor = PacienteTutor.objects.filter(
+                tutor_id=filtros['tutor_id'],
+                activo=True,
+            ).values_list(
+                'paciente_id',
+                flat=True,
             )
+
+            consulta = consulta.filter(
+                paciente_id__in=pacientes_del_tutor,
+            )
+
+        if 'profesional_id' in filtros:
+            if rol == 'Profesional':
+                if (
+                    profesional is None
+                    or filtros['profesional_id']
+                    != profesional.id_profesional
+                ):
+                    consulta = consulta.none()
+            else:
+                consulta = consulta.filter(
+                    profesional_id=filtros['profesional_id']
+                )
 
         if 'nombre' in filtros:
             consulta = consulta.filter(
@@ -125,14 +178,46 @@ class ReportesService:
                 fecha__gte=filtros['fecha_desde']
             )
 
-        if filtros.get('trabajo_sesion'):
-            consulta = consulta.filter(
-                registro_sesion__trabajo_sesion__icontains=filtros['trabajo_sesion']
-            )
-
         if 'fecha_hasta' in filtros:
             consulta = consulta.filter(
                 fecha__lte=filtros['fecha_hasta']
+            )
+
+        # -------------------------------------------------
+        # FILTRO POR TRABAJO DE SESIÓN
+        # -------------------------------------------------
+
+        if filtros.get('trabajo_sesion'):
+            if rol == 'Administrador':
+                raise PermissionDenied(
+                    'No tenés permisos para filtrar por trabajo de sesión.'
+                )
+
+            if rol == 'Profesional':
+                # El profesional solamente puede buscar trabajos
+                # de sesión correspondientes a sus propios períodos.
+                consulta = consulta.filter(
+                    condicion_periodo_propio,
+                    registro_sesion__trabajo_sesion__icontains=(
+                        filtros['trabajo_sesion']
+                    ),
+                )
+            else:
+                consulta = consulta.filter(
+                    registro_sesion__trabajo_sesion__icontains=(
+                        filtros['trabajo_sesion']
+                    )
+                )
+
+        # -------------------------------------------------
+        # FILTRO POR DIAGNÓSTICO
+        # -------------------------------------------------
+
+        if filtros.get('diagnostico'):
+            consulta = consulta.filter(
+                registro_sesion__diagnostico__icontains=(
+                    filtros['diagnostico']
+                )
             )
 
         consulta = consulta.order_by(
@@ -141,8 +226,14 @@ class ReportesService:
             'id_turno',
         )
 
-        resultados = [
-            {
+        # -------------------------------------------------
+        # RESULTADOS
+        # -------------------------------------------------
+
+        resultados = []
+
+        for turno in consulta:
+            resultado = {
                 'id': turno.id_turno,
                 'fecha': turno.fecha,
                 'hora': turno.hora,
@@ -160,14 +251,77 @@ class ReportesService:
                     'nombre': turno.profesional.nombre,
                     'apellido': turno.profesional.apellido,
                 },
-                'trabajo_sesion': (
-                    turno.registro_sesion.trabajo_sesion
-                    if turno.registro_sesion
-                    else None
-                ),
             }
-            for turno in consulta
-        ]
+
+            registro = turno.registro_sesion
+
+            # -------------------------------------------------
+            # ADMINISTRADOR
+            # -------------------------------------------------
+
+            if rol == 'Administrador':
+                # Solamente puede recibir el diagnóstico.
+                resultado['diagnostico'] = (
+                    registro.diagnostico if registro else None
+                )
+
+            # -------------------------------------------------
+            # PROFESIONAL
+            # -------------------------------------------------
+
+            elif rol == 'Profesional':
+                # Verifica si el turno pertenece a un período
+                # en el que este profesional tuvo asignado al paciente.
+                tiene_acceso_completo = (
+                    profesional is not None
+                    and turno.profesional_id
+                    == profesional.id_profesional
+                    and any(
+                        asignacion['paciente_id'] == turno.paciente_id
+                        and turno.fecha >= asignacion['fecha_inicio']
+                        and (
+                            asignacion['fecha_fin'] is None
+                            or turno.fecha < asignacion['fecha_fin']
+                        )
+                        for asignacion in periodos_asignacion
+                    )
+                )
+
+                # Todos los profesionales autorizados pueden
+                # consultar el diagnóstico de los turnos visibles.
+                resultado['diagnostico'] = (
+                    registro.diagnostico if registro else None
+                )
+
+                if tiene_acceso_completo:
+                    # Acceso completo durante su propio período.
+                    resultado['trabajo_sesion'] = (
+                        registro.trabajo_sesion if registro else None
+                    )
+                    resultado['nota_sesion'] = (
+                        registro.nota_sesion if registro else None
+                    )
+
+                # Si es un turno histórico de otro profesional,
+                # no se agregan TrabajoSesion ni NotaSesion.
+
+            # -------------------------------------------------
+            # SUPERADMINISTRADOR
+            # -------------------------------------------------
+
+            elif rol == 'SuperAdministrador':
+                # Acceso completo a los tres campos.
+                resultado['diagnostico'] = (
+                    registro.diagnostico if registro else None
+                )
+                resultado['trabajo_sesion'] = (
+                    registro.trabajo_sesion if registro else None
+                )
+                resultado['nota_sesion'] = (
+                    registro.nota_sesion if registro else None
+                )
+
+            resultados.append(resultado)
 
         return {
             'total': len(resultados),
@@ -194,6 +348,19 @@ class ReportesService:
                 id_paciente=filtros['paciente_id']
             )
 
+        if 'tutor_id' in filtros:
+            pacientes_del_tutor = PacienteTutor.objects.filter(
+                tutor_id=filtros['tutor_id'],
+                activo=True,
+            ).values_list(
+                'paciente_id',
+                flat=True,
+            )
+
+            consulta = consulta.filter(
+                id_paciente__in=pacientes_del_tutor,
+            )
+
         if 'nombre' in filtros:
             consulta = consulta.filter(
                 nombre__icontains=filtros['nombre']
@@ -214,6 +381,16 @@ class ReportesService:
                 estado_id=filtros['estado_id']
             )
 
+        if 'fecha_alta_desde' in filtros:
+            consulta = consulta.filter(
+                fecha_alta__gte=filtros['fecha_alta_desde']
+            )
+
+        if 'fecha_alta_hasta' in filtros:
+            consulta = consulta.filter(
+                fecha_alta__lte=filtros['fecha_alta_hasta']
+            )
+
         if 'obra_social_id' in filtros:
             consulta = consulta.filter(
                 obra_social_id=filtros['obra_social_id']
@@ -232,6 +409,7 @@ class ReportesService:
                 'apellido': paciente.apellido,
                 'dni': paciente.dni,
                 'fecha_nacimiento': paciente.fecha_nacimiento,
+                'fecha_alta': paciente.fecha_alta,
                 'direccion': paciente.direccion,
                 'mail': paciente.mail,
                 'consentimiento': paciente.consentimiento,

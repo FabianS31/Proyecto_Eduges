@@ -1,3 +1,4 @@
+
 from rest_framework import serializers
 
 from turnos.models import Turno, EstadoTurno
@@ -116,6 +117,8 @@ class TurnoSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    diagnostico = serializers.SerializerMethodField()
+
     tiene_conflicto_horario = serializers.SerializerMethodField()
 
     conflictos_horario = serializers.SerializerMethodField()
@@ -130,6 +133,7 @@ class TurnoSerializer(serializers.ModelSerializer):
             'paciente',
             'profesional',
             'estado',
+            'diagnostico',
             'tiene_conflicto_horario',
             'conflictos_horario',
             'turnos',
@@ -138,9 +142,22 @@ class TurnoSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id_turno',
             'estado',
+            'diagnostico',
             'tiene_conflicto_horario',
             'conflictos_horario',
         ]
+
+    # -----------------------------------------------------
+    # DIAGNÓSTICO DE LA SESIÓN
+    # -----------------------------------------------------
+
+    def get_diagnostico(self, obj):
+        registro = obj.registro_sesion
+
+        if registro is None:
+            return None
+
+        return registro.diagnostico
 
     # -----------------------------------------------------
     # INFORMACIÓN DE CONFLICTOS

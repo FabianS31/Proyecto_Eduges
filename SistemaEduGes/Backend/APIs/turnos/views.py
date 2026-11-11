@@ -1,3 +1,4 @@
+from datetime import date
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -27,6 +28,7 @@ class TurnoListView(APIView):
             'estado',
             'profesional',
             'paciente',
+            'registro_sesion',
         ).order_by('fecha', 'hora')
 
         if nombre_rol == 'Profesional':
@@ -58,6 +60,50 @@ class TurnoListView(APIView):
                     )
                 },
                 status=status.HTTP_403_FORBIDDEN,
+            )
+
+        mes = request.query_params.get('mes')
+        anio = request.query_params.get('anio')
+
+        if (mes is None) != (anio is None):
+            return Response(
+                {
+                    'detail': (
+                        'Debés enviar los parámetros mes y anio juntos.'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if mes is not None:
+            try:
+                mes = int(mes)
+                anio = int(anio)
+
+                if mes < 1 or mes > 12 or anio < 1:
+                    raise ValueError
+
+                fecha_inicio = date(anio, mes, 1)
+
+                if mes == 12:
+                    fecha_fin = date(anio + 1, 1, 1)
+                else:
+                    fecha_fin = date(anio, mes + 1, 1)
+
+            except (TypeError, ValueError, OverflowError):
+                return Response(
+                    {
+                        'detail': (
+                            'Mes debe estar entre 1 y 12 '
+                            'y anio debe ser un año válido.'
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            turnos = turnos.filter(
+                fecha__gte=fecha_inicio,
+                fecha__lt=fecha_fin,
             )
 
         serializer = TurnoSerializer(

@@ -1,3 +1,4 @@
+
 from rest_framework import serializers
 
 
@@ -44,8 +45,19 @@ class ReporteTurnosFiltroSerializer(serializers.Serializer):
         allow_blank=True,
     )
 
+    diagnostico = serializers.CharField(
+        required=False,
+        max_length=200,
+        allow_blank=True,
+    )
+
     fecha_hasta = serializers.DateField(
         required=False,
+    )
+
+    tutor_id = serializers.IntegerField(
+        required=False,
+        min_value=1,
     )
 
     def validate(self, attrs):
@@ -112,6 +124,29 @@ class ReporteAlumnosFiltroSerializer(serializers.Serializer):
         required=False,
         min_value=1,
     )
+
+    tutor_id = serializers.IntegerField(
+        required=False,
+        min_value=1,
+    )
+
+    def validate(self, attrs):
+        fecha_desde = attrs.get('fecha_alta_desde')
+        fecha_hasta = attrs.get('fecha_alta_hasta')
+
+        if (
+            fecha_desde is not None
+            and fecha_hasta is not None
+            and fecha_desde > fecha_hasta
+        ):
+            raise serializers.ValidationError({
+                'fecha_alta_hasta': (
+                    'La fecha de alta hasta no puede ser anterior '
+                    'a la fecha de alta desde.'
+                )
+            })
+
+        return attrs
 
 
 class ReporteProfesionalesFiltroSerializer(serializers.Serializer):
