@@ -1,7 +1,8 @@
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
@@ -106,6 +107,7 @@ class TutorListCreateView(APIView):
 
         return Response(serializer.data)
 
+    @transaction.atomic
     def post(self, request):
         tutor_serializer = TutorEntradaSerializer(data=request.data)
         tutor_serializer.is_valid(raise_exception=True)
@@ -162,6 +164,7 @@ class TutorListCreateView(APIView):
         tutor = TutorService.crear_tutor(
             datos_tutor=tutor_serializer.validated_data,
             datos_relacion=relacion_serializer.validated_data,
+            usuario=usuario,
         )
 
         return Response(
@@ -179,7 +182,7 @@ class TutorListCreateView(APIView):
 class TutorDetailView(APIView):
     permission_classes = [IsAuthenticated, PuedeGestionarTutores]
 
-    def _verificar_acceso_profesional(self, request, tutor):
+    def _verificar_acceso_profesional(self, request, tutor, bloquear=False):
         usuario = request.user
         rol = getattr(usuario, 'rol', None)
         nombre_rol = getattr(rol, 'rol', None) if rol else None
@@ -195,6 +198,16 @@ class TutorDetailView(APIView):
                     fecha_fin__isnull=True
                 ).values_list('paciente_id', flat=True)
             )
+
+            if bloquear:
+                paciente_id = PacienteTutor.objects.filter(
+                    tutor=tutor, paciente_id__in=pacientes_ids, activo=True,
+                ).order_by('paciente_id').values_list('paciente_id', flat=True).first()
+                if paciente_id is None:
+                    return False, None
+                TutorService.bloquear_paciente(paciente_id, usuario)
+                if not PacienteTutor.objects.filter(tutor=tutor, paciente_id=paciente_id, activo=True).exists():
+                    return False, None
 
             tiene_acceso = PacienteTutor.objects.filter(
                 tutor=tutor,
@@ -232,12 +245,14 @@ class TutorDetailView(APIView):
             ).data
         )
 
+    @transaction.atomic
     def patch(self, request, pk):
         tutor = self.get_tutor(pk)
 
         acceso, pacientes_ids = self._verificar_acceso_profesional(
             request,
-            tutor
+            tutor,
+            bloquear=True,
         )
         if not acceso:
             return Response(
@@ -245,6 +260,7 @@ class TutorDetailView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        tutor = Tutor.objects.select_for_update().get(pk=tutor.pk)
         serializer = TutorEntradaSerializer(
             tutor,
             data=request.data,
@@ -277,6 +293,9 @@ class RelacionTutorDetailView(APIView):
             id_paciente_tutor=pk,
         )
 
+        TutorService.bloquear_paciente(relacion.paciente_id, self.request.user)
+        relacion = PacienteTutor.objects.select_for_update().get(pk=relacion.pk)
+
         usuario = self.request.user
         if getattr(getattr(usuario, 'rol', None), 'rol', None) == 'Profesional':
             # Autorizar sobre el paciente guardado, nunca sobre el ID del cuerpo.
@@ -294,6 +313,7 @@ class RelacionTutorDetailView(APIView):
 
         return relacion
 
+    @transaction.atomic
     def patch(self, request, pk):
         relacion = self.get_relacion(pk)
 
@@ -316,6 +336,7 @@ class RelacionTutorDetailView(APIView):
         relacion = TutorService.actualizar_relacion(
             relacion,
             serializer.validated_data,
+            usuario=request.user,
         )
 
         return Response(
@@ -323,10 +344,11 @@ class RelacionTutorDetailView(APIView):
             status=status.HTTP_200_OK,
         )
 
+    @transaction.atomic
     def delete(self, request, pk):
         relacion = self.get_relacion(pk)
 
-        TutorService.dar_baja_relacion(relacion)
+        relacion = TutorService.dar_baja_relacion(relacion, usuario=request.user)
 
         return Response(
             {
@@ -339,3 +361,26 @@ class RelacionTutorDetailView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class ReemplazoPrincipalEntradaSerializer(serializers.Serializer):
+    nueva_relacion_id = serializers.IntegerField(min_value=1)
+
+    def validate(self, attrs):
+        if set(self.initial_data) != {'nueva_relacion_id'}:
+            raise serializers.ValidationError('Indicá solamente nueva_relacion_id.')
+        return attrs
+
+
+class ReemplazarPrincipalView(RelacionTutorDetailView):
+    http_method_names = ['post', 'options']
+
+    @transaction.atomic
+    def post(self, request, pk):
+        relacion = self.get_relacion(pk)
+        serializer = ReemplazoPrincipalEntradaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        nueva = TutorService.reemplazar_principal(
+            relacion, serializer.validated_data['nueva_relacion_id'], request.user,
+        )
+        return Response(RelacionTutorSerializer(nueva).data)

@@ -120,6 +120,11 @@ class SeguridadCSRFTests(unittest.TestCase):
             responsable_principal=False, activo=True,
         )
         self.url = f'/api/tutores/relaciones/{self.relacion.pk}/'
+        principal = Tutor.objects.create(nombre='Principal', apellido='Ficticio', dni='TUT-PRINCIPAL')
+        self.principal = PacienteTutor.objects.create(
+            tutor=principal, paciente=self.pacientes['B'], parentesco=self.parentesco,
+            responsable_principal=True, activo=True,
+        )
 
         EstadoPaciente.objects.create(estado='Inactivo')
         EstadoProfesional.objects.create(estado='Inactivo')
@@ -226,9 +231,11 @@ class SeguridadCSRFTests(unittest.TestCase):
             ('post', '/api/auth/administradores/',
              {'usuario': 'nuevo_administrador', 'password': self.password}, 'super'),
             ('patch', f'/api/pacientes/{pac}/', {'direccion': 'Domicilio actualizado'}, 'B'),
+            ('post', f'/api/tutores/relaciones/{self.principal.pk}/reemplazar-principal/',
+             {'nueva_relacion_id': self.relacion.pk}, 'B'),
         ]
 
-    def test_inventario_de_23_operaciones(self):
+    def test_inventario_de_24_operaciones(self):
         def recorrer(patrones, prefijo=''):
             for patron in patrones:
                 ruta = prefijo + str(patron.pattern)
@@ -240,7 +247,7 @@ class SeguridadCSRFTests(unittest.TestCase):
                         not ruta.startswith('api/auth/') or ruta == 'api/auth/administradores/'
                     ):
                         for metodo in ('post', 'put', 'patch', 'delete'):
-                            if hasattr(vista, metodo):
+                            if metodo in vista.http_method_names and hasattr(vista, metodo):
                                 yield metodo, ruta
         import re
         normalizar = lambda ruta: re.sub(r'<[^>]+>|\d+', '{id}', ruta.lstrip('/'))
@@ -382,8 +389,8 @@ def prueba_con_csrf(indice):
     return probar
 
 
-# 23 operaciones, cada una con cuatro rechazos CSRF y una escritura autorizada.
-for indice in range(23):
+# 24 operaciones, cada una con cuatro rechazos CSRF y una escritura autorizada.
+for indice in range(24):
     setattr(SeguridadCSRFTests, f'test_ruta_{indice + 1:02d}_rechazos', prueba_sin_csrf(indice))
     setattr(SeguridadCSRFTests, f'test_ruta_{indice + 1:02d}_autorizada', prueba_con_csrf(indice))
 

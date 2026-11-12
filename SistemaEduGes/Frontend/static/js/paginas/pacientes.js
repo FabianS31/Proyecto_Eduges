@@ -542,7 +542,7 @@ function abrirFicha(id) {
                 <section class="eg-ficha__bloque" aria-labelledby="ficha-tutores-titulo">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <h3 id="ficha-tutores-titulo" class="mb-0">${icono('family_restroom')}Tutores y Responsables</h3>
-                        ${esProfesional(estado.usuario) ? html`
+                        ${esProfesional(estado.usuario) || esAdministrador(estado.usuario) ? html`
                             <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 d-inline-flex align-items-center gap-1" data-accion="agregar-tutor">
                                 ${icono('person_add')}Agregar tutor
                             </button>
@@ -615,6 +615,7 @@ async function cargarTutoresFicha(idPaciente) {
             return;
         }
 
+        const principales = delPaciente.filter(t => t.esPrincipal);
         renderizar(contenedor, html`
             <div class="eg-tutores-lista">
                 ${delPaciente.map((t) => html`
@@ -635,7 +636,13 @@ async function cargarTutoresFicha(idPaciente) {
                             ${t.domicilio ? html`<div class="col-12"><dt>Domicilio</dt><dd>${t.domicilio}</dd></div>` : ''}
                         </dl>
                         ${esProfesional(estado.usuario) ? html`
-                            <div class="d-flex justify-content-end gap-1 pt-1 border-top">
+                            <div class="d-flex flex-wrap justify-content-end gap-1 pt-1 border-top">
+                                ${!t.esPrincipal && principales.length === 1 ? html`
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
+                                            data-accion="reemplazar-principal" data-principal-id="${principales[0].idRelacion}"
+                                            data-relacion-id="${t.idRelacion}" data-tutor-nombre="${t.nombre} ${t.apellido}">
+                                        ${icono('star')}Designar principal
+                                    </button>` : ''}
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-inline-flex align-items-center gap-1"
                                         data-accion="editar-tutor"
                                         data-tutor-id="${t.id}"
@@ -1157,9 +1164,37 @@ function prepararGestionTutores() {
         });
     });
 
+    let reemplazandoPrincipal = false;
     $('ficha-paciente').addEventListener('click', async (evento) => {
+        const btnPrincipal = evento.target.closest('[data-accion="reemplazar-principal"]');
+        if (btnPrincipal) {
+            if (reemplazandoPrincipal) return;
+            const pacienteId = estado.fichaId;
+            reemplazandoPrincipal = true;
+            btnPrincipal.disabled = true;
+            try {
+                const aceptado = await confirmar({
+                    titulo: '¿Reemplazar al responsable principal?',
+                    mensaje: `${btnPrincipal.dataset.tutorNombre} será el nuevo responsable principal. El anterior quedará vinculado como tutor secundario.`,
+                    textoAceptar: 'Designar principal',
+                });
+                if (!aceptado || estado.fichaId !== pacienteId) return;
+                await tutores.reemplazarPrincipal(Number(btnPrincipal.dataset.principalId), Number(btnPrincipal.dataset.relacionId));
+                notificar('Se reemplazó al responsable principal.');
+                if (estado.fichaId === pacienteId) await cargarTutoresFicha(pacienteId);
+            } catch (error) {
+                notificarError(error);
+            } finally {
+                reemplazandoPrincipal = false;
+                btnPrincipal.disabled = false;
+            }
+            return;
+        }
         const btnAgregar = evento.target.closest('[data-accion="agregar-tutor"]');
         if (btnAgregar) {
+            $('agregar-tutor-informacion').textContent = esAdministrador(estado.usuario)
+                ? 'Podés vincular un tutor existente sin modificar sus datos originales. Para modificar sus datos, usá Editar.'
+                : 'Si el DNI ya está registrado, se vincula al tutor autorizado sin cambiar sus datos. Para modificarlos, usá Editar. Si pertenece a otro profesional y todavía no está vinculado a tus pacientes, solicitá la vinculación a Administración.';
             formAgregar.reset();
             comboboxAddTutor.limpiar();
             tutoresDisponibles = null;

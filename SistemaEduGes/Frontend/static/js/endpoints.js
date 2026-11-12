@@ -178,6 +178,8 @@ export const tutores = {
     actualizar: (id, datos) => api.patch(`/tutores/${id}/`, datos),
     actualizarRelacion: (idRelacion, datos) => api.patch(`/tutores/relaciones/${idRelacion}/`, datos),
     darDeBajaRelacion: (idRelacion) => api.delete(`/tutores/relaciones/${idRelacion}/`),
+    reemplazarPrincipal: (idRelacion, nuevaRelacionId) => api.post(
+        `/tutores/relaciones/${idRelacion}/reemplazar-principal/`, { nueva_relacion_id: nuevaRelacionId }),
 };
 
 // ------------------------------------------------------------

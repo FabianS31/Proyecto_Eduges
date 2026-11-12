@@ -16,6 +16,7 @@
             </div>
             <div class="modal-body p-4">
                 <div id="form-agregar-tutor-errores"></div>
+                <p id="agregar-tutor-informacion" class="small text-muted">Si el DNI ya está registrado, se vincula al tutor autorizado sin cambiar sus datos. Para modificarlos, usá Editar. Si pertenece a otro profesional y todavía no está vinculado a tus pacientes, solicitá la vinculación a Administración.</p>
                 <input type="hidden" id="add-tutor-paciente-id" name="paciente_id">
 
                 <div class="row g-3">
@@ -83,6 +84,7 @@
             </div>
             <div class="modal-body p-4">
                 <div id="form-editar-tutor-errores"></div>
+                <p class="alert alert-warning small">Este tutor puede estar vinculado a otros pacientes. Los cambios en sus datos se reflejarán en todas sus vinculaciones</p>
                 <input type="hidden" id="edit-tutor-id" name="tutor_id">
 
                 <div class="row g-3">
