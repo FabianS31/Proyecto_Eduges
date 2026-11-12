@@ -74,6 +74,9 @@ def probar(puerto, directorio):
     from pacientes.models.paciente_model import EstadoPaciente
     from pacientes.models.obra_social_model import ObraSocial, EstadoObraSocial, TipoObraSocial
     from APIs.tutores.services import TutorService
+    from APIs.pacientes.views import PacienteListView
+    from types import SimpleNamespace
+    from unittest.mock import patch
     with connection.cursor() as cursor:
         cursor.execute('SHOW data_directory')
         assert Path(cursor.fetchone()[0]).resolve() == directorio.resolve()
@@ -155,6 +158,39 @@ def probar(puerto, directorio):
             self.assertFalse(a.is_alive() or b.is_alive())
             self.assertEqual(errores, [])
             return resultados
+
+        def alta(self, dni):
+            return PacienteListView().post(SimpleNamespace(user=self.usuario, data={
+                'nombre': 'Alta', 'apellido': 'Prueba', 'dni': dni,
+                'fecha_nacimiento': '2010-01-01', 'direccion': 'Prueba', 'consentimiento': True,
+                'obra_social': self.paciente.obra_social_id, 'numero_afiliado': 'Prueba',
+                'tutor': {'nombre': 'Tutor', 'apellido': 'Prueba', 'dni': dni + 'T',
+                    'mail': 'prueba@example.com', 'domicilio': 'Prueba', 'telefono': '123',
+                    'parentesco_id': self.parentesco.pk},
+            }))
+
+        def test_alta_4b_atomica_y_rollback_total(self):
+            modelos = (Paciente, AsignacionProfesional, Tutor, PacienteTutor)
+            for modelo in (AsignacionProfesional, Tutor, PacienteTutor):
+                antes = [m.objects.count() for m in modelos]
+                with patch.object(modelo, 'save', side_effect=RuntimeError('fallo simulado')):
+                    with self.assertRaises(RuntimeError):
+                        self.alta(uuid.uuid4().hex[:15])
+                self.assertEqual([m.objects.count() for m in modelos], antes)
+            r = self.alta(uuid.uuid4().hex[:15])
+            self.assertEqual(r.status_code, 201)
+            self.assertTrue(PacienteTutor.objects.filter(paciente_id=r.data['id_paciente'],
+                activo=True, responsable_principal=True).exists())
+
+        def test_doble_alta_4b_concurrente_por_dni(self):
+            dni = uuid.uuid4().hex[:15]
+            r = self.simultaneas(lambda: self.alta(dni), lambda: self.alta(dni))
+            self.assertEqual(r, ['ValidationError'])
+            paciente = Paciente.objects.get(dni=dni)
+            self.assertEqual(AsignacionProfesional.objects.filter(paciente=paciente).count(), 1)
+            self.assertEqual(Tutor.objects.filter(dni=dni+'T').count(), 1)
+            self.assertEqual(PacienteTutor.objects.filter(paciente=paciente, activo=True,
+                responsable_principal=True).count(), 1)
 
         def test_dos_reemplazos_no_crean_dos_principales(self):
             anterior, nuevo, otro = self.relaciones

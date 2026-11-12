@@ -7,7 +7,7 @@
 //   });
 //   boton.addEventListener('click', abrirNuevoPaciente);
 //
-// Endpoint: POST /api/pacientes/ (pacientes.crear) y POST /api/tutores/ (tutores.crear).
+// Endpoint: POST /api/pacientes/ (paciente, asignacion y tutor en una transaccion).
 // Conforme a ERS v1.2 (CU01 / RN-08), el alta requiere al menos un tutor
 // marcado como Responsable Principal.
 // ============================================================
@@ -17,8 +17,8 @@ import { catalogos, pacientes, profesionales, tutores } from '../endpoints.js';
 import { obtenerUsuario } from '../layout.js';
 import { hoyISO } from '../fechas.js';
 import { buscarEnLista, crearCombobox } from './combobox.js';
-import { guardar, prepararModal } from './formularios.js';
-import { capitalizar } from '../ui.js';
+import { guardar, prepararModal, mostrarErroresDelFormulario } from './formularios.js';
+import { capitalizar, notificar } from '../ui.js';
 import { coincideBusqueda } from '../texto.js';
 
 const $ = (id) => document.getElementById(id);
@@ -200,7 +200,8 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
     const formulario = $('form-paciente');
     const contenedorErrores = $('form-paciente-errores');
     const selectParentesco = $('tutor-parentesco');
-    let pacienteCreadoId = null;
+    let altaInciertaDni = null;
+    const botonComprobar = $('btn-comprobar-alta-paciente');
 
     const obraSocial = crearCombobox($('pac-obra-social'), {
         buscar: sugerirObrasSociales,
@@ -240,23 +241,57 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
         alAbrir: () => {
             tutoresDisponibles = null;
             $('pac-nacimiento').max = hoyISO();
-            if (!pacienteCreadoId) {
-                alternarBloqueoPaciente(false);
-            }
+            actualizarComprobacion();
             cargarOpcionesParentescos(selectParentesco);
             inicializarRolYProfesionales();
         },
     });
 
-    function alternarBloqueoPaciente(bloquear) {
-        const campos = ['pac-nombre', 'pac-apellido', 'pac-dni', 'pac-nacimiento', 'pac-direccion', 'pac-numero-afiliado', 'pac-cud-numero', 'pac-cud-vencimiento'];
-        campos.forEach((id) => {
-            const el = $(id);
-            if (el) el.readOnly = Boolean(bloquear);
-        });
+    let enviando = false;
+
+    function actualizarComprobacion() {
+        botonComprobar.hidden = !altaInciertaDni;
+        $('btn-guardar-paciente').disabled = enviando || Boolean(altaInciertaDni);
+        if (altaInciertaDni) {
+            mostrarErroresDelFormulario(formulario, contenedorErrores, new ApiError(0, {
+                detail: `No se pudo confirmar el alta del DNI ${altaInciertaDni}. Usá Comprobar alta antes de reintentar. No se enviará otra creación automáticamente.`,
+            }));
+        }
     }
 
-    let enviando = false;
+    // No cerrar durante una petición: evita que su respuesta afecte otro formulario.
+    $('modal-paciente').addEventListener('hide.bs.modal', (evento) => {
+        if (enviando) evento.preventDefault();
+    });
+
+    botonComprobar.addEventListener('click', async () => {
+        if (enviando || !altaInciertaDni) return;
+        enviando = true;
+        botonComprobar.disabled = true;
+        try {
+            const resultado = await pacientes.comprobarAlta(altaInciertaDni);
+            if (!resultado || !Object.prototype.hasOwnProperty.call(resultado, 'paciente')) {
+                throw new ApiError(0);
+            }
+            altaInciertaDni = null;
+            if (resultado.paciente) {
+                enviando = false;
+                modal().hide();
+                notificar('Se encontró un alta completa con ese DNI. Revisá los datos en la ficha del paciente.');
+                alGuardar?.(resultado.paciente);
+            } else {
+                mostrarErroresDelFormulario(formulario, contenedorErrores, new ApiError(400, {
+                    detail: 'No se encontró un alta completa que puedas consultar. La petición anterior podría seguir en curso. Podés comprobar los datos y reintentar manualmente; el DNI único evita duplicar al paciente.',
+                }));
+            }
+        } catch (error) {
+            mostrarErroresDelFormulario(formulario, contenedorErrores, error);
+        } finally {
+            enviando = false;
+            botonComprobar.disabled = false;
+            actualizarComprobacion();
+        }
+    });
 
     ['pac-nombre', 'pac-apellido', 'tutor-nombre', 'tutor-apellido'].forEach((id) => {
         const input = $(id);
@@ -271,7 +306,7 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
 
     formulario.addEventListener('submit', async (evento) => {
         evento.preventDefault();
-        if (enviando) {
+        if (enviando || altaInciertaDni) {
             return;
         }
         enviando = true;
@@ -309,61 +344,35 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
                 boton: $('btn-guardar-paciente'),
                 errores: validar(datos, formulario),
                 enviar: async () => {
-                let resultadoPaciente;
-                if (!pacienteCreadoId) {
-                    resultadoPaciente = await pacientes.crear({
-                        nombre: datos.nombre,
-                        apellido: datos.apellido,
-                        dni: datos.dni,
-                        fecha_nacimiento: datos.fecha_nacimiento,
-                        mail: datos.mail,
-                        direccion: datos.direccion,
-                        obra_social: datos.obra_social,
-                        numero_afiliado: datos.numero_afiliado,
-                        cud_numero: datos.cud_numero,
-                        cud_vencimiento: datos.cud_vencimiento,
-                        consentimiento: datos.consentimiento,
-                        ...(esAdministrativo && datos.profesional ? { profesional: datos.profesional } : {}),
-                    });
-                    pacienteCreadoId = resultadoPaciente.id_paciente;
-                    alternarBloqueoPaciente(true);
-                } else {
-                    resultadoPaciente = { id_paciente: pacienteCreadoId };
-                }
-
-                try {
-                    await tutores.crear({
-                        nombre: datos.tutor.nombre,
-                        apellido: datos.tutor.apellido,
-                        dni: datos.tutor.dni,
-                        parentesco_id: datos.tutor.parentesco_id,
-                        telefono: datos.tutor.telefono,
-                        movil: datos.tutor.movil,
-                        mail: datos.tutor.mail,
-                        domicilio: datos.tutor.domicilio,
-                        paciente_id: pacienteCreadoId,
-                        responsable_principal: true,
-                    });
-                } catch (errorTutor) {
-                    const deCampo = {};
-                    for (const [clave, valor] of Object.entries(errorTutor.erroresDeCampo || {})) {
-                        const claveNormalizada = (clave === 'parentesco' || clave === 'parentesco_id') ? 'parentesco_id' : clave;
-                        deCampo[`tutor_${claveNormalizada}`] = valor;
+                    const { profesional, ...alta } = datos;
+                    try {
+                        const resultado = await pacientes.crear({
+                            ...alta,
+                            ...(esAdministrativo && profesional ? { profesional } : {}),
+                        });
+                        if (!resultado?.id_paciente) throw new ApiError(0);
+                        // Permitir el cierre que realiza guardar() después de confirmar el alta.
+                        enviando = false;
+                        return resultado;
+                    } catch (error) {
+                        if (!error.status || error.status >= 500 || error.status === 408) {
+                            altaInciertaDni = datos.dni;
+                            throw new ApiError(0, { detail: 'No se pudo confirmar el resultado. Comprobá el alta antes de reintentar.' });
+                        }
+                        const campos = {};
+                        for (const [clave, valor] of Object.entries(error.erroresDeCampo || {})) {
+                            campos[clave.startsWith('tutor.') ? clave.replace('tutor.', 'tutor_') : clave] = valor;
+                        }
+                        throw new ApiError(error.status, { ...campos, detail: error.message });
                     }
-                    deCampo._general = ['El paciente fue registrado con éxito, pero falló la vinculación del tutor. Completá o corregí los datos del tutor para finalizar el alta.'];
-                    throw new ApiError(errorTutor.status, deCampo);
-                }
-
-                pacienteCreadoId = null;
-                alternarBloqueoPaciente(false);
-                return resultadoPaciente;
-            },
-            mensajeExito: 'El paciente y su tutor responsable quedaron registrados exitosamente.',
+                },
+                mensajeExito: 'El paciente y su tutor responsable quedaron registrados exitosamente.',
                 modal,
                 alGuardar,
             });
         } finally {
             enviando = false;
+            actualizarComprobacion();
         }
     });
 

@@ -5,6 +5,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from rest_framework import serializers
+from pacientes.models import Parentesco
+from APIs.tutores.serializers import TutorEntradaSerializer, RelacionTutorEntradaSerializer
+from APIs.tutores.services import TutorService
 
 from pacientes.models.paciente_model import (
     Paciente,
@@ -328,6 +331,45 @@ class PacienteSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+
+class TutorAltaPacienteSerializer(TutorEntradaSerializer):
+    parentesco_id = serializers.PrimaryKeyRelatedField(queryset=Parentesco.objects.all())
+    responsable_principal = serializers.BooleanField(default=True)
+
+    class Meta(TutorEntradaSerializer.Meta):
+        fields = TutorEntradaSerializer.Meta.fields + ['parentesco_id', 'responsable_principal']
+
+    def to_internal_value(self, data):
+        if isinstance(data, Mapping) and set(data) - set(self.fields):
+            raise serializers.ValidationError('El tutor contiene campos no permitidos.')
+        return super().to_internal_value(data)
+
+    def validate(self, attrs):
+        if not attrs['responsable_principal']:
+            raise serializers.ValidationError('El alta requiere un tutor principal activo.')
+        return attrs
+
+
+class PacienteAltaSerializer(PacienteSerializer):
+    tutor = TutorAltaPacienteSerializer(write_only=True)
+
+    class Meta(PacienteSerializer.Meta):
+        fields = PacienteSerializer.Meta.fields + ['tutor']
+
+    @transaction.atomic
+    def create(self, validated_data):
+        datos_tutor = validated_data.pop('tutor')
+        parentesco = datos_tutor.pop('parentesco_id')
+        datos_tutor.pop('responsable_principal')
+        paciente = super().create(validated_data)
+        relacion = RelacionTutorEntradaSerializer(data={
+            'paciente_id': paciente.pk, 'parentesco_id': parentesco.pk,
+            'responsable_principal': True, 'activo': True,
+        })
+        relacion.is_valid(raise_exception=True)
+        TutorService.crear_tutor(datos_tutor, relacion.validated_data, self.context['request'].user)
+        return paciente
 
 
 class PacienteEdicionSerializer(PacienteSerializer):

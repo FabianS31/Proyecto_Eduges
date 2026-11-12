@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from pacientes.models.paciente_model import Paciente
+from pacientes.models import PacienteTutor
 from profesionales.models.profesional_model import Profesional
 from profesionales.models.asignacion_model import (
     AsignacionProfesional
@@ -18,7 +19,7 @@ from APIs.servicios.estado_entidad_service import (
     EstadoEntidadService
 )
 
-from .serializers.paciente_serializer import PacienteSerializer, PacienteEdicionSerializer
+from .serializers.paciente_serializer import PacienteSerializer, PacienteEdicionSerializer, PacienteAltaSerializer
 
 
 class PacienteDetailView(APIView):
@@ -287,7 +288,7 @@ class PacienteListView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        serializer = PacienteSerializer(
+        serializer = PacienteAltaSerializer(
             data=request.data,
             context={
                 'request': request
@@ -300,12 +301,40 @@ class PacienteListView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        paciente = serializer.save()
+        try:
+            paciente = serializer.save()
+        except IntegrityError:
+            if Paciente.objects.filter(dni=serializer.validated_data['dni']).exists():
+                raise ValidationError({'dni': 'Ya existe un paciente con ese DNI. Comprobá el alta antes de reintentar.'})
+            raise
 
         return Response(
             PacienteSerializer(paciente).data,
             status=status.HTTP_201_CREATED
         )
+
+
+class PacienteAltaResultadoView(APIView):
+    """Consulta sin efectos, por DNI exacto y con autorización vigente."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        rol = getattr(getattr(request.user, 'rol', None), 'rol', None)
+        pacientes = Paciente.objects.filter(dni=request.query_params.get('dni', '').strip())
+        if rol == 'Profesional':
+            pacientes = pacientes.filter(pk__in=AsignacionProfesional.objects.filter(
+                profesional__usuario=request.user, fecha_fin__isnull=True,
+            ).values('paciente_id'))
+        elif rol not in ('Administrador', 'SuperAdministrador'):
+            raise PermissionDenied('No tenés permiso para comprobar altas.')
+        paciente = pacientes.first()
+        completo = paciente is not None and AsignacionProfesional.objects.filter(
+            paciente=paciente, fecha_fin__isnull=True,
+        ).exists() and PacienteTutor.objects.filter(
+            paciente=paciente, activo=True, responsable_principal=True,
+        ).exists()
+        # No distingue entre inexistente, ajeno o incompleto.
+        return Response({'paciente': PacienteSerializer(paciente).data if completo else None})
 
 
 class PacienteEstadoView(APIView):

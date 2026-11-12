@@ -88,9 +88,9 @@
                             <span class="ms me-1" aria-hidden="true" style="font-size: 13px;">star</span>Responsable Principal
                         </span>
                     </legend>
+                    <p class="small text-muted">Un DNI existente reutiliza al tutor autorizado sin modificar sus datos. Para vincular por primera vez un tutor de otro profesional, solicitá la vinculación a Administración.</p>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <p class="small text-muted">Un DNI existente reutiliza al tutor autorizado sin modificar sus datos. Para vincular por primera vez un tutor de otro profesional, solicitá la vinculación a Administración.</p>
                             <label for="tutor-nombre" class="form-label small fw-semibold">Nombre del tutor *</label>
                             <input type="text" class="form-control" id="tutor-nombre" name="tutor_nombre" maxlength="100" required autocomplete="off" placeholder="Escribí para buscar o ingresar uno nuevo">
                         </div>
@@ -146,6 +146,7 @@
             <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="submit" class="btn btn-sm btn-eduges" id="btn-guardar-paciente">Guardar paciente</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-comprobar-alta-paciente" hidden>Comprobar alta</button>
             </div>
         </form>
     </div>

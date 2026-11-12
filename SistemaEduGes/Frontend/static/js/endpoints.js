@@ -79,6 +79,11 @@ export const profesionales = {
 let pacientesEnMemoria = null;
 
 export const pacientes = {
+    async comprobarAlta(dni) {
+        const resultado = await api.get('/pacientes/alta/resultado/', { parametros: { dni } });
+        if (resultado?.paciente) pacientesEnMemoria = null;
+        return resultado;
+    },
     async actualizar(id, datos) {
         const actualizado = await cambiarTurnos(() => api.patch(`/pacientes/${id}/`, datos));
         pacientesEnMemoria = null;
