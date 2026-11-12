@@ -8,7 +8,7 @@ from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from pacientes.models import Tutor, PacienteTutor
+from pacientes.models import Tutor, PacienteTutor, Parentesco
 from profesionales.models.profesional_model import Profesional
 from profesionales.models.asignacion_model import AsignacionProfesional
 
@@ -17,6 +17,7 @@ from APIs.tutores.serializers import (
     TutorEntradaSerializer,
     RelacionTutorEntradaSerializer,
     RelacionTutorSerializer,
+    ParentescoTutorSerializer,
 )
 
 from APIs.tutores.services import TutorService
@@ -45,6 +46,14 @@ class PuedeGestionarTutores(BasePermission):
             rol is not None
             and getattr(rol, 'rol', None) in self.ROLES_PERMITIDOS
         )
+
+
+class ParentescoListView(APIView):
+    permission_classes = [IsAuthenticated, PuedeGestionarTutores]
+
+    def get(self, request):
+        parentescos = Parentesco.objects.order_by('descripcion', 'pk')
+        return Response(ParentescoTutorSerializer(parentescos, many=True).data)
 
 
 class TutorListCreateView(APIView):

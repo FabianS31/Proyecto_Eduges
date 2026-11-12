@@ -36,6 +36,7 @@ function entorno(rol = 'Profesional') {
         buscarEnLista:()=>()=>[], crearCombobox:()=>({valor:()=>1,limpiar(){}}),
         obtenerUsuario:async()=>({rol:{nombre:rol}}),
         catalogos:{parentescos:async()=>[],obrasSociales:async()=>[]}, profesionales:{listar:async()=>[]},
+        cargarParentescos:async()=>{}, // Catalogo probado por separado en etapa 7.
         tutores:{listar:async()=>[],crear:()=>{throw Error('No debe haber segunda peticion');}},
         pacientes:{crear:async d=>{calls.push(JSON.parse(JSON.stringify(d)));return ctx.reply();},
             comprobarAlta:async dni=>{consultas.push(dni);return ctx.check();}},
@@ -54,7 +55,7 @@ function entorno(rol = 'Profesional') {
         Object.assign(form.elements.dni,{value:'40123456'});
         form.elements.fecha_nacimiento.value='2010-01-01';
         form.elements.tutor_dni.value='20123456';
-        form.elements.tutor_parentesco_id.value='1';
+        form.elements.tutor_parentesco_id.value='37';
         form.elements.consentimiento.checked=true;
         form.elements.profesional.value='';
     }
@@ -67,9 +68,16 @@ function entorno(rol = 'Profesional') {
 test('una sola peticion con tutor principal; exito confirmado limpia formulario',async()=>{
     const e=entorno();await e.submit();assert.equal(e.calls.length,1);
     assert.equal(e.calls[0].tutor.responsable_principal,true);
+    assert.equal(e.calls[0].tutor.parentesco_id,37);
     assert.equal(e.saved.length,1);assert.equal(e.notices.length,1);
     assert.equal(e.form.elements.dni.value,'');
     assert.equal(e.node('btn-comprobar-alta-paciente').hidden,true);
+});
+
+test('catalogo pendiente o fallido impide alta aunque quede un valor cargado',async()=>{
+    const e=entorno();e.node('tutor-parentesco').disabled=true;
+    await e.submit();assert.equal(e.calls.length,0);assert.equal(e.saved.length,0);
+    e.node('tutor-parentesco').disabled=false;await e.submit();assert.equal(e.calls.length,1);
 });
 
 test('doble envio bloqueado y no permite cerrar mientras guarda',async()=>{

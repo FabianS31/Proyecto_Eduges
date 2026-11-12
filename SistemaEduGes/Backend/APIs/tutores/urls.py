@@ -6,10 +6,12 @@ from APIs.tutores.views import (
     TutorDetailView,
     RelacionTutorDetailView,
     ReemplazarPrincipalView,
+    ParentescoListView,
 )
 
 
 urlpatterns = [
+    path('parentescos/', ParentescoListView.as_view(), name='tutores-parentescos'),
     path('relaciones/<int:pk>/reemplazar-principal/', ReemplazarPrincipalView.as_view(), name='tutores-reemplazar-principal'),
     path(
         '',

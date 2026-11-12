@@ -36,15 +36,11 @@
                     </div>
                     <div class="col-md-6">
                         <label for="add-tutor-parentesco" class="form-label small fw-semibold">Parentesco *</label>
-                        <select class="form-select" id="add-tutor-parentesco" name="parentesco_id" required>
+                        <select class="form-select" id="add-tutor-parentesco" name="parentesco_id" required disabled aria-describedby="add-tutor-parentesco-aviso">
                             <option value="">Seleccioná un parentesco</option>
-                            <option value="5">Madre</option>
-                            <option value="1">Padre</option>
-                            <option value="3">Tutor Legal</option>
-                            <option value="4">Hermano/a</option>
-                            <option value="6">Abuelo/a</option>
-                            <option value="2">Tío/a</option>
                         </select>
+                        <div id="add-tutor-parentesco-aviso" class="form-text" role="status"></div>
+                        <button type="button" id="add-tutor-parentesco-reintentar" class="btn btn-sm btn-outline-secondary mt-1" hidden>Reintentar carga</button>
                     </div>
                     <div class="col-md-6">
                         <label for="add-tutor-telefono" class="form-label small fw-semibold">Teléfono *</label>

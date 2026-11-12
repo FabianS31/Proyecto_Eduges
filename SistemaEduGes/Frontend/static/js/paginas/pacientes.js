@@ -13,6 +13,7 @@
 // El dashboard enlaza a la ficha con /pacientes/?paciente=5.
 // ============================================================
 
+import { cargarParentescos } from '../componentes/catalogo-parentescos.js';
 import { prepararFormularioPaciente } from '../componentes/formulario-paciente.js?v=20261022_1';
 import { crearCombobox } from '../componentes/combobox.js';
 import { guardar } from '../componentes/formularios.js';
@@ -1047,21 +1048,8 @@ function prepararGestionTutores() {
         },
     });
 
-    async function cargarParentescosModal(select) {
-        if (!select || select.dataset.cargado === 'true') return;
-        try {
-            const lista = await catalogos.parentescos();
-            select.innerHTML = '<option value="">Seleccioná un parentesco</option>';
-            lista.forEach((item) => {
-                const opt = document.createElement('option');
-                opt.value = item.id;
-                opt.textContent = item.nombre;
-                select.appendChild(opt);
-            });
-            select.dataset.cargado = 'true';
-        } catch {
-            // Mantiene opciones estáticas
-        }
+    function cargarParentescosModal(select) {
+        return cargarParentescos(select, $('add-tutor-parentesco-aviso'), $('add-tutor-parentesco-reintentar'));
     }
 
     // Al cerrar modales hijos, mantener scroll en la ficha
@@ -1108,7 +1096,7 @@ function prepararGestionTutores() {
         if (!datos.nombre) errores.nombre = ['Indicá el nombre.'];
         if (!datos.apellido) errores.apellido = ['Indicá el apellido.'];
         if (!datos.dni) errores.dni = ['Indicá el DNI.'];
-        if (!datos.parentesco_id) errores.parentesco_id = ['Seleccioná el parentesco.'];
+        if ($('add-tutor-parentesco').disabled || !datos.parentesco_id) errores.parentesco_id = ['Seleccioná el parentesco.'];
         if (!datos.telefono) errores.telefono = ['Indicá un teléfono.'];
         if (!datos.mail) {
             errores.mail = ['Indicá el mail.'];

@@ -251,19 +251,6 @@ const sinDatos = async () => [];
 export const catalogos = {
     // Consulta la API si está disponible; filtra solo las activas (estado: 1) para combos y formularios
     obrasSociales: () => api.get('/obras-sociales/', { parametros: { estado: 1 } }),
-    parentescos: async () => {
-        try {
-            return await api.get('/tutores/parentescos/');
-        } catch {
-            return [
-                { id: 1, nombre: 'Padre' },
-                { id: 2, nombre: 'Tío/a' },
-                { id: 3, nombre: 'Tutor Legal' },
-                { id: 4, nombre: 'Hermano/a' },
-                { id: 5, nombre: 'Madre' },
-                { id: 6, nombre: 'Abuelo/a' },
-            ];
-        }
-    },
+    parentescos: () => api.get('/tutores/parentescos/'),
     especialidades: () => api.get('/profesionales/especialidades/'),
 };

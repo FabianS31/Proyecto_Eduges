@@ -12,6 +12,7 @@
 // marcado como Responsable Principal.
 // ============================================================
 
+import { cargarParentescos } from './catalogo-parentescos.js';
 import { ApiError } from '../api.js';
 import { catalogos, pacientes, profesionales, tutores } from '../endpoints.js';
 import { obtenerUsuario } from '../layout.js';
@@ -110,31 +111,8 @@ async function inicializarRolYProfesionales() {
     }
 }
 
-async function cargarOpcionesParentescos(select) {
-    if (!select || select.dataset.cargado === 'true') {
-        return;
-    }
-    try {
-        const lista = await catalogos.parentescos();
-        select.innerHTML = '<option value="">Seleccioná un parentesco</option>';
-        lista.forEach((item) => {
-            const opt = document.createElement('option');
-            opt.value = item.id;
-            opt.textContent = item.nombre;
-            select.appendChild(opt);
-        });
-        select.dataset.cargado = 'true';
-    } catch {
-        select.innerHTML = `
-            <option value="">Seleccioná un parentesco</option>
-            <option value="1">Padre</option>
-            <option value="5">Madre</option>
-            <option value="3">Tutor Legal</option>
-            <option value="4">Hermano/a</option>
-            <option value="6">Abuelo/a</option>
-            <option value="2">Tío/a</option>
-        `;
-    }
+function cargarOpcionesParentescos(select) {
+    return cargarParentescos(select, $('tutor-parentesco-aviso'), $('tutor-parentesco-reintentar'));
 }
 
 function validar(datos, formulario) {
@@ -180,7 +158,7 @@ function validar(datos, formulario) {
     } else if (!soloDigitos(datos.tutor.dni) || datos.tutor.dni.length < 7) {
         errores.tutor_dni = ['El DNI del tutor tiene que tener 7 u 8 números, sin puntos.'];
     }
-    obligatorio('tutor_parentesco_id', datos.tutor.parentesco_id, 'Seleccioná el parentesco.');
+    obligatorio('tutor_parentesco_id', !$('tutor-parentesco').disabled && datos.tutor.parentesco_id, 'Seleccioná el parentesco.');
     obligatorio('tutor_telefono', datos.tutor.telefono, 'Indicá un teléfono de contacto.');
     if (!datos.tutor.mail) {
         errores.tutor_mail = ['Indicá el mail del tutor.'];
