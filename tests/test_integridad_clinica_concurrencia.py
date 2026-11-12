@@ -220,6 +220,45 @@ def probar(puerto, directorio):
             self.assertEqual(self.turno.estado.estado,'Cancelado')
             self.assertIsNone(self.turno.registro_sesion_id)
 
+        def reservar(self, multiple=False, administrador=False):
+            usuario=self.usuarios[0]
+            if administrador:
+                rol=Rol.objects.get_or_create(rol='Administrador')[0]
+                usuario=Usuario.objects.create(usuario=uuid.uuid4().hex[:15],password='!',rol=rol,activo=True)
+            datos=dict(paciente_id=self.paciente.pk,profesional_id=self.profesionales[0].pk,usuario=usuario)
+            fechas=[{'fecha':self.turno.fecha+timedelta(days=i),'hora':hora(14)} for i in (1,2)]
+            if multiple: return TurnoService.crear_turnos(turnos=fechas,**datos)
+            return TurnoService.crear_turno(**fechas[0],**datos)
+
+        def test_etapa6_reasignacion_antes_de_alta_revalida_responsable(self):
+            self.assertEqual(self.simultaneas(self.reasignar,self.reservar),['ValidationError'])
+            self.assertEqual(Turno.objects.filter(paciente=self.paciente).count(),1)
+
+        def test_etapa6_reasignacion_antes_de_lote_admin_no_deja_parciales(self):
+            self.assertEqual(self.simultaneas(self.reasignar,lambda:self.reservar(True,True)),['ValidationError'])
+            self.assertEqual(Turno.objects.filter(paciente=self.paciente).count(),1)
+
+        def test_etapa6_alta_antes_de_reasignar_transfiere_tambien_nuevo_turno(self):
+            self.assertEqual(self.simultaneas(self.reservar,self.reasignar),['ok'])
+            turnos=Turno.objects.filter(paciente=self.paciente)
+            self.assertEqual(turnos.count(),2)
+            self.assertEqual(set(turnos.values_list('profesional_id',flat=True)),{self.profesionales[1].pk})
+
+        def test_etapa6_lote_antes_de_reasignar_transfiere_todo(self):
+            self.assertEqual(self.simultaneas(lambda:self.reservar(True),self.reasignar),['ok'])
+            turnos=Turno.objects.filter(paciente=self.paciente)
+            self.assertEqual(turnos.count(),3)
+            self.assertEqual(set(turnos.values_list('profesional_id',flat=True)),{self.profesionales[1].pk})
+
+        def test_etapa6_edicion_relee_fecha_inicio_despues_de_esperar(self):
+            def cambiar_inicio():
+                Paciente.objects.select_for_update().get(pk=self.paciente.pk)
+                AsignacionProfesional.objects.filter(pk=self.asignacion.pk).update(
+                    fecha_inicio=self.turno.fecha+timedelta(days=1))
+            self.assertEqual(self.simultaneas(cambiar_inicio,self.editar),['ValidationError'])
+            self.turno.refresh_from_db()
+            self.assertEqual(self.turno.hora,hora(9))
+
     try:
         return unittest.TextTestRunner(verbosity=2).run(
             unittest.defaultTestLoader.loadTestsFromTestCase(ConcurrenciaTests)).wasSuccessful()

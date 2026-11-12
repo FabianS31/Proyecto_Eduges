@@ -90,11 +90,7 @@ class OperacionesTurnoMixin:
         cls.validar_profesional_activo(profesional)
         cls.validar_paciente_activo(paciente)
 
-        if nombre_rol == 'Profesional':
-            cls.validar_paciente_asignado(
-                profesional,
-                paciente,
-            )
+        cls.validar_paciente_asignado(profesional, paciente, fecha)
 
         cls.validar_fecha_hora(fecha, hora)
 
@@ -203,13 +199,8 @@ class OperacionesTurnoMixin:
         cls.validar_profesional_activo(profesional)
         cls.validar_paciente_activo(paciente)
 
-        if nombre_rol == 'Profesional':
-            cls.validar_paciente_asignado(
-                profesional,
-                paciente,
-            )
-
         for turno in turnos:
+            cls.validar_paciente_asignado(profesional, paciente, turno['fecha'])
             cls.validar_fecha_hora(
                 turno['fecha'],
                 turno['hora'],
@@ -323,29 +314,7 @@ class OperacionesTurnoMixin:
 
         cls.validar_fecha_hora(fecha, hora)
 
-        cambio_de_paciente = (
-            paciente.pk != turno.paciente_id
-        )
-
-        cambio_de_asignacion = (
-            cambio_de_paciente
-            or profesional.pk != turno.profesional_id
-        )
-
-        if nombre_rol == 'Profesional':
-            if cambio_de_paciente:
-                profesional_usuario = cls.obtener_profesional_usuario(
-                    usuario
-                )
-                cls.validar_paciente_asignado(
-                    profesional_usuario,
-                    paciente,
-                )
-        elif cambio_de_asignacion:
-            cls.validar_paciente_asignado(
-                profesional,
-                paciente,
-            )
+        cls.validar_paciente_asignado(profesional, paciente, fecha)
 
         cls.validar_solapamiento(
             profesional,

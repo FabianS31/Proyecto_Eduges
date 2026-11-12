@@ -83,21 +83,25 @@ class ValidacionesTurnoMixin:
             })
 
     @staticmethod
-    def validar_paciente_asignado(profesional, paciente):
-        asignacion_activa = (
+    def validar_paciente_asignado(profesional, paciente, fecha, *, exigir_vigente=True):
+        # Las escrituras llaman a esta validación con el paciente bloqueado.
+        # FechaFin es inclusiva para reconocer la atribución histórica.
+        asignaciones = (
             AsignacionProfesional.objects.filter(
                 profesional=profesional,
                 paciente=paciente,
-                fecha_fin__isnull=True,
-            ).exists()
+                fecha_inicio__lte=fecha,
+            ).filter(Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha))
         )
-
-        if not asignacion_activa:
+        if not asignaciones.exists():
             raise serializers.ValidationError({
-                'paciente': (
-                    'El paciente no está asignado '
-                    'actualmente a este profesional.'
-                )
+                'paciente': 'El profesional no tiene una asignación válida para el paciente en la fecha del turno.'
+            })
+        if exigir_vigente and not asignaciones.filter(
+            fecha_fin__isnull=True, fecha_inicio__lte=timezone.localdate(),
+        ).exists():
+            raise serializers.ValidationError({
+                'profesional': 'Las nuevas reservas y reprogramaciones deben corresponder al profesional responsable vigente del paciente.'
             })
 
     @classmethod

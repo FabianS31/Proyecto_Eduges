@@ -281,6 +281,8 @@ class ReasignacionesTurnoMixin:
                 paciente=paciente,
             )
 
+            cls.validar_paciente_asignado(profesional_destino, paciente, fecha_nueva)
+
             turno.fecha = fecha_nueva
             turno.hora = hora_nueva
             turno.profesional = profesional_destino
