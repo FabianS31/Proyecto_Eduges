@@ -332,6 +332,9 @@ function accionesTurno(turno, descripcion) {
 
     const estadoId = idEstado(turno);
 
+    // La API devuelve null sin sesión; incluso un diagnóstico vacío indica registro.
+    const tieneSesion = turno.diagnostico != null;
+
     if (puedeConfirmarTurno(turno) && estadoId === ESTADO_TURNO.PENDIENTE) {
 
         principales.push(boton('confirmar', turno, { texto: 'Confirmar', nombreIcono: 'check', clase: 'eg-btn--ok', descripcion }));
@@ -346,7 +349,7 @@ function accionesTurno(turno, descripcion) {
 
     }
 
-    if (puedeMarcarAsistencia() && yaEmpezo(turno) && estadoId === ESTADO_TURNO.CONFIRMADO) {
+    if (!tieneSesion && puedeMarcarAsistencia() && yaEmpezo(turno) && estadoId === ESTADO_TURNO.CONFIRMADO) {
 
         principales.push(boton('ausente', turno, { texto: 'Marcar ausente', nombreIcono: 'person_off', descripcion }));
 
@@ -366,7 +369,7 @@ function accionesTurno(turno, descripcion) {
 
     }
 
-    if (puedeEditar() && estaActivo(turno) && !yaEmpezo(turno)) {
+    if (!tieneSesion && puedeEditar() && estaActivo(turno) && !yaEmpezo(turno)) {
 
         secundarias.push(
 

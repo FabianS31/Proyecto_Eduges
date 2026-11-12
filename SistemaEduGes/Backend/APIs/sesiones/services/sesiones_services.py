@@ -116,6 +116,8 @@ class SesionesService:
 
         turnos = turnos.exclude(
             estado__estado__iexact='Cancelado',
+        ).exclude(
+            estado__estado__iexact='Ausente',
         )
 
         if fecha_desde:
@@ -150,6 +152,9 @@ class SesionesService:
         )
 
         cls.validar_turno_no_cancelado(turno)
+
+        if turno.estado.estado.casefold() == 'ausente':
+            raise ValidationError({'turno_id': 'No se puede registrar una sesión de un turno Ausente.'})
 
         cls.validar_profesional_autorizado(
             turno,

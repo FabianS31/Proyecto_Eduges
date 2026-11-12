@@ -118,6 +118,8 @@ class EstadosTurnoMixin:
         estado_actual = turno.estado.estado
         nombre_estado_nuevo = estado_nuevo.estado
 
+        cls.validar_estado_con_sesion(turno, nombre_estado_nuevo)
+
         estados_permitidos = cls.TRANSICIONES_PERMITIDAS.get(
             estado_actual,
             (),

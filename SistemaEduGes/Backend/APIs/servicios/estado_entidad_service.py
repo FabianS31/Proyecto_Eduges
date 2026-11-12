@@ -27,6 +27,7 @@ class EstadoEntidadService:
             )
 
     @classmethod
+    @transaction.atomic
     def cancelar_turnos_futuros(cls, **filtros):
         from APIs.turnos.services.turno_service import TurnoService
 
@@ -41,17 +42,23 @@ class EstadoEntidadService:
             estado__in=cls.ESTADOS_TURNOS_CANCELABLES
         )
 
-        turnos = Turno.objects.filter(
+        turnos = Turno.objects.select_for_update(of=('self',)).filter(
             **filtros,
             estado__in=estados_cancelables
-        )
+        ).order_by('pk')
 
-        ids_a_cancelar = [
-            turno.pk
+        turnos_a_cancelar = [
+            turno
             for turno in turnos
             if TurnoService.obtener_inicio_turno(turno) > ahora
         ]
 
+        if any(turno.registro_sesion_id is not None for turno in turnos_a_cancelar):
+            raise serializers.ValidationError({
+                'estado': 'No se puede inhabilitar: hay turnos futuros con sesiones clínicas registradas que se cancelarían. No se realizó ningún cambio.'
+            })
+
+        ids_a_cancelar = [turno.pk for turno in turnos_a_cancelar]
         if ids_a_cancelar:
             Turno.objects.filter(
                 pk__in=ids_a_cancelar

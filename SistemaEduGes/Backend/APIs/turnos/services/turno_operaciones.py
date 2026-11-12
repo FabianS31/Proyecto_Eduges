@@ -256,7 +256,19 @@ class OperacionesTurnoMixin:
     ):
         nombre_rol = cls.obtener_rol_autorizado(usuario)
 
+        # Mismo orden que reasignar: profesionales, pacientes y finalmente turno.
+        anterior = Turno.objects.filter(pk=turno_id).values('profesional_id', 'paciente_id').first()
+        if anterior is None:
+            raise serializers.ValidationError({'turno': 'El turno indicado no existe.'})
+        profesionales_ids = {anterior['profesional_id'], profesional_id or anterior['profesional_id']}
+        list(Profesional.objects.select_for_update().filter(pk__in=profesionales_ids).order_by('pk'))
+        list(Paciente.objects.select_for_update().filter(
+            pk__in={anterior['paciente_id'], paciente_id},
+        ).order_by('pk'))
         turno = cls.obtener_turno_bloqueado(turno_id)
+        if (turno.profesional_id != anterior['profesional_id']
+                or turno.paciente_id != anterior['paciente_id']):
+            raise serializers.ValidationError({'turno': 'El turno cambió durante la operación. Recargá antes de editar.'})
 
         cls.validar_turno_editable(turno)
 
@@ -269,10 +281,21 @@ class OperacionesTurnoMixin:
         if profesional_id is None:
             profesional_id = turno.profesional_id
 
+        if nombre_rol == 'Profesional' and profesional_id != turno.profesional_id:
+            raise serializers.ValidationError({'profesional': 'No podés asignar tu turno a otro profesional.'})
+
+        if turno.registro_sesion_id is not None and (
+            paciente_id != turno.paciente_id or profesional_id != turno.profesional_id
+            or fecha != turno.fecha or hora != turno.hora
+        ):
+            raise serializers.ValidationError({
+                'turno': 'El turno tiene una sesión clínica registrada. No se pueden modificar paciente, profesional, fecha ni horario.'
+            })
+
         try:
             profesional = (
                 Profesional.objects
-                .select_for_update()
+                .select_for_update(of=('self',))
                 .select_related('estado_profesional')
                 .get(pk=profesional_id)
             )
@@ -286,7 +309,7 @@ class OperacionesTurnoMixin:
         try:
             paciente = (
                 Paciente.objects
-                .select_for_update()
+                .select_for_update(of=('self',))
                 .select_related('estado')
                 .get(pk=paciente_id)
             )
@@ -369,6 +392,8 @@ class OperacionesTurnoMixin:
         )
 
         estado_cancelado = cls.obtener_estado_cancelado()
+
+        cls.validar_estado_con_sesion(turno, 'Cancelado')
 
         turno.estado = estado_cancelado
         turno.save(update_fields=['estado'])

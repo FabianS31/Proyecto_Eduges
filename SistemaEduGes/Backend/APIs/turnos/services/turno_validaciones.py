@@ -260,7 +260,7 @@ class ValidacionesTurnoMixin:
         try:
             return (
                 Turno.objects
-                .select_for_update()
+                .select_for_update(of=('self',))
                 .select_related(
                     'estado',
                     'profesional__estado_profesional',
@@ -281,4 +281,11 @@ class ValidacionesTurnoMixin:
                     'Solamente se pueden editar o cancelar '
                     'turnos Pendientes o Confirmados.'
                 )
+            })
+
+    @staticmethod
+    def validar_estado_con_sesion(turno, estado):
+        if turno.registro_sesion_id is not None and estado in ('Ausente', 'Cancelado'):
+            raise serializers.ValidationError({
+                'estado': 'El turno tiene una sesión clínica registrada. No puede marcarse Ausente ni Cancelado.'
             })

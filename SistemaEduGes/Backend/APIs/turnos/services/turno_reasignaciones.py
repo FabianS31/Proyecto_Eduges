@@ -144,9 +144,14 @@ class ReasignacionesTurnoMixin:
             usuario
         )
 
+        # Orden estable, también utilizado por la edición normal del turno.
+        list(Profesional.objects.select_for_update().filter(
+            pk__in={profesional_actual.pk, profesional_destino_id},
+        ).order_by('pk'))
+
         profesional_actual = (
             Profesional.objects
-            .select_for_update()
+            .select_for_update(of=('self',))
             .select_related('estado_profesional')
             .get(pk=profesional_actual.pk)
         )
@@ -156,7 +161,7 @@ class ReasignacionesTurnoMixin:
         try:
             paciente = (
                 Paciente.objects
-                .select_for_update()
+                .select_for_update(of=('self',))
                 .select_related('estado')
                 .get(pk=paciente_id)
             )
@@ -170,7 +175,7 @@ class ReasignacionesTurnoMixin:
         try:
             profesional_destino = (
                 Profesional.objects
-                .select_for_update()
+                .select_for_update(of=('self',))
                 .select_related('estado_profesional')
                 .get(pk=profesional_destino_id)
             )
@@ -227,25 +232,11 @@ class ReasignacionesTurnoMixin:
                 )
             })
 
-        hoy = timezone.localdate()
-
-        asignacion_actual.fecha_fin = hoy
-        asignacion_actual.save(
-            update_fields=['fecha_fin']
-        )
-
-        AsignacionProfesional.objects.create(
-            paciente=paciente,
-            profesional=profesional_destino,
-            fecha_inicio=hoy,
-            fecha_fin=None,
-        )
-
         ahora = timezone.now()
 
         turnos_candidatos = (
             Turno.objects
-            .select_for_update()
+            .select_for_update(of=('self',))
             .select_related(
                 'estado',
                 'profesional',
@@ -264,6 +255,21 @@ class ReasignacionesTurnoMixin:
             for turno in turnos_candidatos
             if cls.obtener_inicio_turno(turno) > ahora
         ]
+
+        if any(turno.registro_sesion_id is not None for turno in turnos_a_transferir):
+            raise serializers.ValidationError({
+                'turnos': 'No se puede reasignar el paciente: hay turnos futuros a transferir con sesiones clínicas registradas. No se realizó ningún cambio.'
+            })
+
+        hoy = timezone.localdate()
+        asignacion_actual.fecha_fin = hoy
+        asignacion_actual.save(update_fields=['fecha_fin'])
+        AsignacionProfesional.objects.create(
+            paciente=paciente,
+            profesional=profesional_destino,
+            fecha_inicio=hoy,
+            fecha_fin=None,
+        )
 
         estado_pendiente = cls.obtener_estado_pendiente()
         ids_turnos = []
