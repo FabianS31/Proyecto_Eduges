@@ -59,7 +59,8 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
     const btnGuardarTexto = $('btn-guardar-sesion-texto');
 
     let turnoActual = null;
-    let modo = 'creacion'; // 'creacion' | 'edicion' | 'lectura'
+    let modo = 'lectura'; // 'creacion' | 'edicion' | 'lectura'
+    let cargaValida = false;
     let listaPendientesActual = [];
     let peticionCargaActual = 0;
 
@@ -79,6 +80,8 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
     modalElemento?.addEventListener('hidden.bs.modal', () => {
         peticionCargaActual++;
         turnoActual = null;
+        cargaValida = false;
+        modo = 'lectura';
     });
 
     const obtenerModalPendientes = modalPendientesElemento
@@ -87,8 +90,8 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
 
     formulario.addEventListener('submit', (evento) => {
         evento.preventDefault();
-        if (esAdmin || !turnoActual || (cargando && !cargando.hidden)) {
-            return; // Administrador solo consulta en modo lectura; bloquear envíos durante carga o sin turno
+        if (esAdmin || !cargaValida || !turnoActual || (cargando && !cargando.hidden)) {
+            return; // Administrador solo consulta; bloquear envíos sin una carga válida o durante la carga
         }
 
         const datos = {
@@ -160,6 +163,8 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
     });
 
     async function abrirSesion(turno) {
+        cargaValida = false;
+        modo = 'lectura';
         turnoActual = turno;
         const turnoId = turno?.id_turno ?? turno?.id;
         if (!turnoId) {
@@ -244,6 +249,7 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
                 if (trabajoInput) trabajoInput.value = sesionExistente.trabajo_sesion ?? '';
                 if (notaInput) notaInput.value = sesionExistente.nota_sesion ?? '';
             }
+            cargaValida = !esAdmin;
         } catch (error) {
             if (peticionId !== peticionCargaActual) {
                 return;
@@ -258,6 +264,7 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
                     modo = 'creacion';
                     tituloTexto.textContent = 'Nuevo Registro de Sesión';
                     if (btnGuardarTexto) btnGuardarTexto.textContent = 'Guardar registro';
+                    cargaValida = true;
                 }
             } else if (error instanceof ApiError && error.status === 403) {
                 tituloTexto.textContent = 'Acceso Denegado';
@@ -279,7 +286,7 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
                 cargando.hidden = true;
                 camposWrapper.hidden = false;
                 if (btnGuardar && !esAdmin) {
-                    btnGuardar.disabled = false;
+                    btnGuardar.disabled = !cargaValida;
                 }
             }
         }

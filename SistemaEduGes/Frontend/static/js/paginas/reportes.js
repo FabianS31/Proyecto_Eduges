@@ -47,6 +47,7 @@ const estado = {
     tutoresLista: [],
     cargando: false,
     consulta: 0,
+    consultaDetalle: 0,
     resultadosVigentes: false,
 };
 
@@ -146,6 +147,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Ajuste de interfaz según rol (CU11)
 // ============================================================
 function configurarPermisosYRoles() {
+    const campoTrabajo = $('campo-turno-trabajo');
+    if (campoTrabajo) campoTrabajo.hidden = estado.usuario?.rol?.nombre === 'Administrador';
+
     if (estado.esPro) {
         // Un profesional solo ve Reporte de Turnos
         const tabPacientes = $('tab-pacientes');
@@ -324,6 +328,10 @@ function conectarEventos() {
         exportarCSV(estado.tipo, estado.resultados);
     });
 
+    $('modal-detalle-sesion-reporte')?.addEventListener('hide.bs.modal', () => {
+        estado.consultaDetalle++;
+    });
+
     // Consulta rápida de sesión clínica desde la tabla (Ítems 9 y 10 Minuta)
     $('reporte-cuerpo')?.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-accion="ver-sesion"]');
@@ -350,6 +358,7 @@ async function abrirDetalleSesion(turnoId) {
     const modalEl = $('modal-detalle-sesion-reporte');
     if (!modalEl) return;
 
+    const consulta = ++estado.consultaDetalle;
     const bsModal = window.bootstrap?.Modal?.getOrCreateInstance(modalEl) || new bootstrap.Modal(modalEl);
     bsModal.show();
 
@@ -378,6 +387,7 @@ async function abrirDetalleSesion(turnoId) {
 
     try {
         const sesion = await sesiones.obtener(turnoId);
+        if (consulta !== estado.consultaDetalle) return;
         cargandoEl.classList.add('d-none');
         contenidoEl.classList.remove('d-none');
 
@@ -405,6 +415,7 @@ async function abrirDetalleSesion(turnoId) {
             notaEspecialEl.textContent = sesion.nota_sesion || 'Sin notas especiales.';
         }
     } catch (error) {
+        if (consulta !== estado.consultaDetalle) return;
         cargandoEl.classList.add('d-none');
         errorEl.classList.remove('d-none');
         renderizar(errorEl, bloqueError('No se encontró o no se pudo consultar el registro de sesión clínica para este turno.'));
@@ -495,7 +506,9 @@ async function consultarReporte() {
             const proId = $('filtro-turno-profesional')?.value;
             const tutorId = $('filtro-turno-tutor')?.value;
             textoBusqueda = $('filtro-turno-busqueda').value.trim();
-            const textoTrabajo = $('filtro-turno-trabajo')?.value.trim();
+            const textoTrabajo = estado.usuario?.rol?.nombre === 'Administrador'
+                ? ''
+                : $('filtro-turno-trabajo')?.value.trim();
 
             const queryParams = {};
             if (desde) queryParams.fecha_desde = desde;

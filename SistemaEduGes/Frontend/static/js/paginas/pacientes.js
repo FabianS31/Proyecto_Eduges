@@ -77,6 +77,7 @@ const $ = (id) => document.getElementById(id);
 const estado = {
     usuario: null,
     todos: [],                  // lo que devolvió la API, con el estado del CUD y la edad calculados
+    peticionListado: 0,
     filtros: leerFiltrosDeUrl(),
     fichaId: null,              // paciente con la ficha abierta
     proximos: new Map(),        // id de paciente → su próximo turno (para la tabla)
@@ -309,18 +310,21 @@ async function cargarProximos() {
 }
 
 async function cargarListado(busqueda = '') {
+    const peticion = ++estado.peticionListado;
     renderizar($('pacientes-cuerpo'), '');
     renderizar($('pacientes-estado'), bloqueCargando(3));
     try {
         const [lista] = await Promise.all([pacientes.listar(busqueda), cargarProximos()]);
+        if (peticion !== estado.peticionListado) return false;
         estado.todos = lista.map((p) => ({ ...p, cud: estadoCud(p.cud_vencimiento), edad: edad(p.fecha_nacimiento) }));
         actualizarConteosCud();
         mostrarListado();
         return true;
     } catch (error) {
+        if (peticion !== estado.peticionListado) return false;
         $('pacientes-total').textContent = '';
         $('pacientes-paginacion').classList.add('d-none');
-        mostrarError($('pacientes-estado'), error, () => cargarListado());
+        mostrarError($('pacientes-estado'), error, () => cargarListado(busqueda));
         return false;
     }
 }
@@ -363,8 +367,13 @@ async function abrirReasignacionPaciente(p) {
             select.innerHTML = '<option value="">No hay otros profesionales activos disponibles</option>';
             btnSubmit.disabled = true;
         } else {
-            select.innerHTML = '<option value="">Elegí un profesional...</option>' +
-                disponibles.map((pro) => `<option value="${pro.id_profesional}">${pro.apellido}, ${pro.nombre}</option>`).join('');
+            select.innerHTML = '<option value="">Elegí un profesional...</option>';
+            disponibles.forEach((pro) => {
+                const opcion = document.createElement('option');
+                opcion.value = pro.id_profesional;
+                opcion.textContent = `${pro.apellido}, ${pro.nombre}`;
+                select.appendChild(opcion);
+            });
             btnSubmit.disabled = false;
         }
     } catch (err) {
@@ -874,22 +883,32 @@ function prepararEventos() {
     altaDesde?.addEventListener('change', () => cambiarFiltros({ altaDesde: altaDesde.value }));
     altaHasta?.addEventListener('change', () => cambiarFiltros({ altaHasta: altaHasta.value }));
 
-    const buscar = demorar(async () => {
-        if (esProfesional(estado.usuario) && busqueda.value.trim()) {
-            await cargarListado(busqueda.value.trim());
-        }
+    const buscar = demorar(() => {
         cambiarFiltros({ q: busqueda.value });
+        if (esProfesional(estado.usuario)) {
+            cargarListado(busqueda.value.trim());
+        }
     }, 250);
-    busqueda.addEventListener('input', buscar);
+    busqueda.addEventListener('input', () => {
+        if (esProfesional(estado.usuario)) estado.peticionListado++;
+        buscar();
+    });
     cud.addEventListener('change', () => cambiarFiltros({ cud: cud.value }));
     orden.addEventListener('change', () => cambiarFiltros({ orden: orden.value }));
     formulario.addEventListener('submit', (evento) => {
         evento.preventDefault();
-        cambiarFiltros({ q: busqueda.value });
+        if (esProfesional(estado.usuario)) estado.peticionListado++;
+        buscar();
     });
     formulario.addEventListener('reset', () => {
+        if (esProfesional(estado.usuario)) estado.peticionListado++;
         // El reset del navegador vacía los campos después de este evento
-        setTimeout(() => cambiarFiltros({ q: '', cud: '', orden: 'apellido', estado: '', obraSocial: '', altaDesde: '', altaHasta: '' }));
+        setTimeout(() => {
+            cambiarFiltros({ q: '', cud: '', orden: 'apellido', estado: '', obraSocial: '', altaDesde: '', altaHasta: '' });
+            if (esProfesional(estado.usuario)) {
+                cargarListado();
+            }
+        });
     });
 
     prepararPaginacion($('pacientes-paginacion'), (cambio) => {

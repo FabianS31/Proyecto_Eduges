@@ -62,7 +62,11 @@ export const profesionales = {
 
     // Reasigna un paciente al profesional indicado y transfiere sus turnos futuros.
     // Solo el profesional actualmente responsable puede reasignar.
-    reasignarPaciente: (pacienteId, profesionalId) => api.post(`/profesionales/pacientes/${pacienteId}/reasignar/`, { profesional_id: profesionalId }),
+    async reasignarPaciente(pacienteId, profesionalId) {
+        const resultado = await cambiarTurnos(() => api.post(`/profesionales/pacientes/${pacienteId}/reasignar/`, { profesional_id: profesionalId }));
+        pacientesEnMemoria = null;
+        return resultado;
+    },
 };
 
 // ------------------------------------------------------------
@@ -103,7 +107,7 @@ export const pacientes = {
     // Solo el Profesional responsable (o SuperAdmin) puede ejecutar esta acción.
     async cambiarEstado(id, estado) {
         const estadoTexto = estado === 1 || estado === 'Activo' ? 'Activo' : 'Inactivo';
-        const actualizado = await api.patch(`/pacientes/${id}/estado/`, { estado: estadoTexto });
+        const actualizado = await cambiarTurnos(() => api.patch(`/pacientes/${id}/estado/`, { estado: estadoTexto }));
         pacientesEnMemoria = null;
         return actualizado;
     },
