@@ -222,7 +222,8 @@ async function guardarNuevaObraSocial() {
 
     if (!form || !btnGuardar) return;
 
-    limpiarErroresFormulario(contenedorErrores, form);
+    limpiarErroresFormulario(form);
+    if (contenedorErrores) renderizar(contenedorErrores, '');
 
     const nombre = inputNombre?.value.trim() || '';
     const contacto = inputContacto?.value.trim() || null;
@@ -230,9 +231,9 @@ async function guardarNuevaObraSocial() {
     const web = inputWeb?.value.trim() || null;
 
     if (!nombre) {
-        mostrarErroresFormulario(contenedorErrores, form, {
+        mostrarErroresFormulario(form, new ApiError(400, {
             nombre: 'Ingresá el nombre de la obra social.',
-        });
+        }));
         inputNombre?.focus();
         return;
     }
@@ -258,8 +259,16 @@ async function guardarNuevaObraSocial() {
         await cargarListado();
     } catch (error) {
         console.error('Error al guardar obra social:', error);
-        if (error instanceof ApiError && error.detalles) {
-            mostrarErroresFormulario(contenedorErrores, form, error.detalles);
+        if (error instanceof ApiError) {
+            const generales = mostrarErroresFormulario(form, error);
+            if (contenedorErrores && generales.length > 0) {
+                renderizar(contenedorErrores, html`
+                    <div class="alert alert-danger py-2 small mb-2 d-flex align-items-center gap-2" role="alert">
+                        <span class="ms" aria-hidden="true">error</span>
+                        <span>${generales.join(' ')}</span>
+                    </div>`);
+            }
+            form.querySelector('.is-invalid')?.focus();
         } else {
             notificarError(error);
         }
@@ -310,6 +319,11 @@ async function cambiarEstadoObraSocial(id, nuevoEstado) {
 function limpiarFormularioAlta() {
     const form = $('form-crear-obra-social');
     const contenedorErrores = $('form-os-errores');
-    if (form) form.reset();
-    if (contenedorErrores) limpiarErroresFormulario(contenedorErrores, form);
+    if (form) {
+        form.reset();
+        limpiarErroresFormulario(form);
+    }
+    if (contenedorErrores) {
+        renderizar(contenedorErrores, '');
+    }
 }

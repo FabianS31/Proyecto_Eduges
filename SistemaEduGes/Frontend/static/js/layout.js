@@ -18,7 +18,6 @@ import { iniciarControlDeSesion } from './sesion.js';
 import {
     botonCargando,
     html,
-    iniciales,
     limpiarErroresFormulario,
     mostrarErroresFormulario,
     nombreCompleto,
@@ -84,20 +83,15 @@ function aplicarPermisos(usuario) {
 
 function mostrarUsuario(usuario) {
     const contenedor = document.getElementById('usuario-actual');
-    const avatar = document.getElementById('usuario-avatar');
     const dropName = document.getElementById('dropdown-user-name');
     const dropRole = document.getElementById('dropdown-user-role');
 
     const nombre = usuario.profesional ? nombreCompleto(usuario.profesional) : usuario.usuario;
     const detalle = usuario.profesional?.especialidad?.nombre ?? usuario.rol.nombre;
-    const letras = usuario.profesional ? iniciales(usuario.profesional) : usuario.usuario.slice(0, 2).toUpperCase();
 
     if (contenedor) {
         renderizar(contenedor, html`
             <div><span class="eg-user__name">${nombre}</span><span class="eg-user__role">${detalle}</span></div>`);
-    }
-    if (avatar) {
-        avatar.textContent = letras;
     }
     if (dropName) {
         dropName.textContent = nombre;

@@ -232,29 +232,35 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
         },
     });
 
+    const modalEl = $('modal-paciente');
+
+    function alternarBloqueoPaciente(bloquear) {
+        const campos = ['pac-nombre', 'pac-apellido', 'pac-dni', 'pac-nacimiento', 'pac-direccion', 'pac-afiliado', 'pac-cud-numero', 'pac-cud-vencimiento'];
+        campos.forEach((id) => {
+            const el = $(id);
+            if (el) el.readOnly = Boolean(bloquear);
+        });
+    }
+
     const modal = prepararModal({
-        modal: $('modal-paciente'),
+        modal: modalEl,
         formulario,
         contenedorErrores,
         comboboxes: [obraSocial, comboboxTutor],
         alAbrir: () => {
             tutoresDisponibles = null;
             $('pac-nacimiento').max = hoyISO();
-            if (!pacienteCreadoId) {
-                alternarBloqueoPaciente(false);
-            }
+            pacienteCreadoId = null;
+            alternarBloqueoPaciente(false);
             cargarOpcionesParentescos(selectParentesco);
             inicializarRolYProfesionales();
         },
     });
 
-    function alternarBloqueoPaciente(bloquear) {
-        const campos = ['pac-nombre', 'pac-apellido', 'pac-dni', 'pac-nacimiento', 'pac-direccion', 'pac-numero-afiliado', 'pac-cud-numero', 'pac-cud-vencimiento'];
-        campos.forEach((id) => {
-            const el = $(id);
-            if (el) el.readOnly = Boolean(bloquear);
-        });
-    }
+    modalEl?.addEventListener('hidden.bs.modal', () => {
+        pacienteCreadoId = null;
+        alternarBloqueoPaciente(false);
+    });
 
     let enviando = false;
 

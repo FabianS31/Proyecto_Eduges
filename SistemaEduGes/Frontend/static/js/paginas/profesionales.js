@@ -427,7 +427,6 @@ function validarAlta(datos, formulario) {
 }
 
 function prepararAlta() {
-    const btnNuevo = $('btn-nuevo-profesional');
     const formNuevo = $('form-nuevo-profesional');
     if (!formNuevo) return;
 
@@ -460,8 +459,6 @@ function prepararAlta() {
             }
         },
     });
-
-    btnNuevo?.addEventListener('click', () => modalAlta().show());
 
     // Capitalizar nombre y apellido al salir del campo
     [inputNombre, inputApellido].forEach((input) => {

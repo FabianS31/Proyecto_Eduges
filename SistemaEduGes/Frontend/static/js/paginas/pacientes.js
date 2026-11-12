@@ -378,16 +378,8 @@ function prepararReasignacion() {
     const select = $('reasignar-profesional-select');
     const errores = $('form-reasignar-errores');
     const btnSubmit = $('btn-confirmar-reasignacion');
-    const modalEl = $('modal-reasignar-paciente');
 
     if (!form) return;
-
-    modalEl?.addEventListener('shown.bs.modal', () => {
-        const backdrops = document.querySelectorAll('.modal-backdrop');
-        if (backdrops.length > 1) {
-            backdrops[backdrops.length - 1].style.zIndex = '1055';
-        }
-    });
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -874,22 +866,37 @@ function prepararEventos() {
     altaDesde?.addEventListener('change', () => cambiarFiltros({ altaDesde: altaDesde.value }));
     altaHasta?.addEventListener('change', () => cambiarFiltros({ altaHasta: altaHasta.value }));
 
+    let ultimaBusquedaServidor = '';
+
     const buscar = demorar(async () => {
-        if (esProfesional(estado.usuario) && busqueda.value.trim()) {
-            await cargarListado(busqueda.value.trim());
+        const termino = busqueda.value.trim();
+        if (esProfesional(estado.usuario) && termino !== ultimaBusquedaServidor) {
+            ultimaBusquedaServidor = termino;
+            await cargarListado(termino);
         }
         cambiarFiltros({ q: busqueda.value });
     }, 250);
     busqueda.addEventListener('input', buscar);
     cud.addEventListener('change', () => cambiarFiltros({ cud: cud.value }));
     orden.addEventListener('change', () => cambiarFiltros({ orden: orden.value }));
-    formulario.addEventListener('submit', (evento) => {
+    formulario.addEventListener('submit', async (evento) => {
         evento.preventDefault();
+        const termino = busqueda.value.trim();
+        if (esProfesional(estado.usuario) && termino !== ultimaBusquedaServidor) {
+            ultimaBusquedaServidor = termino;
+            await cargarListado(termino);
+        }
         cambiarFiltros({ q: busqueda.value });
     });
     formulario.addEventListener('reset', () => {
         // El reset del navegador vacía los campos después de este evento
-        setTimeout(() => cambiarFiltros({ q: '', cud: '', orden: 'apellido', estado: '', obraSocial: '', altaDesde: '', altaHasta: '' }));
+        setTimeout(async () => {
+            if (esProfesional(estado.usuario) && ultimaBusquedaServidor !== '') {
+                ultimaBusquedaServidor = '';
+                await cargarListado('');
+            }
+            cambiarFiltros({ q: '', cud: '', orden: 'apellido', estado: '', obraSocial: '', altaDesde: '', altaHasta: '' });
+        });
     });
 
     prepararPaginacion($('pacientes-paginacion'), (cambio) => {
