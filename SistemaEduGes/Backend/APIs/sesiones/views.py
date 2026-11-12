@@ -9,6 +9,7 @@ from APIs.autenticacion.autenticacion import (
 )
 from APIs.sesiones.serializers.sesiones_serializers import (
     RegistroSesionEntradaSerializer,
+    RegistroSesionEdicionSerializer,
     RegistroSesionProfesionalSerializer,
     RegistroSesionResumenSerializer,
     TurnosPendientesFiltroSerializer,
@@ -116,9 +117,11 @@ class RegistroSesionDetalleView(APIView):
         return Response(serializer.data)
 
     def patch(self, request, turno_id):
+        entrada = RegistroSesionEdicionSerializer(data=request.data, partial=True)
+        entrada.is_valid(raise_exception=True)
         registro = SesionesService.modificar_sesion(
             turno_id=turno_id,
-            datos=request.data,
+            datos=entrada.validated_data,
             usuario=request.user,
         )
 

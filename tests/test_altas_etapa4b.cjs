@@ -150,3 +150,12 @@ test('comprobar usa GET sin cache y alta mantiene POST unico',async()=>{
     assert.equal(calls[0][1].parametros.dni,'40123456');
     assert.ok(!leer('componentes/formulario-paciente.js').includes('pacienteCreadoId'));
 });
+
+test('alta: rechaza correo como domicilio de paciente o tutor sin enviar',async()=>{
+    for (const campo of ['direccion','tutor_domicilio']) {
+        const e=entorno();e.form.elements[campo].value='persona@example.com';
+        await e.submit();assert.equal(e.calls.length,0);assert.equal(e.notices.length,0);
+        e.form.elements[campo].value='Ruta 8 km 40 / Casa B';
+        await e.submit();assert.equal(e.calls.length,1);
+    }
+});

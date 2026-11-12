@@ -10,7 +10,26 @@ class TurnosPendientesFiltroSerializer(serializers.Serializer):
     paciente_id = serializers.IntegerField(required=False, min_value=1)
 
 
-class RegistroSesionEntradaSerializer(serializers.Serializer):
+class TextoSesionField(serializers.CharField):
+    def to_internal_value(self, data):
+        if not isinstance(data, str):
+            self.fail('invalid')
+        return super().to_internal_value(data)
+
+
+class RegistroSesionEdicionSerializer(serializers.Serializer):
+    trabajo_sesion = TextoSesionField()
+    diagnostico = TextoSesionField(write_only=True)
+    nota_sesion = TextoSesionField(required=False, allow_null=True, allow_blank=True, write_only=True)
+
+    def validate(self, attrs):
+        desconocidos = set(self.initial_data) - set(self.fields)
+        if desconocidos:
+            raise serializers.ValidationError({campo: 'Este campo no se puede modificar.' for campo in desconocidos})
+        return attrs
+
+
+class RegistroSesionEntradaSerializer(RegistroSesionEdicionSerializer):
     """
     Valida los datos necesarios para registrar una sesión.
     La autorización y las reglas de negocio se verifican
@@ -20,19 +39,6 @@ class RegistroSesionEntradaSerializer(serializers.Serializer):
     turno_id = serializers.PrimaryKeyRelatedField(
         source='turno',
         queryset=Turno.objects.all(),
-        write_only=True,
-    )
-
-    trabajo_sesion = serializers.CharField()
-
-    diagnostico = serializers.CharField(
-        write_only=True,
-    )
-
-    nota_sesion = serializers.CharField(
-        required=False,
-        allow_null=True,
-        allow_blank=True,
         write_only=True,
     )
 

@@ -87,3 +87,11 @@ export async function guardar({ formulario, contenedorErrores, boton, errores, e
         botonCargando(boton, false);
     }
 }
+
+
+export function errorDomicilio(valor) {
+    // Solo un correo completo: no restringe el formato de las direcciones reales.
+    const correo = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
+    return correo.test(String(valor ?? '').trim())
+        ? 'Ingresá un domicilio válido, no una dirección de correo electrónico' : null;
+}

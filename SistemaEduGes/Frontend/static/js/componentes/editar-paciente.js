@@ -1,5 +1,5 @@
 import { catalogos, pacientes } from '../endpoints.js';
-import { prepararModal, guardar } from './formularios.js';
+import { errorDomicilio, prepararModal, guardar } from './formularios.js';
 import { notificarError } from '../ui.js';
 
 const CAMPOS = ['nombre', 'apellido', 'dni', 'fecha_nacimiento', 'direccion', 'mail',
@@ -39,8 +39,20 @@ export function prepararEdicionPaciente({ alGuardar, alCerrar }) {
             if (valor !== original) cambios[campo] = valor;
         }
         guardando = true;
+        const validaciones = {};
+        for (const campo of ['nombre', 'apellido']) {
+            if (Object.hasOwn(cambios, campo) && !/\p{L}/u.test(cambios[campo])) {
+                validaciones[campo] = ['Debe contener al menos una letra; no puede ser solo números o símbolos.'];
+            }
+        }
+        if (Object.hasOwn(cambios, 'dni') && !/^[0-9]{7,8}$/.test(cambios.dni)) {
+            validaciones.dni = ['El DNI debe tener 7 u 8 números, sin puntos.'];
+        }
+        if (Object.hasOwn(cambios, 'direccion') && errorDomicilio(cambios.direccion)) {
+            validaciones.direccion = [errorDomicilio(cambios.direccion)];
+        }
         await guardar({
-            formulario, contenedorErrores: errores, boton, errores: {},
+            formulario, contenedorErrores: errores, boton, errores: validaciones,
             enviar: () => pacientes.actualizar(actual.id_paciente, cambios),
             mensajeExito: 'Los datos del paciente se actualizaron.',
             modal: () => ({ hide() { guardando = false; modal().hide(); } }),

@@ -105,7 +105,7 @@ class SeguridadRelacionesTests(unittest.TestCase):
         self.parentesco = Parentesco.objects.create(descripcion='Tutor ficticio')
         self.otro_parentesco = Parentesco.objects.create(descripcion='Otro parentesco')
         self.tutor = Tutor.objects.create(
-            nombre='Tutor', apellido='Ficticio', dni='TUT-001',
+            nombre='Tutor', apellido='Ficticio', dni='20999999',
             mail='ficticio@example.invalid', domicilio='Domicilio ficticio',
         )
         self.relacion = PacienteTutor.objects.create(

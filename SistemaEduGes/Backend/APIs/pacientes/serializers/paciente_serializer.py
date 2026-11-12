@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from rest_framework import serializers
+from APIs.validadores import validar_dni, ValidarNombreApellidoMixin, ValidarDomicilioMixin
 from pacientes.models import Parentesco
 from APIs.tutores.serializers import TutorEntradaSerializer, RelacionTutorEntradaSerializer
 from APIs.tutores.services import TutorService
@@ -125,7 +126,19 @@ class ProfesionalResponsableSerializer(serializers.ModelSerializer):
         ]
 
 
-class PacienteSerializer(serializers.ModelSerializer):
+class PacienteSerializer(ValidarDomicilioMixin, ValidarNombreApellidoMixin, serializers.ModelSerializer):
+
+    mail = serializers.EmailField(max_length=50, allow_blank=True, allow_null=True, required=False)
+
+    def validate_fecha_nacimiento(self, value):
+        if value > timezone.localdate():
+            raise serializers.ValidationError('La fecha de nacimiento no puede ser futura.')
+        return value
+
+    def validate_consentimiento(self, value):
+        if not value:
+            raise serializers.ValidationError('Sin el consentimiento firmado no se puede registrar al paciente.')
+        return value
 
     obra_social = ObraSocialRelatedField(
         queryset=ObraSocial.objects.all(),
@@ -316,6 +329,9 @@ class PacienteSerializer(serializers.ModelSerializer):
 
     def validate_dni(self, value):
 
+        if self.instance is None or value != self.instance.dni:
+            validar_dni(value)
+
         consulta = Paciente.objects.filter(
             dni=value
         )
@@ -393,11 +409,6 @@ class PacienteEdicionSerializer(PacienteSerializer):
                 campo: 'Este campo no se puede editar.' for campo in desconocidos
             })
         return super().to_internal_value(data)
-
-    def validate_fecha_nacimiento(self, value):
-        if value > timezone.localdate():
-            raise serializers.ValidationError('La fecha de nacimiento no puede ser futura.')
-        return value
 
     def validate_obra_social(self, value):
         if self.instance and value.pk == self.instance.obra_social_id:

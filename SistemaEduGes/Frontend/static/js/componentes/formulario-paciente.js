@@ -18,7 +18,7 @@ import { catalogos, pacientes, profesionales, tutores } from '../endpoints.js';
 import { obtenerUsuario } from '../layout.js';
 import { hoyISO } from '../fechas.js';
 import { buscarEnLista, crearCombobox } from './combobox.js';
-import { guardar, prepararModal, mostrarErroresDelFormulario } from './formularios.js';
+import { errorDomicilio, guardar, prepararModal, mostrarErroresDelFormulario } from './formularios.js';
 import { capitalizar, notificar } from '../ui.js';
 import { coincideBusqueda } from '../texto.js';
 
@@ -126,7 +126,7 @@ function validar(datos, formulario) {
     obligatorio('apellido', datos.apellido, 'Indicá el apellido.');
     if (!datos.dni) {
         errores.dni = ['Indicá el DNI.'];
-    } else if (!soloDigitos(datos.dni) || datos.dni.length < 7) {
+    } else if (!soloDigitos(datos.dni) || datos.dni.length < 7 || datos.dni.length > 8) {
         errores.dni = ['El DNI tiene que tener 7 u 8 números, sin puntos.'];
     }
     if (!datos.fecha_nacimiento) {
@@ -155,7 +155,7 @@ function validar(datos, formulario) {
     obligatorio('tutor_apellido', datos.tutor.apellido, 'Indicá el apellido del tutor.');
     if (!datos.tutor.dni) {
         errores.tutor_dni = ['Indicá el DNI del tutor.'];
-    } else if (!soloDigitos(datos.tutor.dni) || datos.tutor.dni.length < 7) {
+    } else if (!soloDigitos(datos.tutor.dni) || datos.tutor.dni.length < 7 || datos.tutor.dni.length > 8) {
         errores.tutor_dni = ['El DNI del tutor tiene que tener 7 u 8 números, sin puntos.'];
     }
     obligatorio('tutor_parentesco_id', !$('tutor-parentesco').disabled && datos.tutor.parentesco_id, 'Seleccioná el parentesco.');
@@ -166,11 +166,23 @@ function validar(datos, formulario) {
         errores.tutor_mail = ['Revisá el mail del tutor: falta la @ o el dominio.'];
     }
     obligatorio('tutor_domicilio', datos.tutor.domicilio, 'Indicá el domicilio del tutor.');
+    if (errorDomicilio(datos.direccion)) errores.direccion = [errorDomicilio(datos.direccion)];
+    if (errorDomicilio(datos.tutor.domicilio)) errores.tutor_domicilio = [errorDomicilio(datos.tutor.domicilio)];
 
     if (esAdministrativo) {
         obligatorio('profesional', datos.profesional, 'Seleccioná el profesional responsable.');
     }
 
+    for (const campo of ['nombre', 'apellido']) {
+        if (datos[campo] && !/\p{L}/u.test(datos[campo])) {
+            errores[campo] = ['Debe contener al menos una letra; no puede ser solo números o símbolos.'];
+        }
+    }
+    for (const campo of ['nombre', 'apellido']) {
+        if (datos.tutor[campo] && !/\p{L}/u.test(datos.tutor[campo])) {
+            errores['tutor_' + campo] = ['Debe contener al menos una letra.'];
+        }
+    }
     return errores;
 }
 

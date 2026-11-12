@@ -112,7 +112,7 @@ class SeguridadCSRFTests(unittest.TestCase):
         self.parentesco = Parentesco.objects.create(descripcion='Tutor ficticio')
         self.otro_parentesco = Parentesco.objects.create(descripcion='Otro parentesco')
         self.tutor = Tutor.objects.create(
-            nombre='Tutor', apellido='Ficticio', dni='TUT-001',
+            nombre='Tutor', apellido='Ficticio', dni='20999999',
             mail='ficticio@example.invalid', domicilio='Domicilio ficticio',
         )
         self.relacion = PacienteTutor.objects.create(
@@ -195,7 +195,7 @@ class SeguridadCSRFTests(unittest.TestCase):
         }
         obra = self.pacientes['B'].obra_social_id
         return [
-            ('post', '/api/profesionales/', {**datos_prof, 'dni': 'TEST-NUEVO',
+            ('post', '/api/profesionales/', {**datos_prof, 'dni': '30123456',
              'matricula': 'MAT-NUEVA', 'usuario': 'nuevo_ficticio', 'password': self.password}, 'super'),
             ('put', f'/api/profesionales/{pro}/', datos_prof, 'super'),
             ('patch', f'/api/profesionales/{pro}/', {'nombre': 'Nombre actualizado'}, 'super'),
@@ -203,9 +203,9 @@ class SeguridadCSRFTests(unittest.TestCase):
             ('post', f'/api/profesionales/pacientes/{pac}/reasignar/',
              {'profesional_id': self.profesionales['A'].pk}, 'B'),
             ('post', '/api/pacientes/', {'nombre': 'Nuevo', 'apellido': 'Ficticio',
-             'dni': 'PAC-NUEVO', 'fecha_nacimiento': '2010-01-01', 'direccion': 'Ficticia',
+             'dni': '40123456', 'fecha_nacimiento': '2010-01-01', 'direccion': 'Ficticia',
              'consentimiento': True, 'obra_social': obra, 'numero_afiliado': 'AF-NUEVO',
-             'profesional': pro, 'tutor': {'nombre': 'Nuevo', 'apellido': 'Tutor', 'dni': 'TUTOR-ALTA',
+             'profesional': pro, 'tutor': {'nombre': 'Nuevo', 'apellido': 'Tutor', 'dni': '50123456',
              'mail': 'alta@example.com', 'domicilio': 'Ficticio', 'telefono': '123',
              'parentesco_id': self.parentesco.pk}}, 'super'),
             ('patch', f'/api/pacientes/{pac}/estado/', {'estado': 'Inactivo'}, 'B'),
@@ -218,7 +218,7 @@ class SeguridadCSRFTests(unittest.TestCase):
             ('patch', f'/api/turnos/{self.turno.pk}/estado/',
              {'ID_EstadoTurno': self.estados_turno['Confirmado'].pk}, 'super'),
             ('post', '/api/tutores/', {'nombre': 'Nuevo tutor', 'apellido': 'Ficticio',
-             'dni': 'TUT-NUEVO', 'mail': 'nuevo@example.invalid', 'domicilio': 'Ficticio',
+             'dni': '60123456', 'mail': 'nuevo@example.invalid', 'domicilio': 'Ficticio',
              'paciente_id': pac, 'parentesco_id': self.parentesco.pk}, 'B'),
             ('patch', f'/api/tutores/{self.tutor.pk}/', {'nombre': 'Nombre actualizado'}, 'B'),
             ('patch', self.url, {'parentesco_id': self.otro_parentesco.pk}, 'B'),

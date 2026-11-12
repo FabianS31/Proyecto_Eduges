@@ -3,6 +3,7 @@ from django.contrib.auth.hashers import make_password
 from django.db import transaction
 
 from rest_framework import serializers
+from APIs.validadores import validar_dni, ValidarNombreApellidoMixin
 from rest_framework.exceptions import PermissionDenied
 from APIs.profesionales.permisos import es_usuario_tecnico
 
@@ -91,7 +92,7 @@ class RelatedObjectField(serializers.PrimaryKeyRelatedField):
 # SERIALIZER DE PROFESIONAL
 # ---------------------------------------------------------
 
-class ProfesionalSerializer(serializers.ModelSerializer):
+class ProfesionalSerializer(ValidarNombreApellidoMixin, serializers.ModelSerializer):
 
     especialidad = RelatedObjectField(
         queryset=Especialidad.objects.all(),
@@ -111,7 +112,17 @@ class ProfesionalSerializer(serializers.ModelSerializer):
     usuario = serializers.CharField(
         write_only=True,
         required=False,
+        max_length=Usuario._meta.get_field('usuario').max_length,
+        trim_whitespace=False,
     )
+
+    mail = serializers.EmailField(max_length=Profesional._meta.get_field('mail').max_length,
+                                  required=False, allow_blank=True, allow_null=True)
+
+    def validate_usuario(self, value):
+        if any(caracter.isspace() for caracter in value):
+            raise serializers.ValidationError('El usuario no puede contener espacios.')
+        return value
 
     password = serializers.CharField(
         write_only=True,
@@ -265,6 +276,8 @@ class ProfesionalSerializer(serializers.ModelSerializer):
     # -----------------------------------------------------
 
     def validate_dni(self, value):
+        if self.instance is None or value != self.instance.dni:
+            validar_dni(value)
         consulta = Profesional.objects.filter(dni=value)
 
         if self.instance is not None:

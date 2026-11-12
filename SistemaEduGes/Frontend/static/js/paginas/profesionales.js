@@ -271,6 +271,11 @@ function validarEdicion(datos, formulario) {
     if (datos.mail && !formulario.elements.mail.checkValidity()) {
         errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
     }
+    for (const campo of ['nombre', 'apellido']) {
+        if (datos[campo] && !/\p{L}/u.test(datos[campo])) {
+            errores[campo] = ['Debe contener al menos una letra; no puede ser solo números o símbolos.'];
+        }
+    }
     return errores;
 }
 
@@ -312,7 +317,8 @@ function prepararEdicion() {
             formulario,
             contenedorErrores: $('form-profesional-errores'),
             boton: $('btn-guardar-profesional'),
-            errores: validarEdicion(datos, formulario),
+            errores: Object.fromEntries(Object.entries(validarEdicion(datos, formulario))
+                .filter(([campo]) => Object.hasOwn(cambios, campo))),
             enviar: () => (sinCambios ? Promise.resolve(actual) : profesionales.actualizar(actual.id_profesional, cambios)),
             mensajeExito: sinCambios ? 'No había cambios para guardar.' : 'Los datos del profesional se actualizaron.',
             modal: modalEdicion,
@@ -409,6 +415,8 @@ function validarAlta(datos, formulario) {
         errores.usuario = ['Indicá un nombre de usuario para el ingreso.'];
     } else if (/\s/.test(datos.usuario)) {
         errores.usuario = ['El usuario no puede contener espacios.'];
+    } else if (datos.usuario.length > 100) {
+        errores.usuario = ['El usuario no puede superar los 100 caracteres.'];
     }
 
     if (!datos.password) {
@@ -423,6 +431,11 @@ function validarAlta(datos, formulario) {
         errores.password_confirm = ['Las contraseñas no coinciden.'];
     }
 
+    for (const campo of ['nombre', 'apellido']) {
+        if (datos[campo] && !/\p{L}/u.test(datos[campo])) {
+            errores[campo] = ['Debe contener al menos una letra; no puede ser solo números o símbolos.'];
+        }
+    }
     return errores;
 }
 

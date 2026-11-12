@@ -45,13 +45,13 @@ class SeguridadRolesTests(unittest.TestCase):
         return respuesta
 
     def alta(self, actor, rol):
-        datos = {**self.datos(), 'dni': 'NUEVO', 'matricula': 'NUEVA',
+        datos = {**self.datos(), 'dni': '30123456', 'matricula': 'NUEVA',
                  'usuario': 'alta_ficticia', 'password': self.f.password,
                  'rol': self.f.roles[rol].pk}
         self.enviar(actor, 'post', '/api/profesionales/', datos,
                     201 if rol == 'Profesional' else 403)
         if rol == 'Profesional':
-            creado = soporte.Profesional.objects.get(dni='NUEVO')
+            creado = soporte.Profesional.objects.get(dni='30123456')
             self.assertEqual(creado.rol_id, self.f.roles[rol].pk)
             self.assertEqual(creado.usuario.rol_id, creado.rol_id)
 

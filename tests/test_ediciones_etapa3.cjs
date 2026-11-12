@@ -60,6 +60,28 @@ function editorPaciente() {
     e.form=form;
     return e;
 }
+test('paciente: rechaza DNI nuevo invalido y conserva DNI historico no editado',async()=>{
+    const e=editorPaciente();await e.ctx.abrir({...paciente,dni:'HISTORICO'});
+    e.form.elements.direccion.value='Nuevo domicilio';await e.submit();
+    assert.deepEqual(e.calls.at(-1).data,{direccion:'Nuevo domicilio'});
+    await e.ctx.abrir(paciente);const antes=e.calls.filter(c=>c.method==='patch').length;
+    e.form.elements.dni.value='ABC';await e.submit();
+    assert.equal(e.calls.filter(c=>c.method==='patch').length,antes);
+    e.form.elements.dni.value='1234567';await e.submit();
+    assert.equal(e.calls.filter(c=>c.method==='patch').length,antes+1);
+});
+
+test('paciente: valida apellido modificado sin bloquear el historico',async()=>{
+    const e=editorPaciente();await e.ctx.abrir({...paciente,apellido:'535345345'});
+    e.form.elements.direccion.value='Otro domicilio';await e.submit();
+    assert.deepEqual(e.calls.at(-1).data,{direccion:'Otro domicilio'});
+    await e.ctx.abrir(paciente);const n=e.calls.filter(c=>c.method==='patch').length;
+    e.form.elements.apellido.value='535345345';await e.submit();
+    assert.equal(e.calls.filter(c=>c.method==='patch').length,n);
+    e.form.elements.apellido.value="Muñoz O'Connor";await e.submit();
+    assert.equal(e.calls.filter(c=>c.method==='patch').length,n+1);
+});
+
 test('paciente: conserva cobertura inactiva y envía únicamente datos cambiados',async()=>{
     const e=editorPaciente();await e.ctx.abrir(paciente);
     assert.equal(e.form.elements.obra_social.value,'9');
@@ -171,4 +193,17 @@ test('pacientes: restablecer filtros recupera el listado e invalida solicitudes 
     vm.runInContext(source.slice(start,end),e.ctx);await e.node('filtros').emit('reset');
     assert.equal(e.ctx.estado.peticionListado,4);assert.equal(e.ctx.recargas,1);
     assert.equal(e.ctx.estado.filtros.q,'');assert.equal(e.ctx.estado.filtros.obraSocial,'');
+});
+
+test('domicilio: correo completo rechazado, direcciones libres e historico conservado',async()=>{
+    const e=editorPaciente();
+    for (const valor of ['Av. San Martin 123 / 2-B','Ruta 8 km 40 s/n','Casa @ esquina','Barrio Norte']) {
+        assert.equal(e.ctx.errorDomicilio(valor),null);
+    }
+    await e.ctx.abrir(paciente);
+    e.form.elements.direccion.value='persona@example.com';await e.submit();
+    assert.equal(e.calls.filter(c=>c.method==='patch').length,0);
+    await e.ctx.abrir({...paciente,direccion:'historico@example.com'});
+    e.form.elements.nombre.value='Otro';await e.submit();
+    assert.deepEqual(e.calls.at(-1).data,{nombre:'Otro'});
 });

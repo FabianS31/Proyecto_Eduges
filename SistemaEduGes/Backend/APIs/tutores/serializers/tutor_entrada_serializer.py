@@ -1,10 +1,12 @@
 from rest_framework import serializers
+from APIs.validadores import validar_dni, ValidarNombreApellidoMixin, ValidarDomicilioMixin
 
 from pacientes.models import Tutor
 
 
-class TutorEntradaSerializer(serializers.ModelSerializer):
+class TutorEntradaSerializer(ValidarDomicilioMixin, ValidarNombreApellidoMixin, serializers.ModelSerializer):
     dni = serializers.CharField(max_length=20)
+    mail = serializers.EmailField(max_length=150)
 
     class Meta:
         model = Tutor
@@ -32,6 +34,8 @@ class TutorEntradaSerializer(serializers.ModelSerializer):
         }
 
     def validate_dni(self, value):
+        if self.instance is None or value != self.instance.dni:
+            validar_dni(value)
         consulta = Tutor.objects.filter(dni=value)
         if self.instance is not None:
             consulta = consulta.exclude(pk=self.instance.pk)
