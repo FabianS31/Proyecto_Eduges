@@ -443,8 +443,11 @@ function prepararAlta() {
         formulario: formNuevo,
         contenedorErrores: $('form-nuevo-profesional-errores'),
         alAbrir: async () => {
+            selectEspecialidad.innerHTML = '<option value="">Cargando especialidades...</option>';
+            selectEspecialidad.disabled = true;
             try {
                 const lista = await catalogos.especialidades();
+                selectEspecialidad.innerHTML = '<option value="">Seleccioná especialidad</option>';
                 if (selectEspecialidad && lista.length) {
                     selectEspecialidad.innerHTML = '<option value="">Seleccioná especialidad</option>';
                     lista.forEach((esp) => {
@@ -455,8 +458,11 @@ function prepararAlta() {
                     });
                     selectEspecialidad.value = String(lista[0].id);
                 }
-            } catch {
-                // Mantiene opción por defecto
+            } catch (error) {
+                selectEspecialidad.innerHTML = '<option value="">No se pudieron cargar las especialidades</option>';
+                notificarError(error);
+            } finally {
+                selectEspecialidad.disabled = false;
             }
         },
     });
@@ -497,7 +503,7 @@ function prepararAlta() {
             apellido: capitalizar(campo('apellido')),
             dni: campo('dni'),
             matricula: campo('matricula'),
-            especialidad: Number(campo('especialidad')) || 1,
+            especialidad: Number(campo('especialidad')) || null,
             contacto: campo('contacto') || null,
             mail: campo('mail') || null,
             usuario: campo('usuario').toLowerCase(),

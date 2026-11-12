@@ -13,7 +13,7 @@ import { inicializarModalObrasSociales } from './componentes/obras-sociales-moda
 import { prepararMostrarPassword } from './componentes/mostrar-password.js';
 import { CONFIG } from './config.js';
 import { PERMISO } from './constantes.js';
-import { auth } from './endpoints.js';
+import { auth, profesionales } from './endpoints.js';
 import { iniciarControlDeSesion } from './sesion.js';
 import {
     botonCargando,
@@ -296,6 +296,7 @@ function prepararModalEspecialidad() {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (document.getElementById('btn-guardar-especialidad')?.disabled) return;
         const input = document.getElementById('especialidad-nombre');
         const nombre = input?.value?.trim() ?? '';
         const contErrores = document.getElementById('form-especialidad-errores');
@@ -315,7 +316,7 @@ function prepararModalEspecialidad() {
 
         botonCargando(btn, true);
         try {
-            await new Promise((r) => setTimeout(r, 400));
+            await profesionales.crearEspecialidad({ nombre });
             window.bootstrap.Modal.getOrCreateInstance(modalEl).hide();
             form.reset();
             if (contErrores) renderizar(contErrores, '');
@@ -341,6 +342,7 @@ function prepararModalNuevoUsuario() {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (document.getElementById('btn-guardar-nuevo-usuario')?.disabled) return;
         const inputUsuario = document.getElementById('nuevo-usuario-nombre');
         const inputPass = document.getElementById('nuevo-usuario-password');
         const inputConf = document.getElementById('nuevo-usuario-password-confirm');
@@ -353,6 +355,7 @@ function prepararModalNuevoUsuario() {
 
         const errores = [];
         if (!usuario) errores.push('Ingresá el nombre de usuario.');
+        else if (/\s/.test(usuario)) errores.push('El usuario no puede contener espacios.');
         if (!password) errores.push('Ingresá la contraseña.');
         else if (password.length < 8) errores.push('La contraseña debe tener al menos 8 caracteres.');
         if (password && password !== confirmacion) errores.push('Las contraseñas no coinciden.');
@@ -370,11 +373,11 @@ function prepararModalNuevoUsuario() {
 
         botonCargando(btn, true);
         try {
-            await new Promise((r) => setTimeout(r, 400));
+            await auth.crearAdministrador({ usuario, password });
             window.bootstrap.Modal.getOrCreateInstance(modalEl).hide();
             form.reset();
             if (contErrores) renderizar(contErrores, '');
-            notificar(`Usuario "${usuario}" creado exitosamente.`);
+            notificar(`Administrador "${usuario}" creado exitosamente.`);
         } catch (err) {
             notificarError(err);
         } finally {

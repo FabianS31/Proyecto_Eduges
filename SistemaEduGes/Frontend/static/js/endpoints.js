@@ -15,6 +15,7 @@ import { ESTADO_PACIENTE } from './constantes.js';
 // Autenticación — /api/auth/
 // ------------------------------------------------------------
 export const auth = {
+    crearAdministrador: (datos) => api.post('/auth/administradores/', datos),
     csrf: () => api.get('/auth/csrf/', { redirigirSi401: false }),
 
     // 200 → { id, usuario, rol }. 400 → credenciales incorrectas. 429 → bloqueado ({ reintentar_en })
@@ -59,6 +60,7 @@ export const profesionales = {
     // Lista de profesionales activos disponibles para recibir una reasignación (excluye al profesional actual).
     // Solo disponible para profesionales.
     obtenerParaReasignacion: () => api.get('/profesionales/para-reasignacion/'),
+    crearEspecialidad: (datos) => api.post('/profesionales/especialidades/', datos),
 
     // Reasigna un paciente al profesional indicado y transfiere sus turnos futuros.
     // Solo el profesional actualmente responsable puede reasignar.
@@ -251,7 +253,5 @@ export const catalogos = {
             ];
         }
     },
-    especialidades: async () => [
-        { id: 1, nombre: 'Psicopedagogo/a' },
-    ],
+    especialidades: () => api.get('/profesionales/especialidades/'),
 };

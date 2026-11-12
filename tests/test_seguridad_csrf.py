@@ -222,9 +222,12 @@ class SeguridadCSRFTests(unittest.TestCase):
              {'trabajo_sesion': 'Trabajo actualizado ficticio'}, 'B'),
             ('post', '/api/obras-sociales/', {'nombre': 'Obra ficticia nueva'}, 'super'),
             ('patch', f'/api/obras-sociales/{obra}/', {'nombre': 'Obra ficticia actualizada'}, 'super'),
+            ('post', '/api/profesionales/especialidades/', {'nombre': 'Especialidad nueva'}, 'super'),
+            ('post', '/api/auth/administradores/',
+             {'usuario': 'nuevo_administrador', 'password': self.password}, 'super'),
         ]
 
-    def test_inventario_de_20_operaciones(self):
+    def test_inventario_de_22_operaciones(self):
         def recorrer(patrones, prefijo=''):
             for patron in patrones:
                 ruta = prefijo + str(patron.pattern)
@@ -232,7 +235,9 @@ class SeguridadCSRFTests(unittest.TestCase):
                     yield from recorrer(patron.url_patterns, ruta)
                 else:
                     vista = getattr(patron.callback, 'view_class', None)
-                    if vista and ruta.startswith('api/') and not ruta.startswith('api/auth/'):
+                    if vista and ruta.startswith('api/') and (
+                        not ruta.startswith('api/auth/') or ruta == 'api/auth/administradores/'
+                    ):
                         for metodo in ('post', 'put', 'patch', 'delete'):
                             if hasattr(vista, metodo):
                                 yield metodo, ruta
@@ -376,8 +381,8 @@ def prueba_con_csrf(indice):
     return probar
 
 
-# 20 operaciones, cada una con cuatro rechazos CSRF y una escritura autorizada.
-for indice in range(20):
+# 22 operaciones, cada una con cuatro rechazos CSRF y una escritura autorizada.
+for indice in range(22):
     setattr(SeguridadCSRFTests, f'test_ruta_{indice + 1:02d}_rechazos', prueba_sin_csrf(indice))
     setattr(SeguridadCSRFTests, f'test_ruta_{indice + 1:02d}_autorizada', prueba_con_csrf(indice))
 

@@ -1,4 +1,5 @@
 from django.urls import path
+from .administradores import AdministradorCrearView
 
 from .views import (
     LoginView,
@@ -10,6 +11,7 @@ from .views import (
 
 
 urlpatterns = [
+    path('administradores/', AdministradorCrearView.as_view(), name='administradores-create'),
     path(
         'csrf/',
         CsrfView.as_view(),

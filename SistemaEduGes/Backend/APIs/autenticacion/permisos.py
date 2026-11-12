@@ -36,3 +36,14 @@ class TienePermiso(BasePermission):
             rol=request.user.rol,
             permiso__permiso=permiso_requerido
         ).exists()
+
+
+class EsAdministradorConPermiso(TienePermiso):
+    """Altas institucionales: administrador con permiso o cuenta técnica."""
+
+    def has_permission(self, request, view):
+        rol = getattr(getattr(request.user, 'rol', None), 'rol', None)
+        return (
+            rol in ('Administrador', 'SuperAdministrador')
+            and super().has_permission(request, view)
+        )

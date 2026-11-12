@@ -1,4 +1,5 @@
 from django.urls import path
+from .especialidades import EspecialidadListCreateView
 
 from .views import (
     ProfesionalListCreateView,
@@ -9,6 +10,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path('especialidades/', EspecialidadListCreateView.as_view(), name='especialidades-list-create'),
 
     path(
         '',
