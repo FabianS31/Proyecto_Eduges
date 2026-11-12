@@ -1,0 +1,29 @@
+<div class="modal fade" id="modal-editar-paciente" tabindex="-1" aria-labelledby="editar-paciente-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <form class="modal-content" id="form-editar-paciente" novalidate>
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="editar-paciente-titulo">Editar datos del paciente</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="editar-paciente-errores"></div>
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label" for="edit-pac-nombre">Nombre</label><input class="form-control" id="edit-pac-nombre" name="nombre" maxlength="100" required></div>
+                    <div class="col-md-6"><label class="form-label" for="edit-pac-apellido">Apellido</label><input class="form-control" id="edit-pac-apellido" name="apellido" maxlength="100" required></div>
+                    <div class="col-md-6"><label class="form-label" for="edit-pac-dni">DNI</label><input class="form-control" id="edit-pac-dni" name="dni" maxlength="20" required></div>
+                    <div class="col-md-6"><label class="form-label" for="edit-pac-nacimiento">Fecha de nacimiento</label><input class="form-control" id="edit-pac-nacimiento" name="fecha_nacimiento" type="date" required></div>
+                    <div class="col-md-6"><label class="form-label" for="edit-pac-direccion">Domicilio</label><input class="form-control" id="edit-pac-direccion" name="direccion" maxlength="255" required></div>
+                    <div class="col-md-6"><label class="form-label" for="edit-pac-mail">Email</label><input class="form-control" id="edit-pac-mail" name="mail" type="email" maxlength="50"></div>
+                    <div class="col-md-6"><label class="form-label" for="edit-pac-cud">Número de CUD</label><input class="form-control" id="edit-pac-cud" name="cud_numero" maxlength="20"></div>
+                    <div class="col-md-6"><label class="form-label" for="edit-pac-vencimiento">Vencimiento del CUD</label><input class="form-control" id="edit-pac-vencimiento" name="cud_vencimiento" type="date"></div>
+                    <div class="col-md-6"><label class="form-label" for="edit-pac-obra">Obra social</label><select class="form-select" id="edit-pac-obra" name="obra_social" required></select></div>
+                    <div class="col-md-6"><label class="form-label" for="edit-pac-afiliado">Número de afiliado</label><input class="form-control" id="edit-pac-afiliado" name="numero_afiliado" maxlength="20" required></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="btn-guardar-editar-paciente" disabled>Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+</div>

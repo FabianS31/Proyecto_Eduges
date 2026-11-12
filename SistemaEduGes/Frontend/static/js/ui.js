@@ -190,13 +190,16 @@ export function estadoCud(vencimiento) {
     };
 }
 
-// "Vence en 12 días", con color, ícono y texto (nunca solo color)
+// "CUD vence en 12 días", con color, ícono y texto (nunca solo color)
 export function badgeCud(vencimiento) {
     if (!vencimiento) {
         return html`<span class="eg-chip text-muted">${icono('help_outline')}Sin CUD</span>`;
     }
     const cud = estadoCud(vencimiento);
-    return html`<span class="eg-chip ${cud.clase}">${icono(cud.icono)}${cud.texto}</span>`;
+    const texto = cud.clave === CUD.VENCIDO
+        ? (cud.dias === -1 ? 'CUD vencido ayer' : `CUD vencido hace ${-cud.dias} días`)
+        : `CUD ${cud.texto.charAt(0).toLowerCase()}${cud.texto.slice(1)}`;
+    return html`<span class="eg-chip ${cud.clase} text-wrap">${icono(cud.icono)}${texto}</span>`;
 }
 
 // Para las tablas: "Por vencer" y debajo "Vence el 02/12/2026"

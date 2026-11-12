@@ -32,12 +32,13 @@
                 <div class="card border border-light-subtle bg-light p-3 mb-4 rounded-3 shadow-sm">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="fw-bold small text-dark d-flex align-items-center gap-1">
-                            <span class="ms text-primary" aria-hidden="true">add_circle</span>Nueva Obra Social / Cobertura
+                            <span id="os-form-titulo">Nueva Obra Social / Cobertura</span>
                         </span>
                         <span class="text-muted small" style="font-size: 0.75rem;">* Campo obligatorio</span>
                     </div>
 
                     <form id="form-crear-obra-social" novalidate>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mb-2" id="btn-cancelar-edicion-os" hidden>Cancelar edición</button>
                         <div id="form-os-errores" class="mb-2"></div>
                         <div class="row g-2 align-items-end">
                             <div class="col-md-5">

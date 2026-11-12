@@ -79,6 +79,11 @@ export const profesionales = {
 let pacientesEnMemoria = null;
 
 export const pacientes = {
+    async actualizar(id, datos) {
+        const actualizado = await cambiarTurnos(() => api.patch(`/pacientes/${id}/`, datos));
+        pacientesEnMemoria = null;
+        return actualizado;
+    },
     // Un profesional recibe solo los pacientes con una asignación vigente con él;
     // los administradores, todos. Ordenados por apellido y nombre:
     // [{ id_paciente, nombre, apellido, dni, fecha_nacimiento, direccion, mail, consentimiento,

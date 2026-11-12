@@ -119,10 +119,16 @@ h1, h2 { margin: 0; }
   gap: 16px;
 }
 
-.eg-brand {
+/* El espacio flexible centra el menú, pero no forma parte del enlace del logo. */
+.eg-brand-slot {
   order: 1;
   flex: 1 1 0;
   min-width: max-content;
+  display: flex;
+  align-items: center;
+}
+.eg-brand {
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -147,6 +153,21 @@ h1, h2 { margin: 0; }
 }
 .eg-nav-dropdown { position: relative; }
 .eg-nav-dropdown .dropdown-menu { z-index: 1065 !important; }
+.eg-nav-dropdown .dropdown-item { cursor: pointer; }
+.eg-nav-dropdown .dropdown-item:hover,
+.eg-nav-dropdown .dropdown-item:focus-visible,
+.eg-nav-dropdown .dropdown-item:active,
+.eg-nav-dropdown .dropdown-item.active {
+  background-color: var(--bs-dropdown-link-active-bg);
+  color: var(--bs-dropdown-link-active-color);
+  text-decoration: none;
+}
+.eg-nav-dropdown .dropdown-item:hover .ms,
+.eg-nav-dropdown .dropdown-item:focus-visible .ms,
+.eg-nav-dropdown .dropdown-item:active .ms,
+.eg-nav-dropdown .dropdown-item.active .ms {
+  color: var(--bs-dropdown-link-active-color) !important;
+}
 .eg-nav::-webkit-scrollbar { display: none; }
 .eg-nav__item { flex-shrink: 0; white-space: nowrap; display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: var(--eg-r-sm); border: none; background: transparent; color: var(--eg-ink-2); font-weight: 600; font-size: 15px; cursor: pointer; text-decoration: none; }
 .eg-nav__item .ms { font-size: 20px; }
@@ -738,9 +759,12 @@ textarea.form-control { min-height: 96px; }
     position: relative !important;
     gap: 12px !important;
   }
-  .eg-brand {
+  .eg-brand-slot {
     order: 1 !important;
     flex: 0 1 auto !important;
+    min-width: 0 !important;
+  }
+  .eg-brand {
     min-width: 0 !important;
     gap: 8px !important;
   }
@@ -846,9 +870,12 @@ textarea.form-control { min-height: 96px; }
     color: #c6d7ed !important;
     padding: 8px 14px !important;
   }
-  .eg-nav-dropdown .dropdown-item:hover {
-    background: rgba(255, 255, 255, 0.12) !important;
-    color: #ffffff !important;
+  .eg-nav-dropdown .dropdown-item:hover,
+  .eg-nav-dropdown .dropdown-item:focus-visible,
+  .eg-nav-dropdown .dropdown-item:active,
+  .eg-nav-dropdown .dropdown-item.active {
+    background-color: var(--bs-dropdown-link-active-bg) !important;
+    color: var(--bs-dropdown-link-active-color) !important;
   }
   .eg-nav-dropdown .dropdown-header {
     color: #94a9c7 !important;

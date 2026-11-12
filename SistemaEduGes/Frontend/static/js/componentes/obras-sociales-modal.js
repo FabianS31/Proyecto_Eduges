@@ -12,6 +12,7 @@
 
 import { ApiError } from '../api.js';
 import { obrasSociales } from '../endpoints.js';
+import { mostrarErroresDelFormulario } from './formularios.js';
 import { normalizarTexto } from '../texto.js';
 import {
     bloqueError,
@@ -19,7 +20,6 @@ import {
     html,
     icono,
     limpiarErroresFormulario,
-    mostrarErroresFormulario,
     notificar,
     notificarError,
     renderizar,
@@ -29,6 +29,8 @@ const $ = (id) => document.getElementById(id);
 
 let listaObrasSociales = [];
 let inicializado = false;
+let editandoObra = null;
+let guardandoObra = false;
 
 // ============================================================
 // Inicialización del Modal
@@ -38,6 +40,12 @@ export function inicializarModalObrasSociales() {
     if (!modalEl || inicializado) return;
 
     inicializado = true;
+    modalEl.addEventListener('hide.bs.modal', evento => {
+        if (guardandoObra) evento.preventDefault();
+    });
+    $('btn-cancelar-edicion-os')?.addEventListener('click', () => {
+        if (!guardandoObra) limpiarFormularioAlta();
+    });
 
     // Al abrir el modal, cargar o refrescar el padrón
     modalEl.addEventListener('show.bs.modal', async () => {
@@ -62,6 +70,22 @@ export function inicializarModalObrasSociales() {
 
     // Delegación de clics en la tabla para cambiar estado
     $('os-tabla-cuerpo')?.addEventListener('click', async (e) => {
+        if (guardandoObra) return;
+        const editar = e.target.closest('[data-accion="editar-os"]');
+        if (editar) {
+            const obra = listaObrasSociales.find(o => String(o.id) === editar.dataset.osId);
+            if (!obra) return;
+            limpiarFormularioAlta();
+            editandoObra = obra;
+            ['nombre', 'contacto', 'mail', 'web'].forEach(campo => {
+                $(`os-${campo}`).value = obra[campo] ?? '';
+            });
+            $('os-form-titulo').textContent = 'Editar Obra Social / Cobertura';
+            $('btn-guardar-os').textContent = 'Guardar cambios';
+            $('btn-cancelar-edicion-os').hidden = false;
+            $('os-nombre').focus();
+            return;
+        }
         const btn = e.target.closest('[data-accion="cambiar-estado-os"]');
         if (btn) {
             const osId = btn.dataset.osId;
@@ -183,6 +207,9 @@ function renderizarTabla() {
                     </span>
                 </td>
                 <td class="text-end">
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-accion="editar-os" data-os-id="${os.id}">
+                        ${icono('edit')}Editar
+                    </button>
                     ${esActiva ? html`
                         <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
                                 data-accion="cambiar-estado-os"
@@ -220,9 +247,10 @@ async function guardarNuevaObraSocial() {
     const inputMail = $('os-mail');
     const inputWeb = $('os-web');
 
-    if (!form || !btnGuardar) return;
+    if (!form || !btnGuardar || guardandoObra) return;
 
-    limpiarErroresFormulario(contenedorErrores, form);
+    limpiarErroresFormulario(form);
+    renderizar(contenedorErrores, '');
 
     const nombre = inputNombre?.value.trim() || '';
     const contacto = inputContacto?.value.trim() || null;
@@ -230,40 +258,47 @@ async function guardarNuevaObraSocial() {
     const web = inputWeb?.value.trim() || null;
 
     if (!nombre) {
-        mostrarErroresFormulario(contenedorErrores, form, {
+        mostrarErroresDelFormulario(form, contenedorErrores, new ApiError(400, {
             nombre: 'Ingresá el nombre de la obra social.',
-        });
+        }));
         inputNombre?.focus();
         return;
     }
 
+    guardandoObra = true;
+    const editando = editandoObra;
     botonCargando(btnGuardar, true, 'Guardando…');
 
     try {
-        await obrasSociales.crear({
+        const datos = {
             nombre,
             contacto,
             mail,
             web,
-        });
+        };
+        if (editando) {
+            const cambios = Object.fromEntries(Object.entries(datos)
+                .filter(([campo, valor]) => valor !== (editando[campo] ?? null)));
+            await obrasSociales.actualizar(editando.id, cambios);
+        } else {
+            await obrasSociales.crear(datos);
+        }
 
-        notificar(`Obra social "${nombre}" agregada correctamente.`, 'exito');
+        notificar(`Obra social "${nombre}" ${editando ? 'actualizada' : 'agregada'} correctamente.`, 'exito');
+        botonCargando(btnGuardar, false);
         limpiarFormularioAlta();
 
         // Notificar al sistema para actualizar selectores dinámicos
         window.dispatchEvent(new CustomEvent('eduges:obras-sociales-actualizadas', {
-            detail: { nombre, accion: 'creada' },
+            detail: { id: editando?.id, nombre, accion: editando ? 'actualizada' : 'creada' },
         }));
 
         await cargarListado();
     } catch (error) {
         console.error('Error al guardar obra social:', error);
-        if (error instanceof ApiError && error.detalles) {
-            mostrarErroresFormulario(contenedorErrores, form, error.detalles);
-        } else {
-            notificarError(error);
-        }
+        mostrarErroresDelFormulario(form, contenedorErrores, error);
     } finally {
+        guardandoObra = false;
         botonCargando(btnGuardar, false);
     }
 }
@@ -308,8 +343,13 @@ async function cambiarEstadoObraSocial(id, nuevoEstado) {
 // Limpieza del formulario
 // ============================================================
 function limpiarFormularioAlta() {
+    editandoObra = null;
+    $('os-form-titulo').textContent = 'Nueva Obra Social / Cobertura';
+    $('btn-guardar-os').textContent = 'Agregar';
+    $('btn-cancelar-edicion-os').hidden = true;
     const form = $('form-crear-obra-social');
     const contenedorErrores = $('form-os-errores');
     if (form) form.reset();
-    if (contenedorErrores) limpiarErroresFormulario(contenedorErrores, form);
+    if (form) limpiarErroresFormulario(form);
+    if (contenedorErrores) renderizar(contenedorErrores, '');
 }

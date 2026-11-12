@@ -26,13 +26,15 @@
          data-requiere-permiso: el ítem solo se muestra si el usuario tiene ese permiso (lo resuelve layout.js). -->
     <header class="eg-header">
         <div class="eg-header__inner">
-            <a class="eg-brand" href="{% url 'home' %}">
-                <span class="eg-brand__logo"><img src="{% static 'img/Logo.png' %}" alt="" width="40" height="40"></span>
-                <span class="eg-brand__text">
-                    <span class="eg-brand__name">EduGes</span>
-                    <span class="eg-brand__sub">Rincón Psi</span>
-                </span>
-            </a>
+            <div class="eg-brand-slot">
+                <a class="eg-brand" href="{% url 'home' %}">
+                    <span class="eg-brand__logo"><img src="{% static 'img/Logo.png' %}" alt="" width="40" height="40"></span>
+                    <span class="eg-brand__text">
+                        <span class="eg-brand__name">EduGes</span>
+                        <span class="eg-brand__sub">Rincón Psi</span>
+                    </span>
+                </a>
+            </div>
 
             <!-- Botón Hamburguesa para celulares y tablets -->
             <button class="eg-menu-toggle" id="btn-toggle-menu" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="eg-nav-collapse">

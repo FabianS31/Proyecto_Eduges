@@ -1,4 +1,6 @@
 
+from collections.abc import Mapping
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -326,3 +328,36 @@ class PacienteSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+
+class PacienteEdicionSerializer(PacienteSerializer):
+    """Actualización personal, sin campos de asignación ni información clínica."""
+
+    mail = serializers.EmailField(max_length=50, allow_blank=True, allow_null=True, required=False)
+
+    class Meta(PacienteSerializer.Meta):
+        fields = [
+            'nombre', 'apellido', 'dni', 'fecha_nacimiento', 'direccion', 'mail',
+            'cud_numero', 'cud_vencimiento', 'obra_social', 'numero_afiliado',
+        ]
+        read_only_fields = []
+
+    def to_internal_value(self, data):
+        if not isinstance(data, Mapping):
+            return super().to_internal_value(data)
+        desconocidos = set(data) - set(self.fields)
+        if desconocidos:
+            raise serializers.ValidationError({
+                campo: 'Este campo no se puede editar.' for campo in desconocidos
+            })
+        return super().to_internal_value(data)
+
+    def validate_fecha_nacimiento(self, value):
+        if value > timezone.localdate():
+            raise serializers.ValidationError('La fecha de nacimiento no puede ser futura.')
+        return value
+
+    def validate_obra_social(self, value):
+        if self.instance and value.pk == self.instance.obra_social_id:
+            return value
+        return super().validate_obra_social(value)

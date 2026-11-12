@@ -54,6 +54,9 @@ class TipoObraSocialSerializer(serializers.ModelSerializer):
 
 class ObraSocialSerializer(serializers.ModelSerializer):
 
+    mail = serializers.EmailField(max_length=150, required=False, allow_null=True, allow_blank=True)
+    web = serializers.URLField(max_length=255, required=False, allow_null=True, allow_blank=True)
+
     id = serializers.IntegerField(
         source='id_obra_social',
         read_only=True

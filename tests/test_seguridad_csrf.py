@@ -225,9 +225,10 @@ class SeguridadCSRFTests(unittest.TestCase):
             ('post', '/api/profesionales/especialidades/', {'nombre': 'Especialidad nueva'}, 'super'),
             ('post', '/api/auth/administradores/',
              {'usuario': 'nuevo_administrador', 'password': self.password}, 'super'),
+            ('patch', f'/api/pacientes/{pac}/', {'direccion': 'Domicilio actualizado'}, 'B'),
         ]
 
-    def test_inventario_de_22_operaciones(self):
+    def test_inventario_de_23_operaciones(self):
         def recorrer(patrones, prefijo=''):
             for patron in patrones:
                 ruta = prefijo + str(patron.pattern)
@@ -381,8 +382,8 @@ def prueba_con_csrf(indice):
     return probar
 
 
-# 22 operaciones, cada una con cuatro rechazos CSRF y una escritura autorizada.
-for indice in range(22):
+# 23 operaciones, cada una con cuatro rechazos CSRF y una escritura autorizada.
+for indice in range(23):
     setattr(SeguridadCSRFTests, f'test_ruta_{indice + 1:02d}_rechazos', prueba_sin_csrf(indice))
     setattr(SeguridadCSRFTests, f'test_ruta_{indice + 1:02d}_autorizada', prueba_con_csrf(indice))
 

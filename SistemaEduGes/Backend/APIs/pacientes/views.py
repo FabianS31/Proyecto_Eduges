@@ -1,5 +1,8 @@
 
+from django.db import IntegrityError, transaction
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,7 +18,33 @@ from APIs.servicios.estado_entidad_service import (
     EstadoEntidadService
 )
 
-from .serializers.paciente_serializer import PacienteSerializer
+from .serializers.paciente_serializer import PacienteSerializer, PacienteEdicionSerializer
+
+
+class PacienteDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, paciente_id):
+        if getattr(request.user.rol, 'rol', None) != 'Profesional':
+            raise PermissionDenied('Solo el profesional asignado puede editar al paciente.')
+        try:
+            with transaction.atomic():
+                paciente = get_object_or_404(Paciente.objects.select_for_update(), pk=paciente_id)
+                if not AsignacionProfesional.objects.filter(
+                    paciente=paciente, profesional__usuario=request.user, fecha_fin__isnull=True,
+                ).exists():
+                    raise PermissionDenied('El paciente ya no está asignado a vos.')
+                serializer = PacienteEdicionSerializer(paciente, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                paciente = serializer.save()
+                resultado = PacienteSerializer(paciente).data
+        except IntegrityError:
+            if 'dni' in request.data and Paciente.objects.filter(
+                dni=request.data['dni'],
+            ).exclude(pk=paciente_id).exists():
+                raise ValidationError({'dni': 'Ya existe un paciente con ese DNI.'})
+            raise
+        return Response(resultado)
 
 
 class PacienteListView(APIView):

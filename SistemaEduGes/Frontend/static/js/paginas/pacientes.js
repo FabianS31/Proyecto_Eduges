@@ -16,6 +16,7 @@
 import { prepararFormularioPaciente } from '../componentes/formulario-paciente.js?v=20261022_1';
 import { crearCombobox } from '../componentes/combobox.js';
 import { guardar } from '../componentes/formularios.js';
+import { prepararEdicionPaciente } from '../componentes/editar-paciente.js';
 import {
     enteroDeUrl,
     guardarEnUrl,
@@ -492,7 +493,6 @@ function abrirFicha(id) {
         <div class="eg-ficha${estado.acciones ? '' : ' eg-ficha--una'}">
             <div class="eg-ficha__datos">
                 <div class="eg-ficha__chips d-flex align-items-center gap-2 flex-wrap">
-                    ${badgeCud(p.cud_vencimiento)}
                     <span class="eg-chip ${esActivo ? 'eg-chip--ok' : 'eg-chip--err'}">
                         ${icono(esActivo ? 'person_check' : 'person_off')}${estadoPaciente}
                     </span>
@@ -511,7 +511,13 @@ function abrirFicha(id) {
                 </div>
 
                 <section class="eg-ficha__bloque" aria-labelledby="ficha-datos-titulo">
-                    <h3 id="ficha-datos-titulo">${icono('person')}Datos personales</h3>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                        <h3 id="ficha-datos-titulo" class="mb-0">${icono('person')}Datos personales</h3>
+                        ${esProfesional(estado.usuario) && p.profesional_responsable?.id === estado.usuario.profesional?.id ? html`
+                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 d-inline-flex align-items-center gap-1 ms-auto flex-shrink-0" data-accion="editar-paciente">
+                                ${icono('edit')}Editar datos
+                            </button>` : ''}
+                    </div>
                     <dl class="ficha-dato row g-0">
                         <div class="col-6"><dt>Nacimiento</dt><dd>${formatearFecha(p.fecha_nacimiento)}</dd></div>
                         <div class="col-6"><dt>Edad</dt><dd>${textoEdad(p.edad)}</dd></div>
@@ -522,7 +528,10 @@ function abrirFicha(id) {
                 </section>
 
                 <section class="eg-ficha__bloque" aria-labelledby="ficha-cud-titulo">
-                    <h3 id="ficha-cud-titulo">${icono('verified_user')}Obra social y CUD</h3>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                        <h3 id="ficha-cud-titulo" class="mb-0">${icono('verified_user')}Obra social y CUD</h3>
+                        <div class="ms-auto mw-100">${badgeCud(p.cud_vencimiento)}</div>
+                    </div>
                     <dl class="ficha-dato row g-0">
                         <div class="col-6"><dt>N° de afiliado</dt><dd>${p.numero_afiliado}</dd></div>
                         <div class="col-6"><dt>N° de CUD</dt><dd>${p.cud_numero ?? html`<span class="text-muted">—</span>`}</dd></div>
@@ -1269,6 +1278,24 @@ async function iniciar() {
     }
 
     prepararAlta();
+    const editarPaciente = prepararEdicionPaciente({
+        alGuardar: (actualizado) => {
+            ++estado.peticionListado;
+            estado.todos = estado.todos.map(p => p.id_paciente === actualizado.id_paciente
+                ? { ...actualizado, cud: estadoCud(actualizado.cud_vencimiento), edad: edad(actualizado.fecha_nacimiento) } : p);
+            actualizarConteosCud();
+            mostrarListado();
+        },
+        alCerrar: (id) => { if (id) abrirFicha(id); },
+    });
+    $('ficha-cuerpo').addEventListener('click', (evento) => {
+        if (!evento.target.closest('[data-accion="editar-paciente"]')) return;
+        const paciente = estado.todos.find(p => p.id_paciente === estado.fichaId);
+        if (!paciente || !esProfesional(estado.usuario)
+            || paciente.profesional_responsable?.id !== estado.usuario.profesional?.id) return;
+        $('ficha-paciente').addEventListener('hidden.bs.modal', () => editarPaciente(paciente), { once: true });
+        panelFicha().hide();
+    });
     prepararTurnosFicha();
     prepararGestionTutores();
     prepararReasignacion();
