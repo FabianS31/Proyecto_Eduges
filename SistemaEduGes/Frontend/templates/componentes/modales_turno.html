@@ -24,19 +24,6 @@
                            aria-describedby="turno-paciente-ayuda">
                     <div class="form-text" id="turno-paciente-ayuda">Escribí el nombre o el DNI y elegí de la lista.</div>
                 </div>
-                <!-- Modalidad: ¿Reunión de padres / tutores? (Ítem 1 Minuta) -->
-                <div class="form-check form-switch mb-3 p-2 rounded bg-light border">
-                    <input class="form-check-input ms-0 me-2" type="checkbox" role="switch" id="turno-es-reunion" name="es_reunion_padres">
-                    <label class="form-check-label small fw-semibold" for="turno-es-reunion">
-                        <span class="ms me-1 align-middle text-primary" aria-hidden="true">family_restroom</span>¿Es reunión de padres / tutores?
-                    </label>
-                </div>
-                <div class="mb-3" id="turno-tutor-campo" hidden>
-                    <label for="turno-tutor" class="form-label small fw-semibold">Tutor / Responsable asistente</label>
-                    <input type="text" class="form-control" id="turno-tutor" name="tutor"
-                           aria-describedby="turno-tutor-ayuda" autocomplete="off">
-                    <div class="form-text" id="turno-tutor-ayuda">Escribí el nombre del tutor para asociarlo o seleccionar su paciente.</div>
-                </div>
                 <fieldset class="mb-3">
                     <legend class="form-label small fw-semibold mb-2">¿En cuántas fechas?</legend>
                     <div class="btn-group eg-selector-modo-turno w-100" role="group" aria-label="Cantidad de fechas">
@@ -164,10 +151,6 @@
                     <div class="mb-2 pb-2 border-bottom">
                         <span class="small text-muted d-block">Paciente</span>
                         <strong class="fs-6" id="resumen-turno-paciente">—</strong>
-                    </div>
-                    <div class="mb-2 pb-2 border-bottom" id="resumen-turno-modalidad-row">
-                        <span class="small text-muted d-block">Modalidad</span>
-                        <span id="resumen-turno-modalidad" class="badge bg-secondary-subtle text-secondary border">Sesión individual</span>
                     </div>
                     <div class="mb-2 pb-2 border-bottom">
                         <span class="small text-muted d-block">Profesional</span>

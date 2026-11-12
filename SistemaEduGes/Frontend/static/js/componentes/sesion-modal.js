@@ -67,6 +67,22 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
     const rolNombre = usuario?.rol?.nombre ?? usuario?.rol ?? '';
     const esAdmin = rolNombre === 'Administrador';
 
+    function actualizarIndicadorReunion() {
+        const indicador = $('sesion-reunion-identificada');
+        if (indicador) indicador.hidden = esAdmin || !cargaValida || !turnoActual
+            || !/^Reunión con (?:tutor|padre\/madre o tutor)(?:\r?\n|$)/.test(trabajoInput?.value.trim() ?? '');
+    }
+
+    trabajoInput?.addEventListener('input', actualizarIndicadorReunion);
+
+    $('sesion-insertar-reunion')?.addEventListener('click', () => {
+        if (esAdmin || !cargaValida || !turnoActual || !['creacion', 'edicion'].includes(modo)
+            || !trabajoInput || trabajoInput.value.trim() || btnGuardar?.disabled) return;
+        trabajoInput.value = 'Reunión con padre/madre o tutor\nParticipante y vínculo: \nModalidad (presencial o virtual): \nTemas tratados: \nAcuerdos y seguimiento: ';
+        actualizarIndicadorReunion();
+        trabajoInput.focus();
+    });
+
     const obtenerModal = prepararModal({
         modal: modalElemento,
         formulario,
@@ -82,6 +98,7 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
         turnoActual = null;
         cargaValida = false;
         modo = 'lectura';
+        actualizarIndicadorReunion();
     });
 
     const obtenerModalPendientes = modalPendientesElemento
@@ -166,6 +183,7 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
         cargaValida = false;
         modo = 'lectura';
         turnoActual = turno;
+        actualizarIndicadorReunion();
         const turnoId = turno?.id_turno ?? turno?.id;
         if (!turnoId) {
             console.error('Turno sin ID para registro de sesión', turno);
@@ -250,6 +268,7 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
                 if (notaInput) notaInput.value = sesionExistente.nota_sesion ?? '';
             }
             cargaValida = !esAdmin;
+            actualizarIndicadorReunion();
         } catch (error) {
             if (peticionId !== peticionCargaActual) {
                 return;

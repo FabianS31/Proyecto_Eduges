@@ -50,6 +50,12 @@
                                   aria-describedby="sesion-trabajo-ayuda"></textarea>
                         <div class="form-text" id="sesion-trabajo-ayuda">
                             <span id="sesion-trabajo-desc">Resumen de tareas y actividades desarrolladas.</span>
+                            <div class="mt-2 p-2 rounded bg-light border">
+                                <button type="button" id="sesion-insertar-reunion" class="btn btn-sm btn-outline-primary">Reunión con padre/madre o tutor</button>
+                                <span class="d-block mt-1">Inserta una guía si Trabajo realizado está vacío. Completá participante y vínculo, modalidad, temas y acuerdos con información real.</span>
+                                <span class="d-block">La reunión se documenta al guardar este registro; no se identifica como tal en la agenda.</span>
+                                <div id="sesion-reunion-identificada" class="mt-1 text-primary fw-semibold" hidden>Reunión con padre/madre o tutor — identificada por el encabezado del texto.</div>
+                            </div>
                         </div>
                     </div>
 
@@ -61,6 +67,7 @@
                                   aria-describedby="sesion-diagnostico-ayuda"></textarea>
                         <div class="form-text" id="sesion-diagnostico-ayuda">
                             <span>Diagnóstico clínico y evolución del paciente durante la sesión.</span>
+                            <span class="d-block">Es obligatorio. Si corresponde al encuentro, podés indicar: «No se realizó evaluación diagnóstica durante este encuentro».</span>
                         </div>
                     </div>
 

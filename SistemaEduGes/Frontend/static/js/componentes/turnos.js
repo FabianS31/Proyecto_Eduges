@@ -1144,42 +1144,6 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
 
 
 
-    const tutorCampo = $('turno-tutor-campo');
-
-    const switchReunion = $('turno-es-reunion');
-
-    const tutorCombobox = $('turno-tutor') ? crearCombobox($('turno-tutor'), {
-
-        buscar: sugerirTutoresConPacientes,
-
-        minimo: 1,
-
-        mensajeVacio: 'No encontramos tutores con ese nombre.',
-
-    }) : null;
-
-
-
-    if (switchReunion && tutorCampo) {
-
-        switchReunion.addEventListener('change', () => {
-
-            tutorCampo.hidden = !switchReunion.checked;
-
-            if (switchReunion.checked) {
-
-                $('turno-tutor')?.focus();
-
-            } else if (tutorCombobox) {
-
-                tutorCombobox.limpiar();
-
-            }
-
-        });
-
-    }
-
     const calendario = crearSelectorFechas(contenedorCalendario, {
 
         desde: hoyISO(),
@@ -1260,7 +1224,7 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
         modal: modalNuevo,
         formulario,
         contenedorErrores: $('form-turno-errores'),
-        comboboxes: [paciente, hora, profesional, tutorCombobox].filter(Boolean),
+        comboboxes: [paciente, hora, profesional].filter(Boolean),
         alAbrir: () => {
             const fecha = $('turno-fecha');
             fecha.min = hoyISO();
@@ -1278,9 +1242,6 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
 
             calendario.limpiar();
             actualizarModo();
-            if (switchReunion) switchReunion.checked = false;
-            if (tutorCampo) tutorCampo.hidden = true;
-            if (tutorCombobox) tutorCombobox.limpiar();
             if (inicial.paciente) {
                 paciente.elegir(opcionPaciente(inicial.paciente));
             }
@@ -1399,7 +1360,6 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
         }
 
         // Resumen para modal de confirmación (Ítems 2 y 3 Minuta)
-        const esReunion = switchReunion?.checked;
         const nombrePacienteTexto = $('turno-paciente')?.value || '';
         const nombreProfTexto = deProfesional
             ? `${nombreCompleto(usuario.profesional)} (vos)`
@@ -1421,18 +1381,6 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
         if ($('resumen-turno-profesional')) $('resumen-turno-profesional').textContent = nombreProfTexto;
         if ($('resumen-turno-fecha')) $('resumen-turno-fecha').textContent = textoFecha;
         if ($('resumen-turno-horario')) $('resumen-turno-horario').textContent = textoHorario;
-
-        const tutorTexto = $('turno-tutor')?.value?.trim();
-        const modalidadEl = $('resumen-turno-modalidad');
-        if (modalidadEl) {
-            if (esReunion) {
-                modalidadEl.className = 'badge bg-primary-subtle text-primary border border-primary-subtle';
-                modalidadEl.textContent = tutorTexto ? `Reunión de padres / tutores (Tutor: ${tutorTexto})` : 'Reunión de padres / tutores';
-            } else {
-                modalidadEl.className = 'badge bg-secondary-subtle text-secondary border';
-                modalidadEl.textContent = 'Sesión clínica individual';
-            }
-        }
 
         if ($('confirmar-turno-error')) $('confirmar-turno-error').innerHTML = '';
 
@@ -1511,9 +1459,6 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
             paciente.limpiar();
             hora.limpiar();
             if (profesional) profesional.limpiar();
-            if (tutorCombobox) tutorCombobox.limpiar();
-            if (switchReunion) switchReunion.checked = false;
-            if (tutorCampo) tutorCampo.hidden = true;
             calendario.limpiar();
 
             turnoPendienteDeConfirmar = null;
