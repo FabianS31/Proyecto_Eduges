@@ -1,0 +1,30 @@
+<!-- ============================================================
+     EduGes - Modal de Alta de Especialidad
+     Permite al Administrador registrar una nueva especialidad médica/clínica.
+     ============================================================ -->
+<div class="modal fade" id="modal-especialidad" tabindex="-1" aria-labelledby="modal-especialidad-titulo" aria-hidden="true" style="z-index: 1065;">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0 shadow" id="form-nueva-especialidad" novalidate>
+            <div class="modal-header border-0 pb-0">
+                <h2 class="modal-title fs-5 fw-bold" id="modal-especialidad-titulo">
+                    <span class="ms text-primary me-1" aria-hidden="true">school</span>Crear Especialidad
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body py-3">
+                <div id="form-especialidad-errores"></div>
+                <div class="mb-3">
+                    <label for="especialidad-nombre" class="form-label small fw-semibold">Nombre de la especialidad *</label>
+                    <input type="text" class="form-control" id="especialidad-nombre" name="nombre" placeholder="Ej.: Psicopedagogía, Fonoaudiología, etc." required maxlength="100" autocomplete="off">
+                    <div class="form-text small">La especialidad quedará disponible para asignar a profesionales en el centro.</div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1" id="btn-guardar-especialidad">
+                    <span class="ms" aria-hidden="true">add_circle</span>Guardar especialidad
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

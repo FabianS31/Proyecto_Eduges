@@ -36,7 +36,7 @@ import {
 import { ESTADO_TURNO, MESES_AVISO_CUD, PERMISO, TURNO_DURACION_MINUTOS } from '../constantes.js';
 import { pacientes, profesionales, sesiones } from '../endpoints.js';
 import { diasEntre, hoyISO, sumarDias } from '../fechas.js';
-import { esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
+import { esAdministrador, esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
 import {
     bloqueCargando,
     bloqueVacio,
@@ -220,10 +220,12 @@ function mostrarCentro() {
     });
     estado.acciones.escuchar($('centro-agenda'));
     estado.acciones.escuchar($('centro-confirmar'));
-    if (tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR)) {
+    if (tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR) && !esAdministrador(estado.usuario)) {
         $('acciones-profesional').hidden = false;
         $('btn-nuevo-paciente').hidden = true;
         $('btn-nuevo-turno').addEventListener('click', () => estado.acciones.abrirNuevo());
+    } else {
+        $('acciones-profesional').hidden = true;
     }
     // "Ver cuáles" baja hasta los turnos sin confirmar y deja el foco ahí
     document.querySelector('a[href="#centro-confirmar-titulo"]').addEventListener('click', (evento) => {

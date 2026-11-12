@@ -429,7 +429,7 @@ function validarAlta(datos, formulario) {
 function prepararAlta() {
     const btnNuevo = $('btn-nuevo-profesional');
     const formNuevo = $('form-nuevo-profesional');
-    if (!btnNuevo || !formNuevo) return;
+    if (!formNuevo) return;
 
     const selectEspecialidad = $('nuevo-prof-especialidad');
     const inputNombre = $('nuevo-prof-nombre');
@@ -461,7 +461,7 @@ function prepararAlta() {
         },
     });
 
-    btnNuevo.addEventListener('click', () => modalAlta().show());
+    btnNuevo?.addEventListener('click', () => modalAlta().show());
 
     // Capitalizar nombre y apellido al salir del campo
     [inputNombre, inputApellido].forEach((input) => {
@@ -622,6 +622,22 @@ async function iniciar() {
     if (puedeEditar()) {
         prepararEdicion();
         prepararAlta();
+
+        const linkNavNuevo = document.getElementById('nav-item-nuevo-profesional');
+        if (linkNavNuevo) {
+            linkNavNuevo.addEventListener('click', (e) => {
+                e.preventDefault();
+                modalAlta?.()?.show();
+            });
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('nuevo') === '1') {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('nuevo');
+            window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+            modalAlta?.()?.show();
+        }
     }
     if (await cargarListado() && fichaInicial) {
         abrirFicha(fichaInicial);

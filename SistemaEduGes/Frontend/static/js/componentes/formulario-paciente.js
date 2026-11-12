@@ -26,8 +26,13 @@ const $ = (id) => document.getElementById(id);
 const soloDigitos = (texto) => /^\d+$/.test(texto);
 
 async function sugerirObrasSociales(texto) {
-    const opciones = (await catalogos.obrasSociales()).map((item) => ({ valor: item.id, texto: item.nombre }));
-    return buscarEnLista(opciones)(texto);
+    try {
+        const lista = await catalogos.obrasSociales();
+        const opciones = (Array.isArray(lista) ? lista : []).map((item) => ({ valor: item.id, texto: item.nombre }));
+        return buscarEnLista(opciones)(texto);
+    } catch {
+        return [];
+    }
 }
 
 let tutoresDisponibles = null;
@@ -235,11 +240,21 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
         alAbrir: () => {
             tutoresDisponibles = null;
             $('pac-nacimiento').max = hoyISO();
-            pacienteCreadoId = null;
+            if (!pacienteCreadoId) {
+                alternarBloqueoPaciente(false);
+            }
             cargarOpcionesParentescos(selectParentesco);
             inicializarRolYProfesionales();
         },
     });
+
+    function alternarBloqueoPaciente(bloquear) {
+        const campos = ['pac-nombre', 'pac-apellido', 'pac-dni', 'pac-nacimiento', 'pac-direccion', 'pac-numero-afiliado', 'pac-cud-numero', 'pac-cud-vencimiento'];
+        campos.forEach((id) => {
+            const el = $(id);
+            if (el) el.readOnly = Boolean(bloquear);
+        });
+    }
 
     let enviando = false;
 
@@ -311,6 +326,7 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
                         ...(esAdministrativo && datos.profesional ? { profesional: datos.profesional } : {}),
                     });
                     pacienteCreadoId = resultadoPaciente.id_paciente;
+                    alternarBloqueoPaciente(true);
                 } else {
                     resultadoPaciente = { id_paciente: pacienteCreadoId };
                 }
@@ -334,10 +350,12 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
                         const claveNormalizada = (clave === 'parentesco' || clave === 'parentesco_id') ? 'parentesco_id' : clave;
                         deCampo[`tutor_${claveNormalizada}`] = valor;
                     }
+                    deCampo._general = ['El paciente fue registrado con éxito, pero falló la vinculación del tutor. Completá o corregí los datos del tutor para finalizar el alta.'];
                     throw new ApiError(errorTutor.status, deCampo);
                 }
 
                 pacienteCreadoId = null;
+                alternarBloqueoPaciente(false);
                 return resultadoPaciente;
             },
             mensajeExito: 'El paciente y su tutor responsable quedaron registrados exitosamente.',

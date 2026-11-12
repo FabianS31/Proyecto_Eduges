@@ -133,7 +133,8 @@ const deTodos = () => !esProfesional(estado.usuario);
 const cantidadTurnos = (n) => (n === 1 ? '1 turno' : `${n} turnos`);
 
 function botonAgendar(fecha, { enlace = false } = {}) {
-    const sePuede = fecha >= hoyISO() && fecha <= fechaMaximaTurno() && tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR);
+    const puedeCrear = esProfesional(estado.usuario) || estado.usuario?.is_superuser;
+    const sePuede = puedeCrear && fecha >= hoyISO() && fecha <= fechaMaximaTurno() && tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR);
     if (!sePuede) {
         return null;
     }
@@ -258,7 +259,9 @@ async function mostrarTurnos({ silencioso = false } = {}) {
     }
 
     try {
-        const todos = await obtenerTurnos();
+        const fRef = aFecha(estado.filtros.fecha);
+        const filtrosConsulta = esMes ? { mes: fRef.getMonth() + 1, anio: fRef.getFullYear() } : null;
+        const todos = await obtenerTurnos(filtrosConsulta);
         if (pedido !== estado.pedido) {
             return;
         }
@@ -382,7 +385,8 @@ function prepararAcciones() {
         });
     }
 
-    if (!tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR)) {
+    const puedeCrearTurno = (esProfesional(estado.usuario) || estado.usuario?.is_superuser) && tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR);
+    if (!puedeCrearTurno) {
         return;
     }
     const boton = $('btn-nuevo-turno');

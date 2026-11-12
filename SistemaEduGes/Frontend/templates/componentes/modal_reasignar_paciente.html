@@ -1,0 +1,37 @@
+<!-- ============================================================
+     EduGes - Modal de Reasignación de Paciente (Profesionales)
+     Permite transferir un paciente a otro profesional activo
+     antes de una licencia o baja, transfiriendo sus turnos futuros.
+     ============================================================ -->
+<div class="modal fade" id="modal-reasignar-paciente" tabindex="-1" aria-labelledby="modal-reasignar-titulo" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0 shadow" id="form-reasignar-paciente" novalidate>
+            <div class="modal-header border-0 pb-0">
+                <h2 class="modal-title fs-5 fw-bold" id="modal-reasignar-titulo">
+                    <span class="ms me-1 text-primary" aria-hidden="true">swap_horiz</span>Reasignar paciente
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body py-3">
+                <div id="form-reasignar-errores"></div>
+                <p class="text-secondary small mb-3">
+                    Vas a transferir a <strong id="reasignar-paciente-nombre" class="text-dark"></strong> a otro profesional del centro.
+                    Sus turnos futuros (<em>Pendientes</em> y <em>Confirmados</em>) se transferirán automáticamente, conservando intacta su historia clínica y diagnósticos.
+                </p>
+                <div class="mb-3">
+                    <label for="reasignar-profesional-select" class="form-label small fw-semibold">Nuevo profesional responsable *</label>
+                    <select class="form-select" id="reasignar-profesional-select" name="profesional_id" required>
+                        <option value="">Cargando profesionales disponibles...</option>
+                    </select>
+                    <div class="form-text small">Solo se muestran profesionales activos disponibles para recibir pacientes.</div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1" id="btn-confirmar-reasignacion">
+                    <span class="ms" aria-hidden="true">swap_horiz</span>Confirmar reasignación
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

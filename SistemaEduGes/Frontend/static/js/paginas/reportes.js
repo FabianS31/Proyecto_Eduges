@@ -10,7 +10,7 @@
 // ============================================================
 
 import { buscarEnLista, crearCombobox } from '../componentes/combobox.js';
-import { catalogos, pacientes, profesionales, reportes, sesiones } from '../endpoints.js';
+import { catalogos, pacientes, profesionales, reportes, sesiones, tutores } from '../endpoints.js';
 import { edad, hoyISO } from '../fechas.js';
 import { esProfesional, obtenerUsuario } from '../layout.js';
 import { normalizarTexto } from '../texto.js';
@@ -44,6 +44,7 @@ const estado = {
     totalOriginal: 0,
     profesionalesLista: [],
     obrasSocialesLista: [],
+    tutoresLista: [],
     cargando: false,
     consulta: 0,
     resultadosVigentes: false,
@@ -187,14 +188,38 @@ async function cargarCatalogos() {
             }
 
             // Cargar obras sociales para el filtro de pacientes
-            estado.obrasSocialesLista = await catalogos.obrasSociales();
-            const selectOS = $('filtro-paciente-obra-social');
-            if (selectOS && estado.obrasSocialesLista.length > 0) {
-                const opcionesOS = estado.obrasSocialesLista.map(
-                    (os) => html`<option value="${os.id}">${os.nombre}</option>`
-                );
-                renderizar(selectOS, html`<option value="">Todas las obras sociales</option>${opcionesOS}`);
+            try {
+                estado.obrasSocialesLista = await catalogos.obrasSociales();
+                const selectOS = $('filtro-paciente-obra-social');
+                if (selectOS && Array.isArray(estado.obrasSocialesLista) && estado.obrasSocialesLista.length > 0) {
+                    const opcionesOS = estado.obrasSocialesLista.map(
+                        (os) => html`<option value="${os.id}">${os.nombre}</option>`
+                    );
+                    renderizar(selectOS, html`<option value="">Todas las obras sociales</option>${opcionesOS}`);
+                }
+            } catch (errOS) {
+                console.warn('No se pudieron precargar obras sociales para filtros en reportes:', errOS);
             }
+        }
+
+        // Cargar tutores para filtros de turnos y pacientes
+        try {
+            estado.tutoresLista = await tutores.listar();
+            if (Array.isArray(estado.tutoresLista) && estado.tutoresLista.length > 0) {
+                const opcionesTutores = estado.tutoresLista.map(
+                    (t) => html`<option value="${t.id}">${t.apellido}, ${t.nombre}</option>`
+                );
+                const selectTurnoTutor = $('filtro-turno-tutor');
+                if (selectTurnoTutor) {
+                    renderizar(selectTurnoTutor, html`<option value="">Todos los tutores</option>${opcionesTutores}`);
+                }
+                const selectPacienteTutor = $('filtro-paciente-tutor');
+                if (selectPacienteTutor) {
+                    renderizar(selectPacienteTutor, html`<option value="">Todos los tutores</option>${opcionesTutores}`);
+                }
+            }
+        } catch (errTutores) {
+            console.warn('Aviso al cargar tutores en reportes:', errTutores);
         }
     } catch (error) {
         console.warn('Aviso al cargar catálogos auxiliares:', error);
@@ -468,6 +493,7 @@ async function consultarReporte() {
             const hasta = $('filtro-turno-hasta').value;
             const estadoId = $('filtro-turno-estado').value;
             const proId = $('filtro-turno-profesional')?.value;
+            const tutorId = $('filtro-turno-tutor')?.value;
             textoBusqueda = $('filtro-turno-busqueda').value.trim();
             const textoTrabajo = $('filtro-turno-trabajo')?.value.trim();
 
@@ -476,6 +502,7 @@ async function consultarReporte() {
             if (hasta) queryParams.fecha_hasta = hasta;
             if (estadoId) queryParams.estado_id = parseInt(estadoId, 10);
             if (proId && !estado.esPro) queryParams.profesional_id = parseInt(proId, 10);
+            if (tutorId) queryParams.tutor_id = parseInt(tutorId, 10);
             if (textoTrabajo) queryParams.trabajo_sesion = textoTrabajo;
 
             respuesta = await reportes.turnos(queryParams);
@@ -508,6 +535,7 @@ async function consultarReporte() {
         } else if (estado.tipo === 'pacientes') {
             const estadoId = $('filtro-paciente-estado').value;
             const obraSocialId = $('filtro-paciente-obra-social').value;
+            const tutorId = $('filtro-paciente-tutor')?.value;
             const altaDesde = $('filtro-paciente-alta-desde')?.value;
             const altaHasta = $('filtro-paciente-alta-hasta')?.value;
             textoBusqueda = $('filtro-paciente-q').value.trim();
@@ -515,6 +543,7 @@ async function consultarReporte() {
             const queryParams = {};
             if (estadoId) queryParams.estado_id = parseInt(estadoId, 10);
             if (obraSocialId) queryParams.obra_social_id = parseInt(obraSocialId, 10);
+            if (tutorId) queryParams.tutor_id = parseInt(tutorId, 10);
             if (altaDesde) queryParams.fecha_alta_desde = altaDesde;
             if (altaHasta) queryParams.fecha_alta_hasta = altaHasta;
 
@@ -787,13 +816,17 @@ function renderizarTabla() {
     contenedorTabla.classList.remove('d-none');
 
     if (estado.tipo === 'turnos') {
+        const columnaClinica = estado.esPro
+            ? html`<th scope="col">Trabajo de Sesión</th>`
+            : html`<th scope="col">Evolución</th>`;
+
         renderizar(thead, html`
             <tr>
                 <th scope="col" style="width: 170px;">Fecha y Hora</th>
                 <th scope="col">Paciente</th>
                 <th scope="col">Profesional</th>
                 <th scope="col" style="width: 140px;">Estado</th>
-                <th scope="col">Trabajo de Sesión</th>
+                ${columnaClinica}
                 <th scope="col" class="d-print-none text-end" style="width: 120px;">Acciones</th>
             </tr>
         `);
@@ -805,11 +838,19 @@ function renderizarTabla() {
             const chipIcono = obtenerIconoTurno(t.estado?.id);
             const esRealizado = t.estado?.id === 4;
 
-            const trabajoTexto = t.trabajo_sesion
-                ? html`<div class="text-truncate" style="max-width: 260px;" title="${t.trabajo_sesion}">${t.trabajo_sesion}</div>`
-                : esRealizado
-                    ? html`<span class="text-muted small fst-italic">Sesión registrada</span>`
+            let trabajoTexto;
+            if (estado.esPro) {
+                trabajoTexto = t.trabajo_sesion
+                    ? html`<div class="text-truncate" style="max-width: 260px;" title="${t.trabajo_sesion}">${t.trabajo_sesion}</div>`
+                    : esRealizado
+                        ? html`<span class="text-muted small fst-italic">Sesión registrada</span>`
+                        : html`<span class="text-muted small">—</span>`;
+            } else {
+                // Vista de Administrador: confidencialidad por secreto profesional
+                trabajoTexto = esRealizado
+                    ? html`<span class="badge bg-light text-secondary border">Sesión registrada</span>`
                     : html`<span class="text-muted small">—</span>`;
+            }
 
             const botonAccion = esRealizado
                 ? html`
@@ -998,6 +1039,10 @@ function actualizarMembreteImpresion() {
             const proTexto = proSel?.value ? proSel.options[proSel.selectedIndex].text : 'Todos los profesionales';
             resumen += ` | Profesional: ${proTexto}`;
         }
+        const tutorTurnoSel = $('filtro-turno-tutor');
+        if (tutorTurnoSel?.value) {
+            resumen += ` | Tutor: ${tutorTurnoSel.options[tutorTurnoSel.selectedIndex].text}`;
+        }
     } else if (estado.tipo === 'pacientes') {
         const estadoSel = $('filtro-paciente-estado');
         const osSel = $('filtro-paciente-obra-social');
@@ -1005,6 +1050,10 @@ function actualizarMembreteImpresion() {
         const osTexto = osSel?.value ? osSel.options[osSel.selectedIndex].text : 'Todas';
         periodoTexto = 'Padrón activo';
         resumen = `Estado: ${estadoTexto} | Obra Social: ${osTexto}`;
+        const tutorPacSel = $('filtro-paciente-tutor');
+        if (tutorPacSel?.value) {
+            resumen += ` | Tutor: ${tutorPacSel.options[tutorPacSel.selectedIndex].text}`;
+        }
     } else if (estado.tipo === 'profesionales') {
         const espSel = $('filtro-profesional-especialidad');
         const estadoSel = $('filtro-profesional-estado');
@@ -1037,17 +1086,23 @@ function exportarCSV(tipo, resultados) {
     const nombreArchivo = `EduGes_Reporte_${tipo}_${hoyISO()}.csv`;
 
     if (tipo === 'turnos') {
-        filas.push(['ID', 'Fecha', 'Hora', 'Paciente', 'Profesional', 'Estado', 'Trabajo de Sesión']);
+        const encabezado = estado.esPro
+            ? ['ID', 'Fecha', 'Hora', 'Paciente', 'Profesional', 'Estado', 'Trabajo de Sesión']
+            : ['ID', 'Fecha', 'Hora', 'Paciente', 'Profesional', 'Estado'];
+        filas.push(encabezado);
         resultados.forEach((t) => {
-            filas.push([
+            const fila = [
                 t.id,
                 t.fecha,
                 t.hora ? String(t.hora).slice(0, 5) : '',
                 `${t.paciente?.apellido || ''}, ${t.paciente?.nombre || ''}`,
                 `${t.profesional?.apellido || ''}, ${t.profesional?.nombre || ''}`,
                 t.estado?.nombre || '',
-                t.trabajo_sesion || '',
-            ]);
+            ];
+            if (estado.esPro) {
+                fila.push(t.trabajo_sesion || '');
+            }
+            filas.push(fila);
         });
     } else if (tipo === 'pacientes') {
         filas.push(['ID', 'Apellido', 'Nombre', 'DNI', 'Fecha Alta', 'Profesional Asignado', 'Fecha Nacimiento', 'Obra Social', 'Nro Afiliado', 'CUD Vencimiento', 'Estado']);

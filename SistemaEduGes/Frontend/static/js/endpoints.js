@@ -56,6 +56,13 @@ export const profesionales = {
         const estadoTexto = estado === 1 || estado === 'Activo' ? 'Activo' : 'Inactivo';
         return api.patch(`/profesionales/${id}/estado/`, { estado: estadoTexto });
     },
+    // Lista de profesionales activos disponibles para recibir una reasignación (excluye al profesional actual).
+    // Solo disponible para profesionales.
+    obtenerParaReasignacion: () => api.get('/profesionales/para-reasignacion/'),
+
+    // Reasigna un paciente al profesional indicado y transfiere sus turnos futuros.
+    // Solo el profesional actualmente responsable puede reasignar.
+    reasignarPaciente: (pacienteId, profesionalId) => api.post(`/profesionales/pacientes/${pacienteId}/reasignar/`, { profesional_id: profesionalId }),
 };
 
 // ------------------------------------------------------------
@@ -71,7 +78,11 @@ export const pacientes = {
     // [{ id_paciente, nombre, apellido, dni, fecha_nacimiento, direccion, mail, consentimiento,
     //    cud_numero, cud_vencimiento, obra_social, numero_afiliado, estado }]
     // (obra_social y estado son IDs)
-    listar() {
+    listar(buscar = '') {
+        const query = buscar ? `?buscar=${encodeURIComponent(buscar)}` : '';
+        if (query) {
+            return api.get(`/pacientes/${query}`);
+        }
         pacientesEnMemoria ??= api.get('/pacientes/').catch((error) => {
             pacientesEnMemoria = null;   // si falló, el próximo intento vuelve a pedirlos
             throw error;
@@ -85,6 +96,16 @@ export const pacientes = {
         const creado = await api.post('/pacientes/', { ...datos, estado: ESTADO_PACIENTE.ACTIVO });
         pacientesEnMemoria = null;
         return creado;
+    },
+
+    // Cambia el estado del paciente (Activo / Inactivo).
+    // Al inactivar, el backend cancela turnos futuros y cierra asignaciones, pero conserva la historia clínica.
+    // Solo el Profesional responsable (o SuperAdmin) puede ejecutar esta acción.
+    async cambiarEstado(id, estado) {
+        const estadoTexto = estado === 1 || estado === 'Activo' ? 'Activo' : 'Inactivo';
+        const actualizado = await api.patch(`/pacientes/${id}/estado/`, { estado: estadoTexto });
+        pacientesEnMemoria = null;
+        return actualizado;
     },
 };
 
@@ -108,7 +129,10 @@ export const turnos = {
     // Un profesional recibe solo sus turnos; los administradores, todos. Ordenados por fecha y hora:
     // [{ id_turno, fecha, hora: "HH:MM:SS", paciente_id, profesional_id,
     //    estado: { ID_EstadoTurno: 1, Estado: "Pendiente" } }]
-    listar() {
+    listar(parametros = null) {
+        if (parametros && (parametros.mes || parametros.anio)) {
+            return api.get('/turnos/', { parametros });
+        }
         turnosEnMemoria ??= api.get('/turnos/').catch((error) => {
             turnosEnMemoria = null;
             throw error;
@@ -208,15 +232,7 @@ const sinDatos = async () => [];
 
 export const catalogos = {
     // Consulta la API si está disponible; filtra solo las activas (estado: 1) para combos y formularios
-    obrasSociales: async () => {
-        try {
-            return await api.get('/obras-sociales/', { parametros: { estado: 1 } });
-        } catch {
-            return [
-                { id: 1, nombre: 'Obra Social de Prueba' },
-            ];
-        }
-    },
+    obrasSociales: () => api.get('/obras-sociales/', { parametros: { estado: 1 } }),
     parentescos: async () => {
         try {
             return await api.get('/tutores/parentescos/');

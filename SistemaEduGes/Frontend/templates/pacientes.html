@@ -15,9 +15,6 @@
         <h1 class="eg-title">Pacientes</h1>
     </div>
     <div class="d-flex align-items-center gap-2">
-        <button type="button" class="eg-btn eg-btn--lg" id="btn-gestionar-obras-sociales" data-bs-toggle="modal" data-bs-target="#modal-obras-sociales" data-requiere-permiso="obras_sociales.edit">
-            <span class="ms" aria-hidden="true">health_and_safety</span>Obras Sociales
-        </button>
         <button type="button" class="eg-btn eg-btn--lg eg-btn--primary" id="btn-nuevo-paciente" hidden>
             <span class="ms" aria-hidden="true">person_add</span>Nuevo paciente
         </button>
@@ -27,6 +24,105 @@
 <!-- Aviso de CUD vencidos o por vencer (lo completa pacientes.js; no se muestra si no hay) -->
 <div id="aviso-cud" hidden></div>
 
+<style>
+.eg-table--admin :is(.eg-table__head, .eg-table__row) > :nth-child(1) { flex: 2.1 1 200px; }
+.eg-table--admin :is(.eg-table__head, .eg-table__row) > :nth-child(2) { flex: 0.9 1 95px; }
+.eg-table--admin :is(.eg-table__head, .eg-table__row) > :nth-child(3) { flex: 0.7 1 65px; }
+.eg-table--admin :is(.eg-table__head, .eg-table__row) > .col-profesional { flex: 1.5 1 140px; }
+.eg-table--admin :is(.eg-table__head, .eg-table__row) > :nth-child(5) { flex: 1.2 1 120px; }
+.eg-table--admin :is(.eg-table__head, .eg-table__row) > :nth-child(6) { flex: 0.9 0 110px; }
+
+/* Filtros Pacientes: Responsive, ordenado y sin desfasajes */
+#filtros-pacientes {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+    align-items: end !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+#filtros-pacientes .eg-field--full {
+    grid-column: 1 / -1 !important;
+}
+
+#filtros-pacientes .eg-field {
+    min-width: 0 !important;
+    width: 100% !important;
+}
+
+#filtros-pacientes .eg-field--rango {
+    grid-column: span 3 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+}
+
+#filtros-pacientes .eg-rango-fechas {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+}
+
+#filtros-pacientes .eg-rango-fechas__input {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    font-size: 14px !important;
+    padding: 0 8px !important;
+}
+
+#filtros-pacientes #btn-limpiar-filtros {
+    grid-column: span 1 !important;
+    height: 52px !important;
+    justify-content: center !important;
+    width: 100% !important;
+    white-space: nowrap !important;
+}
+
+/* Tablet (601px a 1100px) */
+@media (max-width: 1100px) and (min-width: 601px) {
+    #filtros-pacientes {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+    }
+    #filtros-pacientes .eg-field--full,
+    #filtros-pacientes .eg-field--rango,
+    #filtros-pacientes #btn-limpiar-filtros {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+    }
+}
+
+/* Celular (<= 600px) */
+@media (max-width: 600px) {
+    #filtros-pacientes {
+        grid-template-columns: 1fr !important;
+        padding: 16px !important;
+        gap: 12px !important;
+    }
+    #filtros-pacientes .eg-field,
+    #filtros-pacientes .eg-field--full,
+    #filtros-pacientes .eg-field--rango,
+    #filtros-pacientes #btn-limpiar-filtros {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    #filtros-pacientes .eg-rango-fechas {
+        flex-direction: row !important;
+        gap: 6px !important;
+    }
+    #filtros-pacientes .eg-rango-fechas__input {
+        font-size: 13px !important;
+        padding: 0 4px !important;
+        min-width: 0 !important;
+    }
+}
+</style>
+
 <!-- Búsqueda y filtros -->
 <form class="eg-filters" id="filtros-pacientes" role="search" aria-label="Buscar pacientes">
     <div class="eg-field eg-field--full">
@@ -35,6 +131,20 @@
             <span class="ms" aria-hidden="true">search</span>
             <input type="search" id="filtro-q" name="q" placeholder="Nombre, apellido o DNI" autocomplete="off">
         </span>
+    </div>
+    <div class="eg-field">
+        <label for="filtro-estado" class="eg-label">Estado</label>
+        <select class="eg-select" id="filtro-estado" name="estado">
+            <option value="">Todos los estados</option>
+            <option value="Activo">Activos</option>
+            <option value="Inactivo">Inactivos</option>
+        </select>
+    </div>
+    <div class="eg-field">
+        <label for="filtro-obra-social" class="eg-label">Obra Social</label>
+        <select class="eg-select" id="filtro-obra-social" name="obra_social">
+            <option value="">Todas las obras sociales</option>
+        </select>
     </div>
     <div class="eg-field">
         <label for="filtro-cud" class="eg-label">Estado del CUD</label>
@@ -54,6 +164,14 @@
             <option value="edad">Edad</option>
         </select>
     </div>
+    <div class="eg-field eg-field--rango">
+        <label class="eg-label" for="filtro-alta-desde">Fecha de alta (Desde — Hasta)</label>
+        <div class="eg-rango-fechas">
+            <input type="date" class="eg-input eg-rango-fechas__input" id="filtro-alta-desde" name="alta_desde" title="Alta desde" aria-label="Fecha alta desde">
+            <span class="eg-rango-fechas__sep" aria-hidden="true">a</span>
+            <input type="date" class="eg-input eg-rango-fechas__input" id="filtro-alta-hasta" name="alta_hasta" title="Alta hasta" aria-label="Fecha alta hasta">
+        </div>
+    </div>
     <button type="reset" class="eg-btn" id="btn-limpiar-filtros">
         <span class="ms" aria-hidden="true">filter_alt_off</span>Limpiar filtros
     </button>
@@ -68,11 +186,12 @@
             <span class="eg-chip eg-chip--count" id="pacientes-total" aria-live="polite">&nbsp;</span>
         </div>
     </div>
-    <div class="eg-table eg-table--pacientes" role="table" aria-labelledby="pacientes-titulo-listado">
+    <div class="eg-table eg-table--pacientes" id="tabla-pacientes" role="table" aria-labelledby="pacientes-titulo-listado">
         <div class="eg-table__head" role="row">
             <span role="columnheader">Paciente</span>
             <span role="columnheader">DNI</span>
             <span role="columnheader">Edad</span>
+            <span role="columnheader" id="th-profesional" class="col-profesional d-none">Profesional</span>
             <span role="columnheader">CUD</span>
             <span role="columnheader">Ficha</span>
         </div>
@@ -121,6 +240,7 @@
 {% include "componentes/modal_paciente.html" %}
 {% include "componentes/modal_tutor.html" %}
 {% include "componentes/modal_sesion.html" %}
+{% include "componentes/modal_reasignar_paciente.html" %}
 {% endblock %}
 
 {% block extra_js %}

@@ -38,12 +38,14 @@ import {
     yaEmpezo,
 } from '../componentes/turnos.js';
 import { ESTADO_PACIENTE, ESTADO_TURNO, PERMISO } from '../constantes.js';
-import { catalogos, pacientes, sesiones, tutores } from '../endpoints.js';
+import { catalogos, pacientes, profesionales, sesiones, tutores } from '../endpoints.js';
 import { aFecha, edad, hoyISO, sumarDias } from '../fechas.js';
-import { esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
+import { esAdministrador, esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
 import { coincideBusqueda, compararTexto } from '../texto.js';
 import {
     badgeCud,
+    bloqueError,
+    botonCargando,
     bloqueCargando,
     bloqueVacio,
     capitalizar,
@@ -93,6 +95,10 @@ function leerFiltrosDeUrl() {
         q: parametros.get('q') ?? '',
         cud: FILTROS_CUD.includes(cud) ? cud : '',
         orden: ORDENES.includes(orden) ? orden : 'apellido',
+        estado: parametros.get('estado') ?? '',
+        obraSocial: parametros.get('obra_social') ?? '',
+        altaDesde: parametros.get('alta_desde') ?? '',
+        altaHasta: parametros.get('alta_hasta') ?? '',
         page: enteroDeUrl(parametros.get('page')) ?? 1,
     };
 }
@@ -103,6 +109,10 @@ function guardarEstadoEnUrl() {
         q: f.q,
         cud: f.cud,
         orden: f.orden !== 'apellido' ? f.orden : null,
+        estado: f.estado || null,
+        obra_social: f.obraSocial || null,
+        alta_desde: f.altaDesde || null,
+        alta_hasta: f.altaHasta || null,
         page: f.page > 1 ? f.page : null,
         paciente: estado.fichaId,
     });
@@ -123,10 +133,27 @@ const CRITERIOS = {
 };
 
 function filtrados() {
-    const { q, cud, orden } = estado.filtros;
+    const { q, cud, orden, estado: filtroEstado, obraSocial, altaDesde, altaHasta } = estado.filtros;
     return estado.todos
         .filter((p) => !q.trim() || coincide(p, q))
         .filter((p) => !cud || p.cud.clave === cud || (cud === ALERTA && (p.cud.clave === CUD.VENCIDO || p.cud.clave === CUD.POR_VENCER)))
+        .filter((p) => {
+            if (!filtroEstado) return true;
+            const esActivo = p.estado === ESTADO_PACIENTE.ACTIVO || p.estado === 1 || p.estado === 'Activo';
+            return filtroEstado === 'Activo' || filtroEstado === '1' ? esActivo : !esActivo;
+        })
+        .filter((p) => {
+            if (!obraSocial) return true;
+            const osId = p.obra_social?.id_obra_social ?? p.obra_social?.id ?? p.obra_social;
+            return String(osId) === String(obraSocial);
+        })
+        .filter((p) => {
+            if (!altaDesde && !altaHasta) return true;
+            if (!p.fecha_alta) return false;
+            if (altaDesde && p.fecha_alta < altaDesde) return false;
+            if (altaHasta && p.fecha_alta > altaHasta) return false;
+            return true;
+        })
         .sort(CRITERIOS[orden]);
 }
 
@@ -160,9 +187,13 @@ function textoProximoTurno(turno) {
 }
 
 function filaPaciente(p) {
-    const meta = estado.conTurnos
+    const esInactivo = p.estado === ESTADO_PACIENTE.INACTIVO || p.estado === 2 || p.estado === 'Inactivo';
+    const metaTexto = estado.conTurnos
         ? textoProximoTurno(estado.proximos.get(p.id_paciente))
         : `Afiliado ${p.numero_afiliado}`;
+    const meta = esInactivo
+        ? html`<span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1">Inactivo</span> ${metaTexto}`
+        : metaTexto;
     return html`
         <div class="eg-table__row" role="row" data-paciente-id="${p.id_paciente}">
             <div class="eg-table__main" role="cell">
@@ -173,6 +204,12 @@ function filaPaciente(p) {
             </div>
             <span class="eg-table__num" role="cell"><span class="visually-hidden">DNI </span>${formatearDni(p.dni)}</span>
             <span role="cell">${textoEdad(p.edad)}</span>
+            ${esAdministrador(estado.usuario) ? html`
+                <div class="col-profesional text-truncate" role="cell">
+                    ${p.profesional_responsable
+                        ? html`<span class="fw-semibold">${p.profesional_responsable.apellido}, ${p.profesional_responsable.nombre}</span>`
+                        : html`<span class="text-secondary small">—</span>`}
+                </div>` : ''}
             <div role="cell">${celdaCud(p.cud_vencimiento)}</div>
             <div class="eg-table__action" role="cell">
                 <button type="button" class="eg-btn" data-accion="ver-ficha" aria-label="Ver ficha de ${nombreCompleto(p)}">
@@ -271,11 +308,11 @@ async function cargarProximos() {
     }
 }
 
-async function cargarListado() {
+async function cargarListado(busqueda = '') {
     renderizar($('pacientes-cuerpo'), '');
     renderizar($('pacientes-estado'), bloqueCargando(3));
     try {
-        const [lista] = await Promise.all([pacientes.listar(), cargarProximos()]);
+        const [lista] = await Promise.all([pacientes.listar(busqueda), cargarProximos()]);
         estado.todos = lista.map((p) => ({ ...p, cud: estadoCud(p.cud_vencimiento), edad: edad(p.fecha_nacimiento) }));
         actualizarConteosCud();
         mostrarListado();
@@ -294,6 +331,135 @@ async function cargarListado() {
 // ------------------------------------------------------------
 const panelFicha = () => window.bootstrap.Modal.getOrCreateInstance($('ficha-paciente'));
 
+
+
+let modalReasignarInstance = null;
+const modalReasignar = () => {
+    modalReasignarInstance ??= window.bootstrap.Modal.getOrCreateInstance($('modal-reasignar-paciente'));
+    return modalReasignarInstance;
+};
+
+async function abrirReasignacionPaciente(p) {
+    if (!p) return;
+    estado.reasignandoId = p.id_paciente;
+    const nombreEl = $('reasignar-paciente-nombre');
+    const select = $('reasignar-profesional-select');
+    const errores = $('form-reasignar-errores');
+    const btnSubmit = $('btn-confirmar-reasignacion');
+
+    if (nombreEl) nombreEl.textContent = nombreCompleto(p);
+    if (errores) errores.innerHTML = '';
+    if (btnSubmit) btnSubmit.disabled = true;
+
+    if (select) {
+        select.innerHTML = '<option value="">Cargando profesionales disponibles...</option>';
+    }
+
+    modalReasignar().show();
+
+    try {
+        const disponibles = await profesionales.obtenerParaReasignacion();
+        if (!disponibles || disponibles.length === 0) {
+            select.innerHTML = '<option value="">No hay otros profesionales activos disponibles</option>';
+            btnSubmit.disabled = true;
+        } else {
+            select.innerHTML = '<option value="">Elegí un profesional...</option>' +
+                disponibles.map((pro) => `<option value="${pro.id_profesional}">${pro.apellido}, ${pro.nombre}</option>`).join('');
+            btnSubmit.disabled = false;
+        }
+    } catch (err) {
+        select.innerHTML = '<option value="">Error al cargar profesionales</option>';
+        if (errores) renderizar(errores, bloqueError(err.detail || 'No se pudo cargar la lista de profesionales.'));
+    }
+}
+
+function prepararReasignacion() {
+    const form = $('form-reasignar-paciente');
+    const select = $('reasignar-profesional-select');
+    const errores = $('form-reasignar-errores');
+    const btnSubmit = $('btn-confirmar-reasignacion');
+    const modalEl = $('modal-reasignar-paciente');
+
+    if (!form) return;
+
+    modalEl?.addEventListener('shown.bs.modal', () => {
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        if (backdrops.length > 1) {
+            backdrops[backdrops.length - 1].style.zIndex = '1055';
+        }
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const pacId = estado.reasignandoId;
+        const proId = Number(select.value);
+
+        if (!proId) {
+            renderizar(errores, bloqueError('Tenés que seleccionar un profesional de destino.'));
+            return;
+        }
+
+        botonCargando(btnSubmit, true, 'Reasignando...');
+        if (errores) errores.innerHTML = '';
+
+        try {
+            const resp = await profesionales.reasignarPaciente(pacId, proId);
+            modalReasignar().hide();
+
+            const textoConflictos = resp.cantidad_turnos_con_conflicto > 0
+                ? ` (${resp.cantidad_turnos_con_conflicto} turnos tienen conflicto de horario)`
+                : '';
+            const mensaje = `El paciente fue reasignado a ${resp.profesional_nuevo?.nombre ? `${resp.profesional_nuevo.nombre} ${resp.profesional_nuevo.apellido}` : 'nuevo profesional'} exitosamente.${textoConflictos}`;
+            notificar(mensaje);
+
+            // Cerramos la ficha porque ya no pertenece a este profesional y recargamos
+            panelFicha().hide();
+            await cargarListado();
+        } catch (error) {
+            renderizar(errores, bloqueError(error.detail || error.paciente || error.profesional_id || 'Ocurrió un error al reasignar el paciente.'));
+        } finally {
+            botonCargando(btnSubmit, false);
+        }
+    });
+}
+
+async function cambiarEstadoPaciente(p, boton) {
+    const esActivo = p.estado === ESTADO_PACIENTE.ACTIVO || p.estado === 1 || p.estado === 'Activo';
+    const nuevoEstado = esActivo ? 'Inactivo' : 'Activo';
+    const nombre = nombreCompleto(p);
+
+    const confirmado = await confirmar({
+        titulo: esActivo ? `¿Inhabilitar a ${nombre}?` : `¿Reactivar a ${nombre}?`,
+        mensaje: esActivo
+            ? `Al inhabilitar al paciente, se cancelarán sus turnos futuros y se cerrará su asignación actual. Su historia clínica y notas de sesiones quedarán completamente preservadas.`
+            : `El paciente volverá a estar activo y quedará asignado a tu cargo para agendar nuevos turnos y registrar sesiones.`,
+        textoAceptar: esActivo ? 'Inhabilitar' : 'Reactivar',
+        textoCancelar: 'Cancelar',
+        peligro: esActivo,
+    });
+
+    if (!confirmado) return;
+
+    const textoOriginal = boton.innerHTML;
+    boton.disabled = true;
+    boton.textContent = 'Guardando...';
+
+    try {
+        const actualizado = await pacientes.cambiarEstado(p.id_paciente, nuevoEstado);
+        const estadoId = nuevoEstado === 'Activo' ? ESTADO_PACIENTE.ACTIVO : ESTADO_PACIENTE.INACTIVO;
+        p.estado = actualizado?.estado ?? estadoId;
+        notificar(nuevoEstado === 'Activo' ? `Se reactivó a ${nombre}.` : `Se inhabilitó a ${nombre}. Su historia clínica se preservó.`);
+        await cargarProximos();
+        mostrarListado();
+        abrirFicha(p.id_paciente);
+    } catch (error) {
+        notificarError(error);
+    } finally {
+        boton.disabled = false;
+        boton.innerHTML = textoOriginal;
+    }
+}
+
 function abrirFicha(id) {
     const p = estado.todos.find((paciente) => paciente.id_paciente === id);
     estado.fichaId = p ? id : null;
@@ -308,18 +474,31 @@ function abrirFicha(id) {
         return;
     }
 
-    const estadoPaciente = NOMBRE_ESTADO_PACIENTE[p.estado] ?? '—';
+    const esActivo = p.estado === ESTADO_PACIENTE.ACTIVO || p.estado === 1 || p.estado === 'Activo';
+    const estadoPaciente = esActivo ? 'Activo' : 'Inactivo';
     $('ficha-titulo').textContent = nombreCompleto(p);
     $('ficha-subtitulo').textContent = `DNI ${p.dni} · ${textoEdad(p.edad)}`;
 
     renderizar($('ficha-cuerpo'), html`
         <div class="eg-ficha${estado.acciones ? '' : ' eg-ficha--una'}">
             <div class="eg-ficha__datos">
-                <div class="eg-ficha__chips">
+                <div class="eg-ficha__chips d-flex align-items-center gap-2 flex-wrap">
                     ${badgeCud(p.cud_vencimiento)}
-                    <span class="eg-chip ${p.estado === ESTADO_PACIENTE.ACTIVO ? 'eg-chip--ok' : ''}">
-                        ${icono(p.estado === ESTADO_PACIENTE.ACTIVO ? 'person_check' : 'person_off')}${estadoPaciente}
+                    <span class="eg-chip ${esActivo ? 'eg-chip--ok' : 'eg-chip--err'}">
+                        ${icono(esActivo ? 'person_check' : 'person_off')}${estadoPaciente}
                     </span>
+                    ${esProfesional(estado.usuario) ? html`
+                        <div class="ms-auto d-flex align-items-center gap-2">
+                            ${esActivo ? html`
+                                <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" data-accion="reasignar-paciente">
+                                    ${icono('swap_horiz')}Reasignar
+                                </button>
+                            ` : ''}
+                            <button type="button" class="btn btn-sm ${esActivo ? 'btn-outline-danger' : 'btn-outline-success'} d-inline-flex align-items-center gap-1" data-accion="cambiar-estado-paciente">
+                                ${icono(esActivo ? 'person_off' : 'person_check')}${esActivo ? 'Inhabilitar paciente' : 'Reactivar paciente'}
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
 
                 <section class="eg-ficha__bloque" aria-labelledby="ficha-datos-titulo">
@@ -345,9 +524,11 @@ function abrirFicha(id) {
                 <section class="eg-ficha__bloque" aria-labelledby="ficha-tutores-titulo">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <h3 id="ficha-tutores-titulo" class="mb-0">${icono('family_restroom')}Tutores y Responsables</h3>
-                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 d-inline-flex align-items-center gap-1" data-accion="agregar-tutor">
-                            ${icono('person_add')}Agregar tutor
-                        </button>
+                        ${esProfesional(estado.usuario) ? html`
+                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 d-inline-flex align-items-center gap-1" data-accion="agregar-tutor">
+                                ${icono('person_add')}Agregar tutor
+                            </button>
+                        ` : ''}
                     </div>
                     <div id="ficha-tutores" aria-live="polite"></div>
                 </section>
@@ -382,7 +563,7 @@ function abrirFicha(id) {
 // ------------------------------------------------------------
 const ANTERIORES_A_MOSTRAR = 5;
 
-const puedeAgendar = (p) => p.estado === ESTADO_PACIENTE.ACTIVO && tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR);
+const puedeAgendar = (p) => p.estado === ESTADO_PACIENTE.ACTIVO && esProfesional(estado.usuario);
 
 const listaTurnosFicha = (lista) => html`
     <div class="eg-lista-ficha">${listaTurnos(lista, { conPaciente: false, conProfesional: !esProfesional(estado.usuario) })}</div>`;
@@ -435,26 +616,28 @@ async function cargarTutoresFicha(idPaciente) {
                             ${t.mail ? html`<div class="col-12"><dt>Mail</dt><dd>${enlaceMail(t.mail)}</dd></div>` : ''}
                             ${t.domicilio ? html`<div class="col-12"><dt>Domicilio</dt><dd>${t.domicilio}</dd></div>` : ''}
                         </dl>
-                        <div class="d-flex justify-content-end gap-1 pt-1 border-top">
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-inline-flex align-items-center gap-1"
-                                    data-accion="editar-tutor"
-                                    data-tutor-id="${t.id}"
-                                    data-tutor-nombre="${t.nombre}"
-                                    data-tutor-apellido="${t.apellido}"
-                                    data-tutor-telefono="${t.telefono ?? ''}"
-                                    data-tutor-movil="${t.movil ?? ''}"
-                                    data-tutor-mail="${t.mail ?? ''}"
-                                    data-tutor-domicilio="${t.domicilio ?? ''}">
-                                ${icono('edit')}Editar
-                            </button>
-                            ${!t.esPrincipal ? html`
-                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 d-inline-flex align-items-center gap-1"
-                                        data-accion="desvincular-tutor"
-                                        data-relacion-id="${t.idRelacion}"
-                                        data-tutor-nombre="${t.nombre} ${t.apellido}">
-                                    ${icono('person_remove')}Desvincular
-                                </button>` : ''}
-                        </div>
+                        ${esProfesional(estado.usuario) ? html`
+                            <div class="d-flex justify-content-end gap-1 pt-1 border-top">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-inline-flex align-items-center gap-1"
+                                        data-accion="editar-tutor"
+                                        data-tutor-id="${t.id}"
+                                        data-tutor-nombre="${t.nombre}"
+                                        data-tutor-apellido="${t.apellido}"
+                                        data-tutor-telefono="${t.telefono ?? ''}"
+                                        data-tutor-movil="${t.movil ?? ''}"
+                                        data-tutor-mail="${t.mail ?? ''}"
+                                        data-tutor-domicilio="${t.domicilio ?? ''}">
+                                    ${icono('edit')}Editar
+                                </button>
+                                ${!t.esPrincipal ? html`
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 d-inline-flex align-items-center gap-1"
+                                            data-accion="desvincular-tutor"
+                                            data-relacion-id="${t.idRelacion}"
+                                            data-tutor-nombre="${t.nombre} ${t.apellido}">
+                                        ${icono('person_remove')}Desvincular
+                                    </button>` : ''}
+                            </div>
+                        ` : ''}
                     </div>`)}
             </div>`);
     } catch (error) {
@@ -651,15 +834,52 @@ function cambiarFiltros(cambios) {
 }
 
 function prepararEventos() {
+    $('ficha-cuerpo')?.addEventListener('click', (evento) => {
+        const btnReasignar = evento.target.closest('[data-accion="reasignar-paciente"]');
+        if (btnReasignar && estado.fichaId) {
+            const p = estado.todos.find((pac) => pac.id_paciente === estado.fichaId);
+            if (p) {
+                abrirReasignacionPaciente(p);
+            }
+            return;
+        }
+        const btnEstado = evento.target.closest('[data-accion="cambiar-estado-paciente"]');
+        if (btnEstado && estado.fichaId) {
+            const p = estado.todos.find((pac) => pac.id_paciente === estado.fichaId);
+            if (p) {
+                cambiarEstadoPaciente(p, btnEstado);
+            }
+        }
+    });
+
     const formulario = $('filtros-pacientes');
     const busqueda = $('filtro-q');
     const cud = $('filtro-cud');
     const orden = $('filtro-orden');
+    const selEstado = $('filtro-estado');
+    const selOS = $('filtro-obra-social');
+    const altaDesde = $('filtro-alta-desde');
+    const altaHasta = $('filtro-alta-hasta');
+
     busqueda.value = estado.filtros.q;
     cud.value = estado.filtros.cud;
     orden.value = estado.filtros.orden;
+    if (selEstado) selEstado.value = estado.filtros.estado;
+    if (selOS) selOS.value = estado.filtros.obraSocial;
+    if (altaDesde) altaDesde.value = estado.filtros.altaDesde;
+    if (altaHasta) altaHasta.value = estado.filtros.altaHasta;
 
-    const buscar = demorar(() => cambiarFiltros({ q: busqueda.value }), 200);
+    selEstado?.addEventListener('change', () => cambiarFiltros({ estado: selEstado.value }));
+    selOS?.addEventListener('change', () => cambiarFiltros({ obraSocial: selOS.value }));
+    altaDesde?.addEventListener('change', () => cambiarFiltros({ altaDesde: altaDesde.value }));
+    altaHasta?.addEventListener('change', () => cambiarFiltros({ altaHasta: altaHasta.value }));
+
+    const buscar = demorar(async () => {
+        if (esProfesional(estado.usuario) && busqueda.value.trim()) {
+            await cargarListado(busqueda.value.trim());
+        }
+        cambiarFiltros({ q: busqueda.value });
+    }, 250);
     busqueda.addEventListener('input', buscar);
     cud.addEventListener('change', () => cambiarFiltros({ cud: cud.value }));
     orden.addEventListener('change', () => cambiarFiltros({ orden: orden.value }));
@@ -669,7 +889,7 @@ function prepararEventos() {
     });
     formulario.addEventListener('reset', () => {
         // El reset del navegador vacía los campos después de este evento
-        setTimeout(() => cambiarFiltros({ q: '', cud: '', orden: 'apellido' }));
+        setTimeout(() => cambiarFiltros({ q: '', cud: '', orden: 'apellido', estado: '', obraSocial: '', altaDesde: '', altaHasta: '' }));
     });
 
     prepararPaginacion($('pacientes-paginacion'), (cambio) => {
@@ -1006,9 +1226,33 @@ async function iniciar() {
         return;
     }
 
+    if (esAdministrador(estado.usuario)) {
+        $('th-profesional')?.classList.remove('d-none');
+        $('tabla-pacientes')?.classList.add('eg-table--admin');
+    }
+
+    try {
+        const obras = await catalogos.obrasSociales();
+        const selectOS = $('filtro-obra-social');
+        if (selectOS && obras?.length) {
+            obras.forEach((os) => {
+                const opt = document.createElement('option');
+                opt.value = os.id;
+                opt.textContent = os.nombre;
+                selectOS.appendChild(opt);
+            });
+            if (estado.filtros.obraSocial) {
+                selectOS.value = estado.filtros.obraSocial;
+            }
+        }
+    } catch (eOS) {
+        console.warn('No se pudieron precargar obras sociales para filtros:', eOS);
+    }
+
     prepararAlta();
     prepararTurnosFicha();
     prepararGestionTutores();
+    prepararReasignacion();
     if (await cargarListado() && fichaInicial) {
         abrirFicha(fichaInicial);
     }

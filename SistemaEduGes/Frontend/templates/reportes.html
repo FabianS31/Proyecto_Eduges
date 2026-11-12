@@ -111,6 +111,12 @@
         <label for="filtro-turno-busqueda" class="eg-label">Buscar paciente</label>
         <input type="text" class="eg-input" id="filtro-turno-busqueda" name="q" placeholder="Escribí el nombre o apellido del paciente..." autocomplete="off">
     </div>
+    <div class="eg-field" data-filtro-grupo="turnos" id="campo-turno-tutor">
+        <label for="filtro-turno-tutor" class="eg-label">Tutor</label>
+        <select class="eg-select" id="filtro-turno-tutor" name="tutor_id">
+            <option value="">Todos los tutores</option>
+        </select>
+    </div>
     <div class="eg-field" id="campo-turno-trabajo" data-filtro-grupo="turnos">
         <label for="filtro-turno-trabajo" class="eg-label">Trabajo de sesión</label>
         <input type="text" class="eg-input" id="filtro-turno-trabajo" name="trabajo_sesion" placeholder="Buscar por tema o contenido..." autocomplete="off">
@@ -133,6 +139,12 @@
         <label for="filtro-paciente-obra-social" class="eg-label">Obra Social</label>
         <select class="eg-select" id="filtro-paciente-obra-social" name="obra_social_id">
             <option value="">Todas las obras sociales</option>
+        </select>
+    </div>
+    <div class="eg-field d-none" data-filtro-grupo="pacientes" id="campo-paciente-tutor">
+        <label for="filtro-paciente-tutor" class="eg-label">Tutor</label>
+        <select class="eg-select" id="filtro-paciente-tutor" name="tutor_id">
+            <option value="">Todos los tutores</option>
         </select>
     </div>
 

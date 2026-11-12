@@ -58,22 +58,69 @@
                     <a href="{% url 'reportes' %}" class="eg-nav__item" {% if actual == 'reportes' %}aria-current="page"{% endif %}>
                         <span class="ms" aria-hidden="true">bar_chart</span>Reportes
                     </a>
+
+                    <!-- Módulo desplegable Administración (Exclusivo Administrador) -->
+                    <div class="dropdown eg-nav-dropdown" data-requiere-permiso="usuarios.admin">
+                        <button class="eg-nav__item border-0 bg-transparent dropdown-toggle d-flex align-items-center gap-1" type="button" id="dropdownAdminMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="ms" aria-hidden="true">settings</span>Administración
+                        </button>
+                        <ul class="dropdown-menu shadow border-0 py-2 mt-1" aria-labelledby="dropdownAdminMenu" style="min-width: 230px; z-index: 1060;">
+                            <li><h6 class="dropdown-header text-uppercase fs-7 fw-bold text-muted tracking-wide">Gestión del Centro</h6></li>
+                            <li>
+                                <button type="button" class="dropdown-item d-flex align-items-center gap-2 py-2" data-bs-toggle="modal" data-bs-target="#modal-obras-sociales">
+                                    <span class="ms text-primary" aria-hidden="true">health_and_safety</span>
+                                    <span>Obras Sociales</span>
+                                </button>
+                            </li>
+                            <li>
+                                <a href="{% url 'profesionales' %}?nuevo=1" id="nav-item-nuevo-profesional" class="dropdown-item d-flex align-items-center gap-2 py-2">
+                                    <span class="ms text-success" aria-hidden="true">badge</span>
+                                    <span>Crear Profesional</span>
+                                </a>
+                            </li>
+                            <li>
+                                <button type="button" class="dropdown-item d-flex align-items-center gap-2 py-2" data-bs-toggle="modal" data-bs-target="#modal-nuevo-usuario">
+                                    <span class="ms text-info" aria-hidden="true">person_add</span>
+                                    <span>Crear Usuario</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button type="button" class="dropdown-item d-flex align-items-center gap-2 py-2" data-bs-toggle="modal" data-bs-target="#modal-especialidad">
+                                    <span class="ms text-warning" aria-hidden="true">school</span>
+                                    <span>Crear Especialidad</span>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
                     {% endwith %}
                 </nav>
 
-                <!-- Usuario logueado (datos de /api/auth/me/) y botones de acción -->
-                <div class="eg-user">
-                    <div class="eg-user__info" id="usuario-actual">
-                        <div><span class="eg-user__name">&nbsp;</span><span class="eg-user__role">&nbsp;</span></div>
-                    </div>
-                    <div class="eg-user__actions">
-                        <button type="button" class="eg-btn eg-btn--ghost" data-bs-toggle="modal" data-bs-target="#modal-cambiar-password">
-                            <span class="ms" aria-hidden="true">key</span><span>Contraseña</span>
-                        </button>
-                        <button type="button" id="btn-cerrar-sesion" class="eg-btn eg-btn--danger">
-                            <span class="ms" aria-hidden="true">logout</span><span>Salir</span>
-                        </button>
-                    </div>
+                <!-- Usuario logueado con menú desplegable -->
+                <div class="eg-user dropdown">
+                    <button class="eg-user-btn border-0 bg-transparent text-white d-flex align-items-center gap-2 py-1 px-2 rounded dropdown-toggle" type="button" id="dropdownUsuario" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="eg-user__info text-start d-flex" id="usuario-actual">
+                            <div><span class="eg-user__name">&nbsp;</span><span class="eg-user__role">&nbsp;</span></div>
+                        </div>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-2 mt-2" aria-labelledby="dropdownUsuario" style="min-width: 220px; z-index: 1060;">
+                        <li class="px-3 py-2 border-bottom mb-1">
+                            <span class="d-block fw-bold text-dark" id="dropdown-user-name">&nbsp;</span>
+                            <span class="d-block small text-muted" id="dropdown-user-role">&nbsp;</span>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item d-flex align-items-center gap-2 py-2" data-bs-toggle="modal" data-bs-target="#modal-cambiar-password">
+                                <span class="ms text-primary" aria-hidden="true">key</span>
+                                <span>Cambiar contraseña</span>
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <button type="button" id="btn-cerrar-sesion" class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger">
+                                <span class="ms text-danger" aria-hidden="true">logout</span>
+                                <span>Cerrar sesión</span>
+                            </button>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -123,6 +170,8 @@
 
     <!-- Modal de Gestión de Obras Sociales (Fase 4 Minuta) -->
     {% include 'componentes/modal_obras_sociales.html' %}
+    {% include 'componentes/modal_especialidad.html' %}
+    {% include 'componentes/modal_nuevo_usuario.html' %}
 
     <footer class="eg-footer">
         <div class="eg-container eg-footer__inner">

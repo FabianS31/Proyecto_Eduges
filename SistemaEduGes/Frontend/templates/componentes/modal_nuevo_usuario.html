@@ -1,0 +1,47 @@
+<!-- ============================================================
+     EduGes - Modal de Alta de Usuario del Sistema
+     Permite al Administrador dar de alta nuevas cuentas de acceso.
+     ============================================================ -->
+<div class="modal fade" id="modal-nuevo-usuario" tabindex="-1" aria-labelledby="modal-nuevo-usuario-titulo" aria-hidden="true" style="z-index: 1065;">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0 shadow" id="form-nuevo-usuario" novalidate>
+            <div class="modal-header border-0 pb-0">
+                <h2 class="modal-title fs-5 fw-bold" id="modal-nuevo-usuario-titulo">
+                    <span class="ms text-primary me-1" aria-hidden="true">person_add</span>Crear Usuario
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body py-3">
+                <div id="form-nuevo-usuario-errores"></div>
+                <div class="mb-3">
+                    <label for="nuevo-usuario-nombre" class="form-label small fw-semibold">Nombre de usuario *</label>
+                    <input type="text" class="form-control" id="nuevo-usuario-nombre" name="usuario" placeholder="Ej.: lucas.admin" required maxlength="50" autocomplete="off">
+                    <div class="form-text small">Identificador único para el inicio de sesión.</div>
+                </div>
+                <div class="mb-3">
+                    <label for="nuevo-usuario-rol" class="form-label small fw-semibold">Rol del sistema *</label>
+                    <select class="form-select" id="nuevo-usuario-rol" name="rol" required>
+                        <option value="1">Administrador</option>
+                        <option value="2">Profesional</option>
+                        <option value="3">Secretaría / Recepción</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="nuevo-usuario-password" class="form-label small fw-semibold">Contraseña inicial *</label>
+                    <input type="password" class="form-control" id="nuevo-usuario-password" name="password" required minlength="8" autocomplete="new-password">
+                    <div class="form-text small">Mínimo 8 caracteres.</div>
+                </div>
+                <div class="mb-3">
+                    <label for="nuevo-usuario-password-confirm" class="form-label small fw-semibold">Confirmar contraseña *</label>
+                    <input type="password" class="form-control" id="nuevo-usuario-password-confirm" name="password_confirm" required minlength="8" autocomplete="new-password">
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1" id="btn-guardar-nuevo-usuario">
+                    <span class="ms" aria-hidden="true">check</span>Guardar usuario
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

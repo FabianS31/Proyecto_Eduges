@@ -61,6 +61,7 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
     let turnoActual = null;
     let modo = 'creacion'; // 'creacion' | 'edicion' | 'lectura'
     let listaPendientesActual = [];
+    let peticionCargaActual = 0;
 
     const rolNombre = usuario?.rol?.nombre ?? usuario?.rol ?? '';
     const esAdmin = rolNombre === 'Administrador';
@@ -74,14 +75,20 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
         },
     });
 
+    // Al cerrar el modal, invalidamos cargas asíncronas en vuelo y limpiamos turnoActual
+    modalElemento?.addEventListener('hidden.bs.modal', () => {
+        peticionCargaActual++;
+        turnoActual = null;
+    });
+
     const obtenerModalPendientes = modalPendientesElemento
         ? () => window.bootstrap.Modal.getOrCreateInstance(modalPendientesElemento)
         : () => null;
 
     formulario.addEventListener('submit', (evento) => {
         evento.preventDefault();
-        if (esAdmin) {
-            return; // Administrador solo consulta en modo lectura
+        if (esAdmin || !turnoActual || (cargando && !cargando.hidden)) {
+            return; // Administrador solo consulta en modo lectura; bloquear envíos durante carga o sin turno
         }
 
         const datos = {
@@ -135,7 +142,7 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
             mensajeExito: () => {
                 const estadoId = turnoActual?.estado?.id ?? turnoActual?.estado?.ID_EstadoTurno;
                 if (estadoId === ESTADO_TURNO.CONFIRMADO && !sePudoPasarARealizado) {
-                    return 'Nota clínica guardada. El turno se marcará como Realizado al cumplirse los 40 min de atención.';
+                    return 'Nota clínica guardada. El turno permanece como Confirmado (podés marcarlo como Realizado manualmente).';
                 }
                 return esCreacion
                     ? 'Registro de sesión creado correctamente.'
@@ -210,13 +217,21 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
             if (ayudaObligatorios) ayudaObligatorios.hidden = false;
         }
 
+        // Identificador secuencial para descartar respuestas tardías (Race Condition)
+        const peticionId = ++peticionCargaActual;
+
         // Abrir modal y mostrar estado de carga
         obtenerModal().show();
         cargando.hidden = false;
         camposWrapper.hidden = true;
+        if (btnGuardar) btnGuardar.disabled = true;
 
         try {
             const sesionExistente = await sesiones.obtener(turnoId);
+            if (peticionId !== peticionCargaActual) {
+                return;
+            }
+
             // Sesión ya registrada: modo edición / consulta
             modo = 'edicion';
             tituloTexto.textContent = esAdmin ? 'Consulta de Sesión' : 'Evolución de Sesión';
@@ -230,6 +245,9 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
                 if (notaInput) notaInput.value = sesionExistente.nota_sesion ?? '';
             }
         } catch (error) {
+            if (peticionId !== peticionCargaActual) {
+                return;
+            }
             if (error instanceof ApiError && error.status === 404) {
                 // No hay registro previo: modo creación
                 if (esAdmin) {
@@ -257,8 +275,13 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
                     </div>`);
             }
         } finally {
-            cargando.hidden = true;
-            camposWrapper.hidden = false;
+            if (peticionId === peticionCargaActual) {
+                cargando.hidden = true;
+                camposWrapper.hidden = false;
+                if (btnGuardar && !esAdmin) {
+                    btnGuardar.disabled = false;
+                }
+            }
         }
     }
 
