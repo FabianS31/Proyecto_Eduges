@@ -126,6 +126,22 @@ class EstadoEntidadService:
                     'El paciente ya se encuentra activo.'
                 )
 
+            ultima_asignacion = (
+                AsignacionProfesional.objects
+                .filter(paciente=paciente)
+                .order_by('-fecha_inicio', '-pk')
+                .first()
+            )
+
+            if (
+                ultima_asignacion is None
+                or ultima_asignacion.profesional_id != profesional.pk
+            ):
+                raise serializers.ValidationError(
+                    'Solo el último Profesional responsable '
+                    'puede reactivar el paciente.'
+                )
+
             asignacion_activa = (
                 AsignacionProfesional.objects.filter(
                     paciente=paciente,

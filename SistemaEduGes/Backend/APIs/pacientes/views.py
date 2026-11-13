@@ -1,6 +1,6 @@
 
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import OuterRef, Q, Subquery
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework import status
@@ -134,12 +134,26 @@ class PacienteListView(APIView):
                 estado__estado='Activo'
             )
 
-            # Al buscar, también permite encontrar
-            # pacientes inactivos para poder reactivarlos.
+            # Los pacientes inactivos solo son recuperables por su último
+            # profesional responsable.
             if hay_filtros:
-
-                pacientes_inactivos = Paciente.objects.filter(
-                    estado__estado='Inactivo'
+                ultimo_profesional = (
+                    AsignacionProfesional.objects
+                    .filter(paciente_id=OuterRef('pk'))
+                    .order_by('-fecha_inicio', '-pk')
+                    .values('profesional_id')[:1]
+                )
+                pacientes_inactivos = (
+                    Paciente.objects
+                    .filter(estado__estado='Inactivo')
+                    .annotate(
+                        ultimo_profesional_id=Subquery(
+                            ultimo_profesional
+                        )
+                    )
+                    .filter(
+                        ultimo_profesional_id=profesional.pk
+                    )
                 )
 
                 pacientes = pacientes | pacientes_inactivos
