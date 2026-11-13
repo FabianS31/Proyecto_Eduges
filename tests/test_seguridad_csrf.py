@@ -143,6 +143,11 @@ class SeguridadCSRFTests(unittest.TestCase):
             fecha=timezone.localdate() - timedelta(days=2), hora='09:00',
             estado=self.estados_turno['Realizado'], registro_sesion=self.registro,
         )
+        self.turno_sesion = Turno.objects.create(
+            paciente=self.pacientes['B'], profesional=self.profesionales['B'],
+            fecha=timezone.localdate() - timedelta(days=1), hora='09:00',
+            estado=self.estados_turno['Confirmado'],
+        )
 
     def rollback(self):
         transaction.set_rollback(True)
@@ -223,7 +228,7 @@ class SeguridadCSRFTests(unittest.TestCase):
             ('patch', f'/api/tutores/{self.tutor.pk}/', {'nombre': 'Nombre actualizado'}, 'B'),
             ('patch', self.url, {'parentesco_id': self.otro_parentesco.pk}, 'B'),
             ('delete', self.url, {}, 'B'),
-            ('post', '/api/sesiones/', {'turno_id': self.turno.pk,
+            ('post', '/api/sesiones/', {'turno_id': self.turno_sesion.pk,
              'trabajo_sesion': 'Trabajo ficticio nuevo', 'diagnostico': 'Diagnóstico ficticio'}, 'B'),
             ('patch', f'/api/sesiones/{self.turno_registrado.pk}/',
              {'trabajo_sesion': 'Trabajo actualizado ficticio'}, 'B'),

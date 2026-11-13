@@ -22,6 +22,9 @@ class IntegridadClinicaTests(unittest.TestCase):
         return getattr(c, metodo)(url, datos, content_type='application/json', HTTP_X_CSRFTOKEN=self.f.token(c))
 
     def registrar(self):
+        self.f.turno.estado = self.f.estados_turno['Confirmado']
+        self.f.turno.fecha = s.timezone.localdate() - timedelta(days=1)
+        self.f.turno.save(update_fields=['estado', 'fecha'])
         r = self.enviar('B', 'post', '/api/sesiones/', dict(turno_id=self.f.turno.pk,
             trabajo_sesion='Trabajo original', diagnostico='Diagnostico original', nota_sesion='Nota original'))
         self.assertEqual(r.status_code, 201, r.content)
@@ -55,6 +58,9 @@ class IntegridadClinicaTests(unittest.TestCase):
 
     def test_peticion_sin_cambios_y_edicion_clinica_siguen_permitidas(self):
         self.registrar()
+        self.f.turno.fecha = s.timezone.localdate() + timedelta(days=1)
+        self.f.turno.hora = '09:00'
+        self.f.turno.save(update_fields=['fecha', 'hora'])
         for actor in ('B','admin','super'):
             r = self.enviar(actor,'patch',self.url,{'hora':'09:00'})
             self.assertEqual(r.status_code,200,r.content)
@@ -73,7 +79,7 @@ class IntegridadClinicaTests(unittest.TestCase):
         self.registrar()
         registro = s.RegistroSesion.objects.values().get(pk=self.f.turno.registro_sesion_id)
         r = self.enviar('B','patch',self.url+'estado/',
-            {'ID_EstadoTurno':self.f.estados_turno['Confirmado'].pk})
+            {'ID_EstadoTurno':self.f.estados_turno['Realizado'].pk})
         self.assertEqual(r.status_code,200,r.content)
         self.assertEqual(s.RegistroSesion.objects.values().get(pk=self.f.turno.registro_sesion_id),registro)
 
@@ -85,6 +91,8 @@ class IntegridadClinicaTests(unittest.TestCase):
 
     def test_reasignacion_protegida_no_escribe_ninguna_tabla(self):
         self.registrar()
+        self.f.turno.fecha = s.timezone.localdate() + timedelta(days=1)
+        self.f.turno.save(update_fields=['fecha'])
         s.Turno.objects.create(paciente=self.f.pacientes['B'],profesional=self.f.profesionales['B'],
             fecha=self.f.fecha,hora='08:00',estado=self.f.estados_turno['Pendiente'])
         antes = self.f.snapshot()
@@ -172,6 +180,8 @@ class IntegridadClinicaTests(unittest.TestCase):
 
     def test_inhabilitacion_con_sesion_futura_revierte_todo(self):
         self.registrar()
+        self.f.turno.fecha = s.timezone.localdate() + timedelta(days=1)
+        self.f.turno.save(update_fields=['fecha'])
         antes=self.f.snapshot()
         for actor,url in [('B',f'/api/pacientes/{self.f.pacientes["B"].pk}/estado/'),
                           ('super',f'/api/profesionales/{self.f.profesionales["B"].pk}/estado/')]:

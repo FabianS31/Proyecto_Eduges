@@ -12,6 +12,9 @@ class ReunionesTests(unittest.TestCase):
         self.f = s.SeguridadCSRFTests()
         self.addCleanup(self.f.doCleanups)
         self.f.setUp()
+        self.f.turno.estado = self.f.estados_turno['Confirmado']
+        self.f.turno.fecha = s.timezone.localdate() - s.timedelta(days=1)
+        self.f.turno.save(update_fields=['estado', 'fecha'])
 
     def test_guardado_consulta_privacidad_y_duplicado(self):
         c = self.f.login('B')

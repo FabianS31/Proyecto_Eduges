@@ -363,7 +363,7 @@ function accionesTurno(turno, descripcion) {
 
         principales.push(boton('sesion', turno, { texto: textoSesion, nombreIcono: 'clinical_notes', clase: 'eg-btn--secondary', descripcion }));
 
-    } else if (estadoId === ESTADO_TURNO.CONFIRMADO && turno.fecha <= hoyISO() && puedeManejarNotasClinicas) {
+    } else if (estadoId === ESTADO_TURNO.CONFIRMADO && yaEmpezo(turno) && puedeManejarNotasClinicas) {
 
         principales.push(boton('sesion', turno, { texto: 'Tomar notas', nombreIcono: 'edit_note', clase: 'eg-btn--primary', descripcion }));
 

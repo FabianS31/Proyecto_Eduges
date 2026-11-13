@@ -1,11 +1,13 @@
 
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import (
     NotFound,
     PermissionDenied,
     ValidationError,
 )
 
+from APIs.turnos.services.turno_service import TurnoService
 from turnos.models import Turno, RegistroSesion
 from profesionales.models.asignacion_model import (
     AsignacionProfesional
@@ -80,6 +82,45 @@ class SesionesService:
                 )
             })
 
+    @staticmethod
+    def validar_turno_habilitado_para_registro(turno):
+        estado = turno.estado.estado.casefold()
+
+        if estado == 'cancelado':
+            raise ValidationError({
+                'turno_id': (
+                    'No se puede registrar una sesión '
+                    'de un turno Cancelado.'
+                )
+            })
+
+        if estado == 'ausente':
+            raise ValidationError({
+                'turno_id': (
+                    'No se puede registrar una sesión '
+                    'de un turno Ausente.'
+                )
+            })
+
+        if estado == 'realizado':
+            return
+
+        if estado != 'confirmado':
+            raise ValidationError({
+                'turno_id': (
+                    'Solo se puede registrar una sesión '
+                    'de un turno Confirmado iniciado o Realizado.'
+                )
+            })
+
+        if TurnoService.obtener_inicio_turno(turno) > timezone.localtime():
+            raise ValidationError({
+                'turno_id': (
+                    'No se puede registrar una sesión '
+                    'antes del inicio del turno.'
+                )
+            })
+
     @classmethod
     def listar_turnos_pendientes(
         cls,
@@ -151,10 +192,7 @@ class SesionesService:
             bloquear=True,
         )
 
-        cls.validar_turno_no_cancelado(turno)
-
-        if turno.estado.estado.casefold() == 'ausente':
-            raise ValidationError({'turno_id': 'No se puede registrar una sesión de un turno Ausente.'})
+        cls.validar_turno_habilitado_para_registro(turno)
 
         cls.validar_profesional_autorizado(
             turno,
