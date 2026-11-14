@@ -211,6 +211,7 @@ class AccesoPacientesTests(unittest.TestCase):
                 'nombre': 'Tutor Nuevo',
                 'apellido': 'Ficticio',
                 'dni': '50123456',
+                'telefono': '123456789',
                 'mail': 'nuevo@example.invalid',
                 'domicilio': 'Domicilio ficticio',
                 'parentesco_id': self.f.parentesco.pk,

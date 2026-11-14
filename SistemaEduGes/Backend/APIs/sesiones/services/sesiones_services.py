@@ -8,6 +8,7 @@ from rest_framework.exceptions import (
 )
 
 from APIs.turnos.services.turno_service import TurnoService
+from pacientes.models import Paciente
 from turnos.models import Turno, RegistroSesion
 from profesionales.models.asignacion_model import (
     AsignacionProfesional
@@ -15,6 +16,36 @@ from profesionales.models.asignacion_model import (
 
 
 class SesionesService:
+
+    @classmethod
+    def puede_consultar_historial(cls, usuario, paciente_id):
+        rol = cls.obtener_rol(usuario)
+        if rol in ('Administrador', 'SuperAdministrador'):
+            return True
+        if rol != 'Profesional':
+            return False
+        return AsignacionProfesional.objects.filter(
+            paciente_id=paciente_id,
+            profesional__usuario=usuario,
+            fecha_inicio__lte=timezone.localdate(),
+            fecha_fin__isnull=True,
+        ).exists()
+
+    @classmethod
+    def listar_historial(cls, usuario, paciente_id):
+        # Autorizar antes de consultar registros. Ser autor de una sesión no
+        # habilita enumerar las sesiones ajenas del mismo paciente.
+        if not cls.puede_consultar_historial(usuario, paciente_id):
+            raise PermissionDenied('No tenés autorización para consultar el historial de este paciente.')
+        if not Paciente.objects.filter(pk=paciente_id).exists():
+            raise NotFound('El paciente solicitado no existe.')
+        return Turno.objects.filter(
+            paciente_id=paciente_id, registro_sesion__isnull=False,
+        ).select_related('profesional', 'registro_sesion').only(
+            'id_turno', 'fecha', 'hora', 'profesional__id_profesional',
+            'profesional__nombre', 'profesional__apellido',
+            'registro_sesion__id_registro_sesion', 'registro_sesion__diagnostico',
+        ).order_by('-fecha', '-hora', '-pk')
 
     @staticmethod
     def obtener_rol(usuario):
@@ -317,15 +348,7 @@ class SesionesService:
 
         # Un profesional nuevo asignado al paciente puede ver
         # únicamente el diagnóstico de los registros históricos.
-        tiene_asignacion_activa = (
-            AsignacionProfesional.objects.filter(
-                paciente_id=turno.paciente_id,
-                profesional=profesional,
-                fecha_fin__isnull=True,
-            ).exists()
-        )
-
-        if tiene_asignacion_activa:
+        if cls.puede_consultar_historial(usuario, turno.paciente_id):
             return turno.registro_sesion, False
 
         raise PermissionDenied(

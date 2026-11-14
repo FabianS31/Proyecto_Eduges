@@ -13,6 +13,7 @@
 // El dashboard enlaza a la ficha con /pacientes/?paciente=5.
 // ============================================================
 
+import { crearHistorialClinico } from '../componentes/historial-clinico.js';
 import { cargarParentescos } from '../componentes/catalogo-parentescos.js';
 import { prepararFormularioPaciente } from '../componentes/formulario-paciente.js?v=20261022_1';
 import { crearCombobox } from '../componentes/combobox.js';
@@ -31,16 +32,14 @@ import {
     actualizarConLaHora,
     diaEnTexto,
     estaActivo,
-    estaCancelado,
     formatearHora,
     listaTurnos,
-    nombreProfesional,
     obtenerTurnos,
     prepararTurnos,
     yaEmpezo,
 } from '../componentes/turnos.js';
-import { ESTADO_PACIENTE, ESTADO_TURNO, PERMISO } from '../constantes.js';
-import { catalogos, pacientes, profesionales, sesiones, tutores } from '../endpoints.js';
+import { ESTADO_PACIENTE, PERMISO } from '../constantes.js';
+import { catalogos, pacientes, profesionales, tutores } from '../endpoints.js';
 import { aFecha, edad, hoyISO, sumarDias } from '../fechas.js';
 import { esAdministrador, esProfesional, obtenerUsuario, tienePermiso } from '../layout.js';
 import { coincideBusqueda, compararTexto } from '../texto.js';
@@ -75,6 +74,7 @@ const ALERTA = 'alerta';
 const FILTROS_CUD = [ALERTA, ...Object.values(CUD)];
 
 const $ = (id) => document.getElementById(id);
+const historialClinico = crearHistorialClinico(() => $('ficha-historial'));
 
 const estado = {
     usuario: null,
@@ -415,6 +415,7 @@ function prepararReasignacion() {
 
         try {
             const resp = await profesionales.reasignarPaciente(pacId, proId);
+            historialClinico.cerrar();
             modalReasignar().hide();
 
             const textoConflictos = resp.cantidad_turnos_con_conflicto > 0
@@ -457,6 +458,7 @@ async function cambiarEstadoPaciente(p, boton) {
 
     try {
         const actualizado = await pacientes.cambiarEstado(p.id_paciente, nuevoEstado);
+        historialClinico.cerrar();
         const estadoId = nuevoEstado === 'Activo' ? ESTADO_PACIENTE.ACTIVO : ESTADO_PACIENTE.INACTIVO;
         p.estado = actualizado?.estado ?? estadoId;
         notificar(nuevoEstado === 'Activo' ? `Se reactivó a ${nombre}.` : `Se inhabilitó a ${nombre}. Su historia clínica se preservó.`);
@@ -472,6 +474,7 @@ async function cambiarEstadoPaciente(p, boton) {
 }
 
 function abrirFicha(id) {
+    historialClinico.cerrar();
     const p = estado.todos.find((paciente) => paciente.id_paciente === id);
     estado.fichaId = p ? id : null;
     guardarEstadoEnUrl();
@@ -560,6 +563,10 @@ function abrirFicha(id) {
                 </section>
             </div>
 
+            <section class="eg-ficha__bloque" aria-labelledby="ficha-historial-titulo">
+                <h3 id="ficha-historial-titulo">${icono('clinical_notes')}Diagnósticos históricos</h3>
+                <div id="ficha-historial" aria-live="polite"></div>
+            </section>
             ${estado.acciones && html`
                 <section class="eg-ficha__turnos" aria-labelledby="ficha-turnos-titulo">
                     <div class="eg-ficha__turnos-head">
@@ -574,13 +581,13 @@ function abrirFicha(id) {
         </div>`);
     panelFicha().show();
     cargarTurnosFicha();
+    historialClinico.abrir(id);
     cargarTutoresFicha(id);
 }
 
 // ------------------------------------------------------------
 // Turnos del paciente en la ficha: próximos (con reprogramar y cancelar) y anteriores
 // ------------------------------------------------------------
-const ANTERIORES_A_MOSTRAR = 5;
 
 const puedeAgendar = (p) => p.estado === ESTADO_PACIENTE.ACTIVO && esProfesional(estado.usuario);
 
@@ -673,79 +680,6 @@ async function cargarTutoresFicha(idPaciente) {
     }
 }
 
-const conMayuscula = (texto) => (texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : '');
-
-function tarjetaEvolucionClinica({ turno: t, sesion }) {
-    const quienAtendio = !esProfesional(estado.usuario) && t.profesional ? ` · Profesional: ${nombreProfesional(t)}` : '';
-    const fechaHora = `${diaEnTexto(t.fecha)}, ${formatearHora(t.hora)} hs`;
-
-    return html`
-        <article class="p-3 mb-3 bg-white border rounded shadow-sm" aria-labelledby="evolucion-titulo-${t.id_turno}">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="ms text-primary" aria-hidden="true" style="font-size: 22px;">clinical_notes</span>
-                    <div>
-                        <h5 class="mb-0 fw-bold fs-6" id="evolucion-titulo-${t.id_turno}">
-                            ${conMayuscula(fechaHora)}
-                        </h5>
-                        ${quienAtendio && html`<span class="small text-muted">${quienAtendio}</span>`}
-                    </div>
-                </div>
-                <div>
-                    ${sesion ? html`
-                        <span class="eg-chip eg-chip--ok">${icono('task_alt')}Nota registrada</span>` : html`
-                        <span class="eg-chip eg-chip--warn">${icono('pending_actions')}Pendiente de nota</span>`}
-                </div>
-            </div>
-
-            ${sesion ? html`
-                <div class="small mb-3">
-                    ${sesion.diagnostico ? html`
-                        <div class="mb-2">
-                            <span class="fw-bold text-dark d-block mb-1">Diagnóstico clínico:</span>
-                            <p class="mb-0 text-secondary bg-light p-2 rounded" style="white-space: pre-wrap;">${sesion.diagnostico}</p>
-                        </div>` : ''}
-                    ${sesion.trabajo_sesion ? html`
-                        <div class="mb-2">
-                            <span class="fw-bold text-dark d-block mb-1">Trabajo en sesión:</span>
-                            <p class="mb-0 text-secondary bg-light p-2 rounded" style="white-space: pre-wrap;">${sesion.trabajo_sesion}</p>
-                        </div>` : ''}
-                    ${sesion.nota_sesion ? html`
-                        <div class="mb-2 p-2 rounded-2 border border-warning-subtle bg-warning-subtle bg-opacity-25">
-                            <div class="d-flex align-items-center justify-content-between mb-1">
-                                <span class="fw-semibold text-dark small d-flex align-items-center gap-1">
-                                    <span class="ms text-warning-emphasis" style="font-size: 16px;">lock</span>
-                                    <span>Nota confidencial (exclusiva del profesional):</span>
-                                </span>
-                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 11px;">Privada</span>
-                            </div>
-                            <p class="mb-0 text-dark small" style="white-space: pre-wrap; font-style: italic;">${sesion.nota_sesion}</p>
-                        </div>` : ''}
-                    ${!esProfesional(estado.usuario) && !estado.usuario?.is_superuser ? html`
-                        <div class="text-muted fst-italic py-1 small">
-                            ${icono('privacy_tip')} Vista de Administrador: Por secreto profesional, el trabajo en sesión y notas privadas están reservados al profesional tratante.
-                        </div>` : ''}
-                </div>
-                <div class="d-flex justify-content-end">
-                    <button type="button" class="eg-btn eg-btn--ghost" data-accion="sesion" data-turno="${t.id_turno}"
-                            aria-label="${esProfesional(estado.usuario) || estado.usuario?.is_superuser ? 'Modificar nota clínica de la sesión del ' + diaEnTexto(t.fecha) : 'Ver diagnóstico de la sesión del ' + diaEnTexto(t.fecha)}">
-                        ${icono(esProfesional(estado.usuario) || estado.usuario?.is_superuser ? 'edit' : 'visibility')}
-                        ${esProfesional(estado.usuario) || estado.usuario?.is_superuser ? 'Modificar nota' : 'Ver diagnóstico'}
-                    </button>
-                </div>
-            ` : html`
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-1">
-                    <p class="mb-0 text-muted small">Esta sesión no tiene el registro de notas de evolución completado.</p>
-                    ${(esProfesional(estado.usuario) || estado.usuario?.is_superuser) ? html`
-                    <button type="button" class="eg-btn eg-btn--primary" data-accion="sesion" data-turno="${t.id_turno}"
-                            aria-label="Escribir nota clínica para la sesión del ${diaEnTexto(t.fecha)}">
-                        ${icono('edit_note')}Escribir nota clínica
-                    </button>` : ''}
-                </div>
-            `}
-        </article>`;
-}
-
 // silencioso: sin el "cargando" (para la actualización automática con la hora)
 async function cargarTurnosFicha({ silencioso = false } = {}) {
     const contenedor = $('ficha-turnos');
@@ -765,28 +699,6 @@ async function cargarTurnosFicha({ silencioso = false } = {}) {
         // Los más recientes primero
         const anteriores = delPaciente.filter((t) => !proximos.includes(t)).reverse();
 
-        // Identificar sesiones clínicas (realizadas o pasadas/en curso no canceladas)
-        const sesionesClinicas = anteriores.filter((t) => {
-            const estadoId = t.estado?.id ?? t.estado?.ID_EstadoTurno;
-            return estadoId === ESTADO_TURNO.REALIZADO || (!estaCancelado(t) && yaEmpezo(t));
-        });
-
-        // Otros turnos anteriores (cancelados o ausentes sin sesión clínica)
-        const otrosAnteriores = anteriores.filter((t) => !sesionesClinicas.includes(t));
-
-        // Consultar las notas de evolución para las sesiones clínicas (hasta 10 más recientes)
-        const sesionesAMostrar = sesionesClinicas.slice(0, 10);
-        const historialClinico = await Promise.all(
-            sesionesAMostrar.map(async (t) => {
-                try {
-                    const sesion = await sesiones.obtener(t.id_turno);
-                    return { turno: t, sesion };
-                } catch {
-                    return { turno: t, sesion: null };
-                }
-            })
-        );
-
         if (estado.fichaId !== id) {
             return;
         }
@@ -797,27 +709,10 @@ async function cargarTurnosFicha({ silencioso = false } = {}) {
                 ? listaTurnosFicha(proximos)
                 : html`<p class="eg-ficha__vacio">No tiene turnos próximos agendados.</p>`}
 
-            <div class="eg-ficha__evoluciones mt-4 pt-3 border-top" id="ficha-historia-seccion">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="eg-ficha__subtitulo m-0" style="font-size: 16px;">
-                        ${icono('clinical_notes')}Historia y Evolución Clínica
-                    </h4>
-                    <span class="badge bg-secondary text-white">${sesionesClinicas.length} ${sesionesClinicas.length === 1 ? 'sesión' : 'sesiones'}</span>
-                </div>
-
-                ${historialClinico.length > 0
-                    ? html`${historialClinico.map((item) => tarjetaEvolucionClinica(item))}
-                           ${sesionesClinicas.length > sesionesAMostrar.length && html`
-                               <p class="eg-ficha__vacio text-muted">Se muestran las últimas ${sesionesAMostrar.length} de ${sesionesClinicas.length} sesiones.</p>`}`
-                    : html`<p class="eg-ficha__vacio">No hay sesiones clínicas anteriores registradas para este paciente.</p>`}
-            </div>
-
-            ${otrosAnteriores.length > 0 && html`
+            ${anteriores.length > 0 && html`
                 <div class="mt-4 pt-3 border-top">
-                    <h4 class="eg-ficha__subtitulo">Otros turnos (cancelados o ausentes)</h4>
-                    ${listaTurnosFicha(otrosAnteriores.slice(0, ANTERIORES_A_MOSTRAR))}
-                    ${otrosAnteriores.length > ANTERIORES_A_MOSTRAR
-                        && html`<p class="eg-ficha__vacio">Se muestran los últimos ${ANTERIORES_A_MOSTRAR} de ${otrosAnteriores.length}.</p>`}
+                    <h4 class="eg-ficha__subtitulo">Turnos anteriores</h4>
+                    ${listaTurnosFicha(anteriores)}
                 </div>`}`);
     } catch (error) {
         if (estado.fichaId === id) {
@@ -833,7 +728,7 @@ function prepararTurnosFicha() {
     estado.acciones = prepararTurnos({
         usuario: estado.usuario,
         // La ficha y el "próximo turno" de la tabla
-        alCambiar: () => Promise.all([cargarTurnosFicha(), cargarProximos().then(mostrarListado)]),
+        alCambiar: () => Promise.all([historialClinico.recargar(), cargarTurnosFicha(), cargarProximos().then(mostrarListado)]),
         focoTrasCambio: () => $('ficha-turnos-titulo'),
     });
     estado.acciones.escuchar($('ficha-cuerpo'));
@@ -959,6 +854,7 @@ function prepararEventos() {
         if (evento.target !== $('ficha-paciente')) {
             return;
         }
+        historialClinico.cerrar();
         const id = estado.fichaId;
         estado.fichaId = null;
         guardarEstadoEnUrl();

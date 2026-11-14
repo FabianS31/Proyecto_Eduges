@@ -10,6 +10,10 @@ class TurnosPendientesFiltroSerializer(serializers.Serializer):
     paciente_id = serializers.IntegerField(required=False, min_value=1)
 
 
+class HistorialSesionFiltroSerializer(serializers.Serializer):
+    paciente_id = serializers.IntegerField(min_value=1)
+
+
 class TextoSesionField(serializers.CharField):
     def to_internal_value(self, data):
         if not isinstance(data, str):
@@ -71,8 +75,7 @@ class RegistroSesionResumenSerializer(
     serializers.ModelSerializer
 ):
     """
-    Respuesta general sin información privada.
-    No expone diagnostico ni nota_sesion.
+    Resumen diagnóstico autorizado. No expone trabajo ni notas privadas.
     """
 
     id = serializers.IntegerField(

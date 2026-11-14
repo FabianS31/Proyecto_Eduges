@@ -3,6 +3,8 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 
 from APIs.autenticacion.autenticacion import (
     UsuarioSessionAuthentication,
@@ -13,6 +15,7 @@ from APIs.sesiones.serializers.sesiones_serializers import (
     RegistroSesionProfesionalSerializer,
     RegistroSesionResumenSerializer,
     TurnosPendientesFiltroSerializer,
+    HistorialSesionFiltroSerializer,
 )
 from APIs.sesiones.services.sesiones_services import (
     SesionesService,
@@ -60,10 +63,32 @@ class TurnosPendientesSesionView(APIView):
         return Response(datos)
 
 
+@method_decorator(never_cache, name='dispatch')
 class RegistroSesionCrearView(APIView):
 
     authentication_classes = [UsuarioSessionAuthentication]
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        filtros = HistorialSesionFiltroSerializer(data=request.query_params)
+        filtros.is_valid(raise_exception=True)
+        turnos = SesionesService.listar_historial(
+            usuario=request.user, **filtros.validated_data,
+        )
+        return Response([
+            {
+                'turno_id': turno.pk,
+                'fecha': turno.fecha,
+                'hora': turno.hora,
+                'profesional': {
+                    'id': turno.profesional_id,
+                    'nombre': turno.profesional.nombre,
+                    'apellido': turno.profesional.apellido,
+                },
+                'sesion': RegistroSesionResumenSerializer(turno.registro_sesion).data,
+            }
+            for turno in turnos
+        ])
 
     def post(self, request):
         serializer = RegistroSesionEntradaSerializer(
@@ -98,6 +123,7 @@ class RegistroSesionCrearView(APIView):
         )
 
 
+@method_decorator(never_cache, name='dispatch')
 class RegistroSesionDetalleView(APIView):
 
     authentication_classes = [UsuarioSessionAuthentication]

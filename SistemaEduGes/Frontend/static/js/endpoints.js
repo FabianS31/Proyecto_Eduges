@@ -191,6 +191,8 @@ export const tutores = {
 // Sesiones clinicas (APIs/sesiones/)
 // ------------------------------------------------------------
 export const sesiones = {
+    // Sin caché de aplicación: cada lectura vuelve a comprobar la autorización.
+    historial: (pacienteId) => api.get('/sesiones/', { parametros: { paciente_id: pacienteId } }),
     // Consulta turnos pendientes de registro de sesion (excluye cancelados)
     // Filtros opcionales: { fecha_desde, fecha_hasta, paciente_id }
     pendientes: (filtros = {}, opciones = {}) =>
