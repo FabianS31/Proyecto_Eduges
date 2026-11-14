@@ -80,7 +80,7 @@ class AltaTests(unittest.TestCase):
 
     def test_tutor_obligatorio_principal_y_campos_protegidos(self):
         cambios = [None, {}, {'responsable_principal': False}, {'activo': False},
-                   {'paciente_id': self.f.pacientes['B'].pk}, {'parentesco_id': 999999}, {'mail': ''}]
+                   {'paciente_id': self.f.pacientes['B'].pk}, {'parentesco_id': 999999}, {'telefono': ''}]
         for cambio in cambios:
             datos = self.datos()
             if cambio is None:

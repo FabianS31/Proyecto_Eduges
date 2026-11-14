@@ -31,7 +31,7 @@ class ValidacionesTests(unittest.TestCase):
         return dict(nombre='Nuevo', apellido='Paciente', dni='40123456', fecha_nacimiento='2010-01-01',
             direccion='Prueba', consentimiento=True, obra_social=self.f.pacientes['B'].obra_social_id,
             numero_afiliado='A1', tutor=dict(nombre='Tutor', apellido='Prueba', dni='30123456',
-                mail='tutor@example.com', domicilio='Prueba', parentesco_id=self.f.parentesco.pk))
+                telefono='123', mail='tutor@example.com', domicilio='Prueba', parentesco_id=self.f.parentesco.pk))
 
     def profesional(self):
         return dict(nombre='Nuevo', apellido='Profesional', dni='50123456', matricula='M99',
@@ -79,7 +79,7 @@ class ValidacionesTests(unittest.TestCase):
         for cambios in [{'dni':'ABC'},{'mail':'mal'},{'fecha_nacimiento':'2099-01-01'},
                         {'fecha_nacimiento':'2026-02-30'},{'consentimiento':False}]:
             self.rechazo('post','/api/pacientes/',{**self.paciente(),**cambios})
-        for cambios in [{'dni':'ABC'},{'mail':'mal'},{'mail':''}]:
+        for cambios in [{'dni':'ABC'},{'mail':'mal'},{'telefono':''}]:
             data=self.paciente();data['tutor'].update(cambios);self.rechazo('post','/api/pacientes/',data)
         for i, dni in enumerate(['1234567','12345678']):
             data=self.paciente();data.update(dni=dni, mail=None if i else '')

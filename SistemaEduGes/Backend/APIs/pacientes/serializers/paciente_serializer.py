@@ -9,6 +9,7 @@ from APIs.validadores import validar_dni, ValidarNombreApellidoMixin, ValidarDom
 from pacientes.models import Parentesco
 from APIs.tutores.serializers import TutorEntradaSerializer, RelacionTutorEntradaSerializer
 from APIs.tutores.services import TutorService
+from APIs.servicios.estado_entidad_service import EstadoEntidadService
 
 from pacientes.models.paciente_model import (
     Paciente,
@@ -299,6 +300,21 @@ class PacienteSerializer(ValidarDomicilioMixin, ValidarNombreApellidoMixin, seri
 
             profesional_asignado = profesional_indicado
 
+        # Releer bajo el mismo bloqueo que usa la inhabilitación. Se conserva
+        # hasta completar el alta integral, antes de crear paciente/asignación.
+        try:
+            profesional_asignado = Profesional.objects.select_for_update().get(
+                pk=profesional_asignado.pk
+            )
+        except Profesional.DoesNotExist:
+            raise serializers.ValidationError({
+                'profesional': 'No se encontró el profesional responsable.'
+            })
+        if profesional_asignado.estado_profesional.estado != EstadoEntidadService.ESTADO_ACTIVO:
+            raise serializers.ValidationError({
+                'profesional': 'El profesional responsable debe estar activo.'
+            })
+
         if 'estado' not in validated_data:
 
             try:
@@ -350,6 +366,8 @@ class PacienteSerializer(ValidarDomicilioMixin, ValidarNombreApellidoMixin, seri
 
 
 class TutorAltaPacienteSerializer(TutorEntradaSerializer):
+    # Contrato exclusivo del tutor principal en el alta integral.
+    telefono = serializers.CharField(max_length=30)
     parentesco_id = serializers.PrimaryKeyRelatedField(queryset=Parentesco.objects.all())
     responsable_principal = serializers.BooleanField(default=True)
 

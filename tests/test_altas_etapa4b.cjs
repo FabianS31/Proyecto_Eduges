@@ -159,3 +159,38 @@ test('alta: rechaza correo como domicilio de paciente o tutor sin enviar',async(
         await e.submit();assert.equal(e.calls.length,1);
     }
 });
+
+test('H02: movil opcional permite alta con los tres contactos obligatorios',async()=>{
+    const e=entorno();e.form.elements.tutor_movil.value='';
+    await e.submit();assert.equal(e.calls.length,1);
+});
+
+test('H02: telefono, correo y domicilio efectivo vacios bloquean alta',async()=>{
+    for (const campo of ['tutor_telefono','tutor_mail','tutor_domicilio']) {
+        for (const valor of ['', '   ']) {
+            const e=entorno();e.form.elements[campo].value=valor;
+            if (campo==='tutor_domicilio') e.form.elements.direccion.value='';
+            await e.submit();assert.equal(e.calls.length,0);
+        }
+    }
+});
+
+test('H02: conserva domicilio del paciente como valor por defecto del tutor',async()=>{
+    const e=entorno();e.form.elements.tutor_domicilio.value='';
+    e.form.elements.direccion.value='Calle de prueba 123';
+    await e.submit();assert.equal(e.calls.length,1);
+    assert.equal(e.calls[0].tutor.domicilio,'Calle de prueba 123');
+});
+
+test('H02: correo informado invalido bloquea alta',async()=>{
+    const e=entorno();e.form.elements.tutor_mail.checkValidity=()=>false;
+    await e.submit();assert.equal(e.calls.length,0);
+});
+
+test('H02: HTML requiere telefono, correo y domicilio; movil opcional',()=>{
+    const html=fs.readFileSync('SistemaEduGes/Frontend/templates/componentes/modal_paciente.html','utf8');
+    for (const campo of ['mail','movil','domicilio','telefono']) {
+        const input=html.match(new RegExp(`<input[^>]*name="tutor_${campo}"[^>]*>`))[0];
+        assert.equal(/\brequired\b/.test(input),campo!=='movil');
+    }
+});
