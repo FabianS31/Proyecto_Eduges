@@ -79,6 +79,11 @@
 </div>
 
 <!-- Formulario de filtros dinámicos -->
+<div id="reportes-catalogos-error" class="alert alert-warning d-print-none" role="alert" hidden>
+    <span id="reportes-catalogos-mensaje"></span>
+    <button type="button" id="btn-reintentar-catalogos" class="btn btn-sm btn-outline-secondary">Reintentar carga</button>
+</div>
+
 <form class="eg-filters mb-4 d-print-none" id="filtros-reporte" data-tipo="turnos" role="search" aria-label="Filtros del reporte">
 
     <!-- FILTROS: TURNOS -->
@@ -166,7 +171,6 @@
         <label for="filtro-profesional-especialidad" class="eg-label">Especialidad</label>
         <select class="eg-select" id="filtro-profesional-especialidad" name="especialidad_id">
             <option value="">Todas las especialidades</option>
-            <option value="1">Psicopedagogo</option>
         </select>
     </div>
     <div class="eg-field d-none" data-filtro-grupo="profesionales">

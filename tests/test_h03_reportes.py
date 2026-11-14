@@ -69,7 +69,10 @@ class ReportesPropiosTests(unittest.TestCase):
 
     def test_filtros_no_amplian_alcance_y_totales_coinciden(self):
         self.assertEqual(self.ids(self.reporte('B', diagnostico='Diagnostico A')), [])
-        self.assertEqual(self.ids(self.reporte('B', trabajo_sesion='Trabajo A')), [])
+        registro = self.a.registro_sesion
+        registro.trabajo_sesion = 'Contenido exclusivo_autor_a'
+        registro.save(update_fields=['trabajo_sesion'])
+        self.assertEqual(self.ids(self.reporte('B', trabajo_sesion='exclusivo_autor_a')), [])
         self.assertEqual(self.ids(self.reporte('A', diagnostico='Diagnostico A',
             fecha_desde='2026-05-20', fecha_hasta='2026-05-20',
             estado_id=self.f.estados_turno['Realizado'].pk)), [self.a.pk])
@@ -129,3 +132,52 @@ class ReportesPropiosTests(unittest.TestCase):
         self.assertEqual(r.json()['resultados'][0]['nota_sesion'], 'Privada B')
         self.assertIsNone(r.json()['resultados'][1]['trabajo_sesion'])
         self.assertNotIn(self.b.pk, self.ids(r))
+
+    def test_trabajo_palabras_acentos_parciales_y_privacidad(self):
+        registro = self.a.registro_sesion
+        registro.trabajo_sesion = 'ATENCIÓN sostenida y ejercicios de Memoria'
+        registro.save(update_fields=['trabajo_sesion'])
+        for texto in ('memoria atencion', 'ATENCIÓN; memo', 'sosten', 'ejercicios, atención'):
+            with self.subTest(texto=texto):
+                self.assertEqual(self.ids(self.reporte('A', trabajo_sesion=texto)), [self.a.pk])
+                self.assertEqual(self.ids(self.reporte('B', trabajo_sesion=texto)), [])
+                self.assertEqual(self.reporte('admin', trabajo_sesion=texto).status_code, 403)
+                self.assertEqual(self.ids(self.reporte('super', trabajo_sesion=texto)), [self.a.pk])
+        self.assertEqual(self.ids(self.reporte('A', trabajo_sesion='sin coincidencias')), [])
+
+    def test_homonimos_ids_catalogo_y_especialidades(self):
+        for modelo in (s.Paciente, s.Profesional):
+            modelo.objects.all().update(nombre='Ana', apellido='Ficticia')
+        for tipo, objetos, parametro in (
+            ('pacientes', self.f.pacientes, 'paciente_id'),
+            ('profesionales', self.f.profesionales, 'profesional_id'),
+        ):
+            for actor in ('admin', 'super'):
+                cliente = self.f.login(actor)
+                for objeto in objetos.values():
+                    self.assertEqual(self.ids(cliente.get(f'/api/reportes/{tipo}/',
+                        {parametro: objeto.pk})), [objeto.pk])
+                self.assertEqual(len(self.ids(cliente.get(f'/api/reportes/{tipo}/', {'nombre': 'Ana'}))), 2)
+            self.assertEqual(self.f.login('A').get(f'/api/reportes/{tipo}/').status_code, 403)
+        especialidades = [self.f.profesionales['A'].especialidad]
+        especialidades += [s.Especialidad.objects.create(especialidad=f'Sintética {i}') for i in (2, 3)]
+        profesional = self.f.profesionales['B']
+        profesional.especialidad = especialidades[1]
+        profesional.save(update_fields=['especialidad'])
+        cliente = self.f.login('admin')
+        catalogo = cliente.get('/api/profesionales/especialidades/')
+        self.assertEqual(catalogo.status_code, 200)
+        self.assertEqual({e['id'] for e in catalogo.json()}, {e.pk for e in especialidades})
+        for esp, esperados in zip(especialidades, [[self.f.profesionales['A'].pk], [profesional.pk], []]):
+            self.assertEqual(self.ids(cliente.get('/api/reportes/profesionales/',
+                {'especialidad_id': esp.pk})), esperados)
+
+    def test_rangos_y_filtros_opcionales(self):
+        cliente = self.f.login('admin')
+        for tipo, desde, hasta in [('turnos', 'fecha_desde', 'fecha_hasta'),
+                                   ('pacientes', 'fecha_alta_desde', 'fecha_alta_hasta')]:
+            self.assertEqual(cliente.get(f'/api/reportes/{tipo}/',
+                {desde: '2026-11-02', hasta: '2026-11-01'}).status_code, 400)
+            self.assertEqual(cliente.get(f'/api/reportes/{tipo}/').status_code, 200)
+        self.assertEqual(self.ids(self.reporte('A', trabajo_sesion='')), [self.a.pk, self.sin_sesion.pk])
+        self.assertEqual(self.reporte('A', paciente_id=0).status_code, 400)

@@ -179,61 +179,53 @@ function configurarPermisosYRoles() {
 // Carga de catálogos para filtros
 // ============================================================
 async function cargarCatalogos() {
-    try {
-        if (!estado.esPro) {
-            // Cargar profesionales para el filtro de turnos
-            estado.profesionalesLista = await profesionales.listar();
-            const selectPro = $('filtro-turno-profesional');
-            if (selectPro && estado.profesionalesLista.length > 0) {
-                const opciones = estado.profesionalesLista.map(
-                    (p) => html`<option value="${p.id_profesional}">${p.apellido}, ${p.nombre}</option>`
-                );
-                renderizar(selectPro, html`<option value="">Todos los profesionales</option>${opciones}`);
-            }
-
-            // Cargar obras sociales para el filtro de pacientes
-            try {
-                estado.obrasSocialesLista = await catalogos.obrasSociales();
-                const selectOS = $('filtro-paciente-obra-social');
-                if (selectOS && Array.isArray(estado.obrasSocialesLista) && estado.obrasSocialesLista.length > 0) {
-                    const opcionesOS = estado.obrasSocialesLista.map(
-                        (os) => html`<option value="${os.id}">${os.nombre}</option>`
-                    );
-                    renderizar(selectOS, html`<option value="">Todas las obras sociales</option>${opcionesOS}`);
-                }
-            } catch (errOS) {
-                console.warn('No se pudieron precargar obras sociales para filtros en reportes:', errOS);
-            }
-        }
-
-        // Cargar tutores para filtros de turnos y pacientes
+    const fallidos = [];
+    async function cargar(nombre, proveedor, destinos, etiqueta, guardar) {
         try {
-            estado.tutoresLista = await tutores.listar();
-            if (Array.isArray(estado.tutoresLista) && estado.tutoresLista.length > 0) {
-                const opcionesTutores = estado.tutoresLista.map(
-                    (t) => html`<option value="${t.id}">${t.apellido}, ${t.nombre}</option>`
-                );
-                const selectTurnoTutor = $('filtro-turno-tutor');
-                if (selectTurnoTutor) {
-                    renderizar(selectTurnoTutor, html`<option value="">Todos los tutores</option>${opcionesTutores}`);
-                }
-                const selectPacienteTutor = $('filtro-paciente-tutor');
-                if (selectPacienteTutor) {
-                    renderizar(selectPacienteTutor, html`<option value="">Todos los tutores</option>${opcionesTutores}`);
-                }
+            const lista = await proveedor();
+            guardar?.(lista);
+            for (const id of destinos) {
+                const select = $(id);
+                if (!select) continue;
+                const valor = select.value;
+                renderizar(select, html`<option value="">${etiqueta}</option>${lista.map(
+                    (item) => html`<option value="${item.id_profesional ?? item.id}">${item.apellido ? `${item.apellido}, ${item.nombre}` : item.nombre}</option>`
+                )}`);
+                select.value = valor;
+                if (select.value !== valor) invalidarReporte();
             }
-        } catch (errTutores) {
-            console.warn('Aviso al cargar tutores en reportes:', errTutores);
+        } catch (error) {
+            fallidos.push(nombre);
+            console.warn(`No se pudo cargar ${nombre}:`, error);
         }
-    } catch (error) {
-        console.warn('Aviso al cargar catálogos auxiliares:', error);
     }
+    if (!estado.esPro) {
+        await cargar('profesionales', () => profesionales.listar(), ['filtro-turno-profesional'],
+            'Todos los profesionales', (lista) => { estado.profesionalesLista = lista; });
+        await cargar('obras sociales', () => catalogos.obrasSociales(), ['filtro-paciente-obra-social'],
+            'Todas las obras sociales', (lista) => { estado.obrasSocialesLista = lista; });
+        await cargar('especialidades', () => catalogos.especialidades(), ['filtro-profesional-especialidad'],
+            'Todas las especialidades');
+    }
+    await cargar('tutores', () => tutores.listar(), estado.esPro
+        ? ['filtro-turno-tutor'] : ['filtro-turno-tutor', 'filtro-paciente-tutor'],
+        'Todos los tutores', (lista) => { estado.tutoresLista = lista; });
+    const aviso = $('reportes-catalogos-error');
+    aviso.hidden = fallidos.length === 0;
+    $('reportes-catalogos-mensaje').textContent = fallidos.length
+        ? `No se pudieron cargar: ${fallidos.join(', ')}. Las opciones pueden estar incompletas.` : '';
+
 }
 
 // ============================================================
 // Conexión de eventos
 // ============================================================
 function conectarEventos() {
+    $('btn-reintentar-catalogos').addEventListener('click', async () => {
+        const boton = $('btn-reintentar-catalogos');
+        boton.disabled = true;
+        try { await cargarCatalogos(); } finally { boton.disabled = false; }
+    });
     // Inicializar comboboxes con sugerencias desplegables al escribir
     const inputTurnosBusqueda = $('filtro-turno-busqueda');
     if (inputTurnosBusqueda) {
@@ -246,6 +238,8 @@ function conectarEventos() {
                 if (opcion) {
                     inputTurnosBusqueda.value = opcion.texto;
                     consultarReporte();
+                } else {
+                    invalidarReporte();
                 }
             },
         });
@@ -262,6 +256,8 @@ function conectarEventos() {
                 if (opcion) {
                     inputPacientesQ.value = opcion.texto;
                     consultarReporte();
+                } else {
+                    invalidarReporte();
                 }
             },
         });
@@ -278,6 +274,8 @@ function conectarEventos() {
                 if (opcion) {
                     inputProfesionalesQ.value = opcion.texto;
                     consultarReporte();
+                } else {
+                    invalidarReporte();
                 }
             },
         });
@@ -506,11 +504,13 @@ async function consultarReporte() {
             const proId = $('filtro-turno-profesional')?.value;
             const tutorId = $('filtro-turno-tutor')?.value;
             textoBusqueda = $('filtro-turno-busqueda').value.trim();
+            const seleccionadoId = $('filtro-turno-busqueda').dataset.valor;
             const textoTrabajo = estado.usuario?.rol?.nombre === 'Administrador'
                 ? ''
                 : $('filtro-turno-trabajo')?.value.trim();
 
             const queryParams = {};
+            if (seleccionadoId) queryParams.paciente_id = Number(seleccionadoId);
             if (desde) queryParams.fecha_desde = desde;
             if (hasta) queryParams.fecha_hasta = hasta;
             if (estadoId) queryParams.estado_id = parseInt(estadoId, 10);
@@ -523,7 +523,7 @@ async function consultarReporte() {
             let items = respuesta.resultados || [];
 
             // Filtrado complementario tolerante a mayúsculas/acentos
-            if (textoBusqueda) {
+            if (textoBusqueda && !seleccionadoId) {
                 items = items.filter((t) =>
                     coincideBusquedaReporte(
                         [
@@ -537,11 +537,6 @@ async function consultarReporte() {
                     )
                 );
             }
-            if (textoTrabajo) {
-                items = items.filter((t) =>
-                    coincideBusquedaReporte([t.trabajo_sesion], textoTrabajo)
-                );
-            }
             estado.resultados = items;
             estado.totalOriginal = respuesta.total;
 
@@ -552,8 +547,10 @@ async function consultarReporte() {
             const altaDesde = $('filtro-paciente-alta-desde')?.value;
             const altaHasta = $('filtro-paciente-alta-hasta')?.value;
             textoBusqueda = $('filtro-paciente-q').value.trim();
+            const seleccionadoId = $('filtro-paciente-q').dataset.valor;
 
             const queryParams = {};
+            if (seleccionadoId) queryParams.paciente_id = Number(seleccionadoId);
             if (estadoId) queryParams.estado_id = parseInt(estadoId, 10);
             if (obraSocialId) queryParams.obra_social_id = parseInt(obraSocialId, 10);
             if (tutorId) queryParams.tutor_id = parseInt(tutorId, 10);
@@ -594,7 +591,7 @@ async function consultarReporte() {
                 });
             }
 
-            if (textoBusqueda) {
+            if (textoBusqueda && !seleccionadoId) {
                 items = items.filter((p) =>
                     coincideBusquedaReporte(
                         [
@@ -617,8 +614,10 @@ async function consultarReporte() {
             const espId = $('filtro-profesional-especialidad').value;
             const estadoId = $('filtro-profesional-estado').value;
             textoBusqueda = $('filtro-profesional-q').value.trim();
+            const seleccionadoId = $('filtro-profesional-q').dataset.valor;
 
             const queryParams = {};
+            if (seleccionadoId) queryParams.profesional_id = Number(seleccionadoId);
             if (espId) queryParams.especialidad_id = parseInt(espId, 10);
             if (estadoId) queryParams.estado_id = parseInt(estadoId, 10);
 
@@ -626,7 +625,7 @@ async function consultarReporte() {
             if (consulta !== estado.consulta) return;
             let items = respuesta.resultados || [];
 
-            if (textoBusqueda) {
+            if (textoBusqueda && !seleccionadoId) {
                 items = items.filter((p) =>
                     coincideBusquedaReporte(
                         [p.nombre, p.apellido, p.dni, p.matricula, p.especialidad?.nombre],
@@ -1061,7 +1060,9 @@ function actualizarMembreteImpresion() {
         const osSel = $('filtro-paciente-obra-social');
         const estadoTexto = estadoSel?.value ? estadoSel.options[estadoSel.selectedIndex].text : 'Todos';
         const osTexto = osSel?.value ? osSel.options[osSel.selectedIndex].text : 'Todas';
-        periodoTexto = 'Padrón activo';
+        const desde = $('filtro-paciente-alta-desde')?.value;
+        const hasta = $('filtro-paciente-alta-hasta')?.value;
+        periodoTexto = `Fecha de alta: ${desde ? formatearFecha(desde) : 'sin límite inicial'} al ${hasta ? formatearFecha(hasta) : 'sin límite final'}`;
         resumen = `Estado: ${estadoTexto} | Obra Social: ${osTexto}`;
         const tutorPacSel = $('filtro-paciente-tutor');
         if (tutorPacSel?.value) {
@@ -1072,8 +1073,19 @@ function actualizarMembreteImpresion() {
         const estadoSel = $('filtro-profesional-estado');
         const espTexto = espSel?.value ? espSel.options[espSel.selectedIndex].text : 'Todas';
         const estadoTexto = estadoSel?.value ? estadoSel.options[estadoSel.selectedIndex].text : 'Todos';
-        periodoTexto = 'Nómina activa';
+        periodoTexto = 'Nómina de profesionales';
         resumen = `Especialidad: ${espTexto} | Estado: ${estadoTexto}`;
+    }
+
+    const camposBusqueda = { turnos: 'filtro-turno-busqueda', pacientes: 'filtro-paciente-q', profesionales: 'filtro-profesional-q' };
+    const campoBusqueda = $(camposBusqueda[estado.tipo]);
+    if (campoBusqueda?.value.trim()) {
+        resumen += ` | Búsqueda: ${campoBusqueda.value.trim()}`;
+        if (campoBusqueda.dataset.valor) resumen += ` (ID ${campoBusqueda.dataset.valor})`;
+    }
+    if (estado.tipo === 'turnos' && estado.usuario?.rol?.nombre !== 'Administrador') {
+        const trabajo = $('filtro-turno-trabajo')?.value.trim();
+        if (trabajo) resumen += ` | Trabajo de Sesión: ${trabajo}`;
     }
 
     const periodoEl = $('print-periodo');

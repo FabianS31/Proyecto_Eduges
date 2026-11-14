@@ -1,3 +1,5 @@
+import re
+import unicodedata
 
 from django.db.models import Q
 from rest_framework.exceptions import PermissionDenied
@@ -163,22 +165,6 @@ class ReportesService:
                     'No tenés permisos para filtrar por trabajo de sesión.'
                 )
 
-            if rol == 'Profesional':
-                # El profesional solamente puede buscar trabajos
-                # de sesión correspondientes a sus propios períodos.
-                consulta = consulta.filter(
-                    condicion_periodo_propio,
-                    registro_sesion__trabajo_sesion__icontains=(
-                        filtros['trabajo_sesion']
-                    ),
-                )
-            else:
-                consulta = consulta.filter(
-                    registro_sesion__trabajo_sesion__icontains=(
-                        filtros['trabajo_sesion']
-                    )
-                )
-
         # -------------------------------------------------
         # FILTRO POR DIAGNÓSTICO
         # -------------------------------------------------
@@ -202,7 +188,20 @@ class ReportesService:
 
         resultados = []
 
+        # Mismo criterio textual que la búsqueda libre: todas las palabras,
+        # parciales, sin acentos ni distinción de mayúsculas. Solo sobre el
+        # conjunto previamente autorizado; no requiere extensiones de PostgreSQL.
+        def normalizar(texto):
+            return ''.join(c for c in unicodedata.normalize('NFD', texto or '')
+                           if not '\u0300' <= c <= '\u036f').lower().strip()
+
+        palabras = re.sub(r'[,;.]', ' ', normalizar(filtros.get('trabajo_sesion'))).split()
         for turno in consulta:
+            if palabras:
+                trabajo = normalizar(turno.registro_sesion.trabajo_sesion
+                                     if turno.registro_sesion else '')
+                if not all(palabra in trabajo for palabra in palabras):
+                    continue
             resultado = {
                 'id': turno.id_turno,
                 'fecha': turno.fecha,

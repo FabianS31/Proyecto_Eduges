@@ -297,3 +297,118 @@ test('H6: combobox distingue error de vacío y no permite elegir opciones anteri
     await new Promise(setImmediate);
     assert.match(lista.innerHTML, /Ana/);
 });
+
+for (const [tipo, campo, combo, parametro] of [
+    ['turnos', 'filtro-turno-busqueda', 'turnos', 'paciente_id'],
+    ['pacientes', 'filtro-paciente-q', 'pacientes', 'paciente_id'],
+    ['profesionales', 'filtro-profesional-q', 'profesionales', 'profesional_id'],
+]) {
+    test(`Selección exacta, edición, limpieza y exportación: ${tipo}`, async () => {
+        const e = entorno();
+        e.ejecutar(sinImports(leer('componentes/combobox.js')));
+        e.ejecutar(sinImports(leer('paginas/reportes.js')));
+        e.ejecutar('globalThis.estadoPrueba = estado; globalThis.combosPrueba = combos; conectarEventos();');
+        e.c.estadoPrueba.tipo = tipo;
+        const filas = [1, 2].map(id => tipo === 'turnos' ? turno(id) :
+            { id, nombre: 'Ana', apellido: 'Ficticia', dni: `SINTETICO-${id}` });
+        let parametros;
+        e.c.reportes[tipo] = async params => {
+            parametros = params;
+            const resultados = params[parametro] ? filas.filter(f => f.id === params[parametro]) : filas;
+            return { total: resultados.length, resultados };
+        };
+        e.c.combosPrueba[combo].elegir({ valor: 2, texto: 'Ficticia, Ana' });
+        await new Promise(setImmediate);
+        assert.equal(parametros[parametro], 2);
+        assert.equal(e.c.estadoPrueba.resultados.length, 1);
+        assert.equal(e.c.estadoPrueba.resultados[0].id, 2);
+        await e.nodo('btn-exportar-csv').emitir('click');
+        assert.equal(e.c.descargas[0].split('\r\n').length, 2);
+        await e.nodo('btn-imprimir').emitir('click');
+        assert.match(e.nodo('print-criterios').textContent, /ID 2/);
+        assert.match(e.nodo('print-criterios').textContent, /Total: 1/);
+        e.nodo(campo).value = 'Ana';
+        await e.nodo(campo).emitir('input');
+        assert.equal(e.nodo(campo).dataset.valor, '');
+        assert.equal(e.c.estadoPrueba.resultadosVigentes, false);
+        await e.c.consultarReporte();
+        assert.equal(parametros[parametro], undefined);
+        assert.equal(e.c.estadoPrueba.resultados.length, 2);
+        e.c.combosPrueba[combo].elegir({ valor: 1, texto: 'Ficticia, Ana' });
+        await new Promise(setImmediate);
+        await e.nodo('btn-limpiar-filtros').emitir('click');
+        assert.equal(e.nodo(campo).value, '');
+        assert.equal(e.nodo(campo).dataset.valor, '');
+        assert.equal(parametros[parametro], undefined);
+        assert.equal(e.c.estadoPrueba.resultados.length, 2);
+    });
+}
+
+test('Catálogos: tres especialidades, error visible, reintento y selección conservada', async () => {
+    const e = reportesEntorno();
+    let falla = true;
+    e.c.catalogos = {
+        obrasSociales: async () => [],
+        especialidades: async () => {
+            if (falla) throw new Error('Fallo sintético');
+            return [{ id: 7, nombre: 'Especialidad A' }, { id: 8, nombre: 'Especialidad B' }, { id: 9, nombre: 'Especialidad C' }];
+        },
+    };
+    e.nodo('filtro-turno-profesional').value = '42';
+    await e.c.cargarCatalogos();
+    assert.equal(e.nodo('reportes-catalogos-error').hidden, false);
+    assert.match(e.nodo('reportes-catalogos-mensaje').textContent, /especialidades/);
+    falla = false;
+    await e.nodo('btn-reintentar-catalogos').emitir('click');
+    assert.equal(e.nodo('reportes-catalogos-error').hidden, true);
+    for (const id of [7, 8, 9]) assert.match(e.nodo('filtro-profesional-especialidad').innerHTML, new RegExp(`value="${id}"`));
+    assert.equal(e.nodo('filtro-turno-profesional').value, '42');
+    e.c.estadoPrueba.tipo = 'profesionales';
+    e.nodo('filtro-profesional-especialidad').value = '8';
+    e.c.reportes.profesionales = async params => {
+        assert.equal(params.especialidad_id, 8);
+        return { total: 0, resultados: [] };
+    };
+    await e.c.consultarReporte();
+});
+
+test('Impresión refleja inactivos, fechas de alta y búsqueda', async () => {
+    const e = reportesEntorno();
+    e.c.estadoPrueba.tipo = 'pacientes';
+    e.nodo('filtro-paciente-estado').value = '2';
+    e.nodo('filtro-paciente-estado').options = [{ text: 'Inactivo' }];
+    e.nodo('filtro-paciente-alta-desde').value = '2026-01-01';
+    e.nodo('filtro-paciente-alta-hasta').value = '2026-11-01';
+    e.nodo('filtro-paciente-q').value = 'Ana';
+    await e.c.consultarReporte();
+    assert.match(e.nodo('print-periodo').textContent, /2026-01-01.*2026-11-01/);
+    assert.match(e.nodo('print-criterios').textContent, /Inactivo.*Búsqueda: Ana/);
+    assert.doesNotMatch(e.nodo('print-periodo').textContent, /Padrón activo/);
+    e.c.estadoPrueba.tipo = 'profesionales';
+    e.nodo('filtro-profesional-estado').value = '2';
+    e.nodo('filtro-profesional-estado').options = [{ text: 'Inactivo' }];
+    await e.c.consultarReporte();
+    assert.match(e.nodo('print-criterios').textContent, /Inactivo/);
+    assert.doesNotMatch(e.nodo('print-periodo').textContent, /Nómina activa/);
+});
+
+test('Trabajo de sesión usa respuesta del servidor y respeta Administrador', async () => {
+    const e = reportesEntorno();
+    e.c.estadoPrueba.usuario = { rol: { nombre: 'Profesional' } };
+    e.c.estadoPrueba.esPro = true;
+    e.nodo('filtro-turno-trabajo').value = 'ATENCION, memoria';
+    e.c.reportes.turnos = async params => {
+        assert.equal(params.trabajo_sesion, 'ATENCION, memoria');
+        return { total: 1, resultados: [{ ...turno(1), trabajo_sesion: 'Memoria y atención sostenida' }] };
+    };
+    await e.c.consultarReporte();
+    assert.equal(e.c.estadoPrueba.resultados.length, 1);
+    assert.match(e.nodo('print-criterios').textContent, /Trabajo de Sesión: ATENCION, memoria/);
+    e.c.estadoPrueba.usuario.rol.nombre = 'Administrador';
+    e.c.reportes.turnos = async params => {
+        assert.equal(params.trabajo_sesion, undefined);
+        return { total: 0, resultados: [] };
+    };
+    await e.c.consultarReporte();
+    assert.doesNotMatch(e.nodo('print-criterios').textContent, /Trabajo de Sesión/);
+});
