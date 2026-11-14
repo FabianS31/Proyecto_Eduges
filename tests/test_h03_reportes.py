@@ -85,9 +85,47 @@ class ReportesPropiosTests(unittest.TestCase):
         self.assertEqual(self.reporte('otro').status_code, 403)
         self.assertEqual(s.Client().get('/api/reportes/turnos/').status_code, 401)
 
-    def test_h04_limite_exclusivo_sigue_pendiente(self):
-        # Documenta el comportamiento existente; H03 no corrige este limite.
+    def test_h04_dia_final_incluido_solo_para_autor(self):
         mismo_dia = self.turno('A', date(2026, 6, 1), True)
-        self.assertNotIn(mismo_dia.pk, self.ids(self.reporte('A')))
+        mismo_dia.hora = '10:00'
+        mismo_dia.save(update_fields=['hora'])
+        ajeno = self.turno('B', date(2026, 6, 1), True)
+        r = self.reporte('A', fecha_desde='2026-06-01', fecha_hasta='2026-06-01',
+                         diagnostico='Diagnostico A', trabajo_sesion='Trabajo A',
+                         estado_id=self.f.estados_turno['Realizado'].pk)
+        self.assertEqual(self.ids(r), [mismo_dia.pk])
+        self.assertEqual(r.json()['resultados'][0]['trabajo_sesion'], 'Trabajo A')
+        self.assertEqual(r.json()['resultados'][0]['nota_sesion'], 'Privada A')
+        self.assertNotIn(ajeno.pk, self.ids(self.reporte('A')))
         self.assertNotIn(mismo_dia.pk, self.ids(self.reporte('B')))
-        self.assertIn(mismo_dia.pk, self.ids(self.reporte('admin')))
+        admin = self.reporte('admin', fecha_desde='2026-06-01', fecha_hasta='2026-06-01')
+        self.assertEqual(set(self.ids(admin)), {mismo_dia.pk, ajeno.pk})
+        for fila in admin.json()['resultados']:
+            self.assertNotIn('trabajo_sesion', fila)
+            self.assertNotIn('nota_sesion', fila)
+
+    def test_h04_fuera_del_periodo_sigue_excluido(self):
+        posterior = self.turno('A', date(2026, 6, 2), True)
+        anterior = self.turno('A', date(2025, 12, 31), True)
+        ids = self.ids(self.reporte('A'))
+        self.assertNotIn(posterior.pk, ids)
+        self.assertNotIn(anterior.pk, ids)
+        self.assertIn(self.a.pk, ids)
+
+    def test_h04_retorno_a_b_a_y_periodo_de_un_dia(self):
+        dia = date(2026, 6, 1)
+        s.AsignacionProfesional.objects.filter(paciente=self.paciente,
+            profesional=self.f.profesionales['B']).update(fecha_fin=dia)
+        s.AsignacionProfesional.objects.create(paciente=self.paciente,
+            profesional=self.f.profesionales['A'], fecha_inicio=dia)
+        propio_a = self.turno('A', dia, True)
+        propio_b = self.turno('B', dia, True)
+        sin_sesion_b = self.turno('B', dia, False)
+        ids_a = self.ids(self.reporte('A'))
+        self.assertEqual(ids_a.count(propio_a.pk), 1)
+        self.assertNotIn(propio_b.pk, ids_a)
+        r = self.reporte('B')
+        self.assertEqual(self.ids(r), [propio_b.pk, sin_sesion_b.pk])
+        self.assertEqual(r.json()['resultados'][0]['nota_sesion'], 'Privada B')
+        self.assertIsNone(r.json()['resultados'][1]['trabajo_sesion'])
+        self.assertNotIn(self.b.pk, self.ids(r))

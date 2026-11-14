@@ -82,10 +82,10 @@ class ReportesService:
                         fecha__gte=asignacion['fecha_inicio'],
                     )
 
-                    # La fecha de finalización es exclusiva.
+                    # Incluye el día final; la autoría sigue limitada al profesional.
                     if asignacion['fecha_fin'] is not None:
                         condicion_periodo &= Q(
-                            fecha__lt=asignacion['fecha_fin'],
+                            fecha__lte=asignacion['fecha_fin'],
                         )
 
                     condicion_periodo_propio |= condicion_periodo
@@ -251,7 +251,7 @@ class ReportesService:
                         and turno.fecha >= asignacion['fecha_inicio']
                         and (
                             asignacion['fecha_fin'] is None
-                            or turno.fecha < asignacion['fecha_fin']
+                            or turno.fecha <= asignacion['fecha_fin']
                         )
                         for asignacion in periodos_asignacion
                     )
