@@ -92,6 +92,33 @@ function reportesEntorno() {
 }
 
 const turno = (id) => ({ id, fecha: '2026-11-10', hora: '09:00', paciente: { nombre: 'Ana', apellido: 'Ficticia' }, profesional: { nombre: 'Luis', apellido: 'Prueba' }, estado: { id: 1, nombre: 'Pendiente' } });
+for (const esPro of [true, false]) {
+    test(`H03: tabla, totales, indicadores, CSV e impresion usan respuesta autorizada (${esPro ? 'Profesional' : 'Administrador'})`, async () => {
+        const e = reportesEntorno();
+        e.c.estadoPrueba.esPro = esPro;
+        e.c.estadoPrueba.usuario = { rol: { nombre: esPro ? 'Profesional' : 'Administrador' } };
+        const propio = { ...turno(101), trabajo_sesion: 'Trabajo propio', nota_sesion: 'Nota privada' };
+        const anterior = { ...turno(202), profesional: { nombre: 'Anterior', apellido: 'Otro' } };
+        const autorizados = esPro ? [propio] : [turno(101), anterior];
+        e.c.reportes.turnos = async () => ({ total: autorizados.length, resultados: autorizados });
+        await e.c.consultarReporte();
+        assert.equal(e.c.estadoPrueba.resultados.length, autorizados.length);
+        assert.equal(e.nodo('reporte-total').textContent, `${autorizados.length} ${esPro ? 'registro' : 'registros'}`);
+        assert.match(e.nodo('reporte-kpis').innerHTML, new RegExp(`eg-stat__value">${autorizados.length}</span>`));
+        const tabla = e.nodo('reporte-cuerpo').innerHTML;
+        if (esPro) assert.doesNotMatch(tabla, /Anterior/);
+        else assert.match(tabla, /Anterior/);
+        await e.nodo('btn-exportar-csv').emitir('click');
+        assert.equal(e.c.descargas[0].split('\r\n').length, autorizados.length + 1);
+        assert.doesNotMatch(e.c.descargas[0], /Nota privada/);
+        if (esPro) assert.doesNotMatch(e.c.descargas[0], /Anterior/);
+        else assert.doesNotMatch(e.c.descargas[0], /Trabajo propio|Nota privada/);
+        await e.nodo('btn-imprimir').emitir('click');
+        assert.equal(e.c.impresiones, 1);
+        assert.equal(e.nodo('reporte-cuerpo').innerHTML, tabla);
+    });
+}
+
 function sinResultados(e) {
     assert.equal(e.c.estadoPrueba.resultados.length, 0);
     assert.equal(e.c.estadoPrueba.resultadosVigentes, false);

@@ -45,7 +45,6 @@ class ReportesService:
 
         # Condiciones iniciales vacías.
         condicion_periodo_propio = Q(pk__in=[])
-        condicion_historicos = Q(pk__in=[])
 
         # -------------------------------------------------
         # RESTRICCIONES PARA PROFESIONALES
@@ -91,37 +90,8 @@ class ReportesService:
 
                     condicion_periodo_propio |= condicion_periodo
 
-                # -------------------------------------------------
-                # TURNOS HISTÓRICOS DE OTROS PROFESIONALES
-                # -------------------------------------------------
-
-                # Solamente se consideran pacientes que actualmente
-                # están asignados a este profesional.
-                asignaciones_vigentes = [
-                    asignacion
-                    for asignacion in periodos_asignacion
-                    if asignacion['fecha_fin'] is None
-                ]
-
-                for asignacion in asignaciones_vigentes:
-                    condicion_historicos |= (
-                        Q(
-                            paciente_id=asignacion['paciente_id'],
-                            fecha__lt=asignacion['fecha_inicio'],
-                        )
-                        & ~Q(
-                            profesional_id=profesional.id_profesional,
-                        )
-                    )
-
-                # El profesional solamente puede consultar:
-                # 1. Sus propios turnos durante sus asignaciones.
-                # 2. Los turnos históricos de otros profesionales
-                #    anteriores a una asignación vigente.
-                consulta = consulta.filter(
-                    condicion_periodo_propio
-                    | condicion_historicos
-                )
+                # Solo actividad propia dentro de los periodos ya autorizados.
+                consulta = consulta.filter(condicion_periodo_propio)
 
         # -------------------------------------------------
         # FILTROS DEL REPORTE DE TURNOS
