@@ -25,13 +25,6 @@
 <div id="aviso-cud" hidden></div>
 
 <style>
-.eg-table--admin :is(.eg-table__head, .eg-table__row) > :nth-child(1) { flex: 2.1 1 200px; }
-.eg-table--admin :is(.eg-table__head, .eg-table__row) > :nth-child(2) { flex: 0.9 1 95px; }
-.eg-table--admin :is(.eg-table__head, .eg-table__row) > :nth-child(3) { flex: 0.7 1 65px; }
-.eg-table--admin :is(.eg-table__head, .eg-table__row) > .col-profesional { flex: 1.5 1 140px; }
-.eg-table--admin :is(.eg-table__head, .eg-table__row) > :nth-child(5) { flex: 1.2 1 120px; }
-.eg-table--admin :is(.eg-table__head, .eg-table__row) > :nth-child(6) { flex: 0.9 0 110px; }
-
 /* Filtros Pacientes: Responsive, ordenado y sin desfasajes */
 #filtros-pacientes {
     display: grid !important;
@@ -186,14 +179,14 @@
             <span class="eg-chip eg-chip--count" id="pacientes-total" aria-live="polite">&nbsp;</span>
         </div>
     </div>
-    <div class="eg-table eg-table--pacientes" id="tabla-pacientes" role="table" aria-labelledby="pacientes-titulo-listado">
+    <div class="eg-table eg-table--pacientes" id="tabla-pacientes" tabindex="0" role="table" aria-labelledby="pacientes-titulo-listado">
         <div class="eg-table__head" role="row">
-            <span role="columnheader">Paciente</span>
-            <span role="columnheader">DNI</span>
-            <span role="columnheader">Edad</span>
+            <span role="columnheader" class="col-paciente">Paciente</span>
+            <span role="columnheader" class="col-dni">DNI</span>
+            <span role="columnheader" class="col-edad">Edad</span>
             <span role="columnheader" id="th-profesional" class="col-profesional d-none">Profesional</span>
-            <span role="columnheader">CUD</span>
-            <span role="columnheader">Ficha</span>
+            <span role="columnheader" class="col-cud">CUD</span>
+            <span role="columnheader" class="col-ficha">Ficha</span>
         </div>
         <div role="rowgroup" id="pacientes-cuerpo"></div>
     </div>

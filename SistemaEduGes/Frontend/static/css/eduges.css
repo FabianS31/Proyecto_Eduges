@@ -436,11 +436,43 @@ h1, h2 { margin: 0; }
 .eg-table__action { display: flex; justify-content: flex-end; }
 .eg-table__head > :last-child { text-align: right; }
 
-.eg-table--pacientes :is(.eg-table__head, .eg-table__row) > :nth-child(1) { flex: 2.2 1 260px; }
-.eg-table--pacientes :is(.eg-table__head, .eg-table__row) > :nth-child(2) { flex: 1 1 110px; }
-.eg-table--pacientes :is(.eg-table__head, .eg-table__row) > :nth-child(3) { flex: .8 1 80px; }
-.eg-table--pacientes :is(.eg-table__head, .eg-table__row) > :nth-child(4) { flex: 1.4 1 150px; }
-.eg-table--pacientes :is(.eg-table__head, .eg-table__row) > :nth-child(5) { flex: 1 0 130px; }
+/* Pacientes: mismas columnas lógicas en encabezado y filas, para ambos roles. */
+#tabla-pacientes {
+  overflow-x: auto;
+  --pacientes-columnas: [paciente] minmax(220px, 2.2fr) [dni] minmax(110px, 1fr) [edad] minmax(80px, .8fr) [cud] minmax(150px, 1.4fr) [ficha] minmax(130px, 1fr);
+  --pacientes-ancho-minimo: 850px;
+}
+#tabla-pacientes.eg-table--admin {
+  --pacientes-columnas: [paciente] minmax(200px, 2.1fr) [dni] minmax(110px, .9fr) [edad] minmax(65px, .7fr) [profesional] minmax(140px, 1.5fr) [cud] minmax(150px, 1.2fr) [ficha] minmax(130px, .9fr);
+  --pacientes-ancho-minimo: 950px;
+}
+#tabla-pacientes :is(.eg-table__head, .eg-table__row) {
+  display: grid;
+  grid-template-columns: var(--pacientes-columnas);
+  min-width: var(--pacientes-ancho-minimo);
+}
+#tabla-pacientes .eg-table__head {
+  height: auto;
+  min-height: 46px;
+  overflow: visible;
+  line-height: 1.4;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+#tabla-pacientes :is(.eg-table__head, .eg-table__row) > * {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#tabla-pacientes .col-paciente { grid-column: paciente; text-align: left; }
+#tabla-pacientes .col-dni { grid-column: dni; text-align: center; }
+#tabla-pacientes .col-edad { grid-column: edad; text-align: center; }
+#tabla-pacientes .col-profesional { grid-column: profesional; text-align: left; overflow: visible; }
+#tabla-pacientes .col-cud { grid-column: cud; text-align: center; }
+#tabla-pacientes .col-ficha { grid-column: ficha; text-align: center; justify-content: center; }
+#tabla-pacientes .eg-cud { align-items: center; }
+#tabla-pacientes .eg-cud .eg-chip { white-space: normal; }
+#tabla-pacientes .col-ficha .eg-btn { width: auto; }
 
 .eg-table--pros :is(.eg-table__head, .eg-table__row) > :nth-child(1) { flex: 2 1 260px; }
 .eg-table--pros :is(.eg-table__head, .eg-table__row) > :nth-child(2) { flex: 1 1 110px; }

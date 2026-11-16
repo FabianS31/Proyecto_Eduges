@@ -199,22 +199,22 @@ function filaPaciente(p) {
         : metaTexto;
     return html`
         <div class="eg-table__row" role="row" data-paciente-id="${p.id_paciente}">
-            <div class="eg-table__main" role="cell">
+            <div class="eg-table__main col-paciente" role="cell">
                 <div>
                     <div class="eg-table__name">${nombreCompleto(p, { apellidoPrimero: true })}</div>
                     <div class="eg-table__meta">${meta}</div>
                 </div>
             </div>
-            <span class="eg-table__num" role="cell"><span class="visually-hidden">DNI </span>${formatearDni(p.dni)}</span>
-            <span role="cell">${textoEdad(p.edad)}</span>
+            <span class="eg-table__num col-dni" role="cell"><span class="visually-hidden">DNI </span>${formatearDni(p.dni)}</span>
+            <span class="col-edad" role="cell">${textoEdad(p.edad)}</span>
             ${esAdministrador(estado.usuario) ? html`
                 <div class="col-profesional text-truncate" role="cell">
                     ${p.profesional_responsable
                         ? html`<span class="fw-semibold">${p.profesional_responsable.apellido}, ${p.profesional_responsable.nombre}</span>`
                         : html`<span class="text-secondary small">—</span>`}
                 </div>` : ''}
-            <div role="cell">${celdaCud(p.cud_vencimiento)}</div>
-            <div class="eg-table__action" role="cell">
+            <div class="col-cud" role="cell">${celdaCud(p.cud_vencimiento)}</div>
+            <div class="eg-table__action col-ficha" role="cell">
                 <button type="button" class="eg-btn" data-accion="ver-ficha" aria-label="Ver ficha de ${nombreCompleto(p)}">
                     ${icono('folder_open')}Ver ficha
                 </button>
