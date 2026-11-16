@@ -60,6 +60,35 @@ const combos = {
 
 let listaPacientesCache = null;
 let listaProfesionalesCache = null;
+let pacientesTurnosCache = null;
+
+// Solo conserva identidad, nunca los campos clínicos del reporte.
+function cachearPacientesTurnos(peticion) {
+    const cache = { promesa: null };
+    pacientesTurnosCache = cache;
+    cache.promesa = peticion.then((respuesta) => {
+        const pacientesUnicos = new Map();
+        for (const { paciente } of respuesta.resultados || []) {
+            if (paciente?.id == null) continue;
+            const texto = [paciente.apellido, paciente.nombre].filter(Boolean).join(', ');
+            if (texto) pacientesUnicos.set(String(paciente.id), { valor: paciente.id, texto });
+        }
+        return [...pacientesUnicos.values()];
+    });
+    // La carga inicial también puede fallar sin que haya una búsqueda pendiente.
+    cache.promesa.catch(() => {
+        if (pacientesTurnosCache === cache) pacientesTurnosCache = null;
+    });
+    return cache;
+}
+
+async function sugerirPacientesTurnos(texto) {
+    const cache = pacientesTurnosCache || cachearPacientesTurnos(reportes.turnos());
+    const opciones = await cache.promesa;
+    // Una consulta nueva invalida respuestas anteriores todavía en vuelo.
+    if (pacientesTurnosCache !== cache) return sugerirPacientesTurnos(texto);
+    return buscarEnLista(opciones)(texto);
+}
 
 // ============================================================
 // Proveedores de sugerencias para autocompletado (Combobox)
@@ -232,7 +261,7 @@ function conectarEventos() {
     const inputTurnosBusqueda = $('filtro-turno-busqueda');
     if (inputTurnosBusqueda) {
         combos.turnos = crearCombobox(inputTurnosBusqueda, {
-            buscar: sugerirPacientes,
+            buscar: sugerirPacientesTurnos,
             minimo: 1,
             textoLibre: true,
             mensajeVacio: 'No se encontraron pacientes coincidentes.',
@@ -520,7 +549,11 @@ async function consultarReporte() {
             if (tutorId) queryParams.tutor_id = parseInt(tutorId, 10);
             if (textoTrabajo) queryParams.trabajo_sesion = textoTrabajo;
 
-            respuesta = await reportes.turnos(queryParams);
+            // Renovar al aplicar/limpiar. Un reporte filtrado nunca es el catálogo.
+            pacientesTurnosCache = null;
+            const peticion = reportes.turnos(queryParams);
+            if (Object.keys(queryParams).length === 0) cachearPacientesTurnos(peticion);
+            respuesta = await peticion;
             if (consulta !== estado.consulta) return;
             let items = respuesta.resultados || [];
 

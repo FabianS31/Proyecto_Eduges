@@ -270,8 +270,12 @@ function actualizarConteosCud() {
 }
 
 function mensajeVacio() {
-    if (estado.filtros.q.trim() || estado.filtros.cud) {
-        return 'No hay pacientes que coincidan con la búsqueda.';
+    // En Profesional, una búsqueda puede reemplazar todos por una respuesta vacía.
+    if (estado.filtros.q.trim()) {
+        return 'No hay pacientes que coincidan con la búsqueda y los filtros actuales';
+    }
+    if (estado.todos.length > 0) {
+        return 'No hay pacientes que coincidan con los filtros seleccionados';
     }
     return esProfesional(estado.usuario)
         ? 'Todavía no tenés pacientes asignados.'
@@ -537,6 +541,7 @@ function abrirFicha(id) {
                         <div class="ms-auto mw-100">${badgeCud(p.cud_vencimiento)}</div>
                     </div>
                     <dl class="ficha-dato row g-0">
+                        <div class="col-12"><dt>Obra social</dt><dd>${p.obra_social?.nombre || '—'}</dd></div>
                         <div class="col-6"><dt>N° de afiliado</dt><dd>${p.numero_afiliado}</dd></div>
                         <div class="col-6"><dt>N° de CUD</dt><dd>${p.cud_numero ?? html`<span class="text-muted">—</span>`}</dd></div>
                         <div class="col-12"><dt>Vencimiento del CUD</dt><dd>${formatearFecha(p.cud_vencimiento)}</dd></div>

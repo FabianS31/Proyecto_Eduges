@@ -93,6 +93,119 @@ function reportesEntorno() {
 
 const turno = (id) => ({ id, fecha: '2026-11-10', hora: '09:00', paciente: { nombre: 'Ana', apellido: 'Ficticia' }, profesional: { nombre: 'Luis', apellido: 'Prueba' }, estado: { id: 1, nombre: 'Pendiente' } });
 
+test('Turnos: catálogo autorizado completo, único, normalizado y compartido entre teclas', async () => {
+    const e = reportesEntorno();
+    e.ejecutar(sinImports(leer('texto.js')));
+    e.ejecutar(sinImports(leer('componentes/combobox.js')));
+    e.c.pacientes.listar = async () => { assert.fail('No consultar directorio'); };
+    const pendiente = diferida();
+    let llamadas = 0;
+    e.c.reportes.turnos = () => { llamadas++; return pendiente.promise; };
+    const a = e.c.sugerirPacientesTurnos('BENI');
+    const b = e.c.sugerirPacientesTurnos('Bení');
+    pendiente.resolve({ resultados: [
+        { paciente: { id: 1, nombre: 'Actual', apellido: 'Propia' } },
+        { paciente: { id: 2, nombre: 'Histórica', apellido: 'Benítez' }, nota_sesion: 'Privada' },
+        { paciente: { id: 2, nombre: 'Histórica', apellido: 'Benítez' } },
+        { paciente: { id: 3, nombre: 'SoloNombre' } }, { paciente: {} },
+    ] });
+    assert.equal((await a).length, 1);
+    assert.equal((await b)[0].valor, 2);
+    assert.equal((await e.c.sugerirPacientesTurnos('Actual'))[0].valor, 1);
+    assert.equal((await e.c.sugerirPacientesTurnos('Ajeno')).length, 0);
+    assert.equal((await e.c.sugerirPacientesTurnos('SoloNombre'))[0].texto, 'SoloNombre');
+    assert.deepEqual(Object.keys((await a)[0]).sort(), ['texto', 'valor']);
+    assert.equal(llamadas, 1);
+});
+
+test('Turnos: reutiliza carga completa, renueva tras filtros y reintenta errores', async () => {
+    const e = reportesEntorno();
+    let llamadas = 0;
+    const fila = { ...turno(1), paciente: { id: 9, nombre: 'Histórica', apellido: 'Propia' } };
+    e.c.reportes.turnos = async (f = {}) => {
+        llamadas++;
+        return { resultados: f.estado_id ? [] : [fila] };
+    };
+    await e.c.consultarReporte();
+    assert.equal((await e.c.sugerirPacientesTurnos('Histórica')).length, 1);
+    assert.equal(llamadas, 1);
+    e.nodo('filtro-turno-estado').value = '3';
+    await e.c.consultarReporte();
+    assert.equal(e.c.estadoPrueba.resultados.length, 0);
+    assert.equal((await e.c.sugerirPacientesTurnos('Histórica')).length, 1);
+    assert.equal(llamadas, 3);
+    assert.equal(e.c.estadoPrueba.resultados.length, 0); // sugerencias no cambian tabla/KPIs
+    e.ejecutar('pacientesTurnosCache = null');
+    e.c.reportes.turnos = async () => { throw new Error('Sin conexión'); };
+    await assert.rejects(e.c.sugerirPacientesTurnos('Histórica'), /Sin conexión/);
+    e.c.reportes.turnos = async () => ({ resultados: [] });
+    assert.equal((await e.c.sugerirPacientesTurnos('Histórica')).length, 0);
+});
+
+test('Turnos: una respuesta anterior pendiente no restaura opciones obsoletas', async () => {
+    const e = reportesEntorno();
+    const antigua = diferida();
+    e.c.reportes.turnos = () => antigua.promise;
+    const busqueda = e.c.sugerirPacientesTurnos('Anterior');
+    e.c.reportes.turnos = async () => ({ resultados: [] });
+    await e.c.consultarReporte();
+    antigua.resolve({ resultados: [{ paciente: { id: 1, nombre: 'Anterior' } }] });
+    assert.equal((await busqueda).length, 0);
+});
+
+for (const profesional of [false, true]) {
+    test(`Ficha y mensajes de pacientes: ${profesional ? 'Profesional' : 'Administrador'}`, () => {
+        const e = entorno();
+        e.c.$ = e.nodo;
+        e.c.estado = { todos: [], filtros: { q: '' }, usuario: {}, acciones: false };
+        e.c.esProfesional = () => profesional;
+        e.c.esAdministrador = () => !profesional;
+        e.c.ESTADO_PACIENTE = { ACTIVO: 1 };
+        e.c.historialClinico = { cerrar() {}, abrir() {} };
+        e.c.guardarEstadoEnUrl = () => {};
+        e.c.panelFicha = () => ({ show() {} });
+        e.c.cargarTurnosFicha = e.c.cargarTutoresFicha = () => {};
+        e.c.textoEdad = () => '10 años';
+        const fuente = leer('paginas/pacientes.js');
+        e.ejecutar(fuente.slice(fuente.indexOf('function mensajeVacio()'), fuente.indexOf('function mostrarListado()')));
+        e.ejecutar(fuente.slice(fuente.indexOf('function abrirFicha('), fuente.indexOf('const puedeAgendar')));
+        const ui = leer('ui.js');
+        e.ejecutar(sinImports(ui.slice(ui.indexOf('class HtmlSeguro'), ui.indexOf('const FORMATO_FECHA_LARGA'))));
+        assert.match(e.c.mensajeVacio(), profesional ? /asignados/ : /cargados/);
+        e.c.estado.filtros.q = 'Inexistente';
+        assert.match(e.c.mensajeVacio(), /búsqueda y los filtros actuales/);
+        e.c.estado.filtros.q = '';
+        const p = { id_paciente: 1, estado: 1, numero_afiliado: 'AF123', cud_numero: 'CUD456',
+            cud_vencimiento: '2027-01-01', fecha_alta: '2026-01-01', cud: { clave: 'vigente' } };
+        e.c.CUD = { VENCIDO: 'vencido', POR_VENCER: 'por_vencer' };
+        e.c.ALERTA = 'alerta';
+        e.c.CRITERIOS = { apellido: () => 0 };
+        e.c.coincide = () => false;
+        e.ejecutar(fuente.slice(fuente.indexOf('function filtrados()'), fuente.indexOf('// Presentación')));
+        e.c.estado.todos = [p];
+        for (const filtros of [{ estado: 'Inactivo' }, { obraSocial: '99' }, { cud: 'vencido' },
+            { altaDesde: '2028-01-01' }, { altaHasta: '2000-01-01' }, { estado: 'Inactivo', cud: 'vencido' }]) {
+            e.c.estado.filtros = { q: '', orden: 'apellido', ...filtros };
+            assert.equal(e.c.filtrados().length, 0);
+            assert.equal(e.c.mensajeVacio(), 'No hay pacientes que coincidan con los filtros seleccionados');
+        }
+        e.c.estado.filtros = { q: '', orden: 'apellido' };
+        assert.equal(e.c.filtrados().length, 1); // limpiar recupera el conjunto original
+        assert.equal(e.c.estado.todos.length, 1);
+        for (const cobertura of [undefined, { nombre: 'Cobertura existente' }, { nombre: '<OS> & "Salud"' }]) {
+            p.obra_social = cobertura;
+            e.c.abrirFicha(1);
+            const ficha = e.nodo('ficha-cuerpo').innerHTML;
+            assert.match(ficha, /AF123/);
+            assert.match(ficha, /CUD456/);
+            assert.match(ficha, /2027-01-01/);
+            assert.match(ficha, !cobertura ? /<dd>—<\/dd>/ : cobertura.nombre.startsWith('<')
+                ? /&lt;OS&gt; &amp; &quot;Salud&quot;/ : /Cobertura existente/);
+            assert.doesNotMatch(ficha, /<OS>/);
+        }
+    });
+}
+
 test('Profesional: pacientes autorizados en pestaña, filtros, indicadores, CSV e impresión', async () => {
     const e = reportesEntorno();
     e.c.estadoPrueba.esPro = true;
