@@ -11,7 +11,7 @@ class ReporteBaseView(APIView):
     Administrador y SuperAdministrador pueden consultar todos
     los reportes.
 
-    Profesional solamente puede consultar el reporte de turnos.
+    Profesional puede consultar turnos y pacientes autorizados.
     La limitación a sus propios pacientes se aplica en el servicio.
     """
 
@@ -88,7 +88,7 @@ class ReporteAlumnosView(ReporteBaseView):
     """Genera reportes de pacientes."""
 
     def get(self, request):
-        respuesta_acceso = self.verificar_acceso(request)
+        respuesta_acceso = self.verificar_acceso(request, permitir_profesional=True)
 
         if respuesta_acceso is not None:
             return respuesta_acceso
@@ -107,6 +107,7 @@ class ReporteAlumnosView(ReporteBaseView):
 
         resultado = ReportesService.obtener_alumnos(
             filtros=filtros.validated_data,
+            usuario=request.user,
         )
 
         return Response(

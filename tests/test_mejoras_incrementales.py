@@ -193,7 +193,7 @@ class FiltrosSesionesTests(unittest.TestCase):
 
 
 class ExportacionCSVTests(unittest.TestCase):
-    def exportar(self, tipo, resultados):
+    def exportar(self, tipo, resultados, *, es_profesional=True):
         node = shutil.which('node')
         self.assertIsNotNone(node, 'Node es necesario para verificar H5')
         # Ejecuta la funcion de produccion sin cargar la pagina ni hacer requests.
@@ -202,10 +202,11 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const entrada = JSON.parse(fs.readFileSync(0, 'utf8'));
 const fuente = fs.readFileSync(entrada.archivo, 'utf8');
-const inicio = fuente.indexOf('function exportarCSV(');
+const inicio = fuente.indexOf('function asignacionesPaciente(');
 const fin = fuente.indexOf('// Helpers visuales', inicio);
 let contenido = null;
 const contexto = {
+    estado: { esPro: entrada.esProfesional },
     hoyISO: () => '2026-11-10', notificar: () => {},
     Blob: class { constructor(partes) { contenido = partes.join(''); } },
     URL: { createObjectURL: () => 'blob:ficticio', revokeObjectURL: () => {} },
@@ -224,6 +225,7 @@ process.stdout.write(JSON.stringify(contenido));
             input=json.dumps({
                 'archivo': str(ROOT / 'SistemaEduGes/Frontend/static/js/paginas/reportes.js'),
                 'tipo': tipo, 'resultados': resultados,
+                'esProfesional': es_profesional,
             }),
             encoding='utf-8', capture_output=True, timeout=15, check=True,
         )
@@ -251,8 +253,33 @@ process.stdout.write(JSON.stringify(contenido));
             'id': 12, 'apellido': 'Apellido "A"', 'nombre': 'Ana;María',
             'dni': '00123456', 'obra_social': {'nombre': 'OS "Ficticia"; A'},
             'numero_afiliado': '001;02', 'estado': None,
+            'profesionales_asignados': [],
         }], ['12', 'Apellido "A"', 'Ana;María', '00123456', '',
-             'Sin asignar', '', 'OS "Ficticia"; A', '001;02', '', ''])
+             'Sin asignación vigente', '', 'OS "Ficticia"; A', '001;02', '', ''])
+
+    def test_pacientes_con_asignaciones_multiples_y_no_disponibles(self):
+        for asignaciones, esperado in (
+            ({'profesionales_asignados': [
+                {'apellido': 'Pérez; "A"', 'nombre': 'Ana\nMaría'},
+                {'apellido': 'López', 'nombre': 'Luis'},
+            ]}, 'Pérez; "A", Ana\nMaría / López, Luis'),
+            ({}, 'Asignación no disponible'),
+        ):
+            with self.subTest(asignaciones=asignaciones):
+                self.verificar('pacientes', [{'id': 1, **asignaciones}],
+                    ['1', '', '', '', '', esperado, '', '', '', '', ''])
+
+    def test_turnos_administrador_no_exporta_campos_clinicos(self):
+        contenido = self.exportar('turnos', [{
+            'id': 1, 'trabajo_sesion': 'Trabajo privado',
+            'nota_sesion': 'Nota privada', 'diagnostico': 'Diagnóstico',
+        }], es_profesional=False)
+        filas = list(csv.reader(io.StringIO(contenido[1:], newline=''), delimiter=';', strict=True))
+        self.assertEqual(len(filas), 2)
+        self.assertEqual(len(filas[0]), 6)
+        self.assertEqual(filas[1], ['1', '', '', ', ', ', ', ''])
+        for privado in ('Trabajo privado', 'Nota privada', 'Diagnóstico'):
+            self.assertNotIn(privado, contenido)
 
     def test_profesionales_con_textos_especiales(self):
         self.verificar('profesionales', [{

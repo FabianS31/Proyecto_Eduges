@@ -1,7 +1,8 @@
 import re
 import unicodedata
 
-from django.db.models import Q
+from django.db.models import OuterRef, Prefetch, Q, Subquery
+from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied
 
 from turnos.models.turno_model import Turno
@@ -302,7 +303,8 @@ class ReportesService:
     # =====================================================
 
     @classmethod
-    def obtener_alumnos(cls, *, filtros):
+    def obtener_alumnos(cls, *, filtros, usuario):
+        hoy = timezone.localdate()
         consulta = (
             Paciente.objects
             .select_related(
@@ -311,6 +313,38 @@ class ReportesService:
             )
             .all()
         )
+
+        rol = getattr(getattr(usuario, 'rol', None), 'rol', None)
+        if rol == 'Profesional':
+            profesional = Profesional.objects.filter(usuario=usuario).first()
+            if profesional is None:
+                raise PermissionDenied('El usuario no está vinculado a un profesional.')
+            # Asignación abierta para activos y último responsable histórico
+            # para inactivos, sin conceder acceso por asignaciones futuras.
+            # En reportes se incluyen ambos grupos aun sin filtros.
+            vigentes = AsignacionProfesional.objects.filter(
+                profesional=profesional, fecha_fin__isnull=True,
+                fecha_inicio__lte=hoy,
+            ).values('paciente_id')
+            ultimo = AsignacionProfesional.objects.filter(
+                paciente_id=OuterRef('pk'), fecha_inicio__lte=hoy,
+            ).order_by('-fecha_inicio', '-pk').values('profesional_id')[:1]
+            consulta = consulta.annotate(ultimo_responsable_id=Subquery(ultimo)).filter(
+                Q(estado__estado='Activo', pk__in=vigentes)
+                | Q(estado__estado='Inactivo', ultimo_responsable_id=profesional.pk)
+            )
+        elif rol not in ('Administrador', 'SuperAdministrador'):
+            raise PermissionDenied('No tenés permiso para consultar este reporte.')
+
+        # Una fila por paciente, incluso con varias especialidades o períodos.
+        consulta = consulta.prefetch_related(Prefetch(
+            'asignacionprofesional_set',
+            queryset=AsignacionProfesional.objects.filter(
+                fecha_fin__isnull=True, fecha_inicio__lte=hoy,
+            )
+            .select_related('profesional').order_by('pk'),
+            to_attr='asignaciones_reporte',
+        ))
 
         if 'paciente_id' in filtros:
             consulta = consulta.filter(
@@ -379,6 +413,14 @@ class ReportesService:
                 'dni': paciente.dni,
                 'fecha_nacimiento': paciente.fecha_nacimiento,
                 'fecha_alta': paciente.fecha_alta,
+                'profesionales_asignados': list({
+                    a.profesional_id: {
+                        'id': a.profesional_id,
+                        'nombre': a.profesional.nombre,
+                        'apellido': a.profesional.apellido,
+                    }
+                    for a in paciente.asignaciones_reporte
+                }.values()),
                 'direccion': paciente.direccion,
                 'mail': paciente.mail,
                 'consentimiento': paciente.consentimiento,

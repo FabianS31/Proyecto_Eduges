@@ -4,7 +4,7 @@
 //
 // Reportes consolidados de Turnos, Pacientes y Profesionales.
 // Permisos:
-//   - Profesional: solo tiene acceso a Reporte de Turnos
+//   - Profesional: acceso a Turnos y Pacientes autorizados
 //     (el backend acota la consulta a sus turnos y pacientes asignados).
 //   - Administrador y SuperAdministrador: acceso total a los 3 reportes.
 // ============================================================
@@ -83,6 +83,13 @@ async function obtenerPacientesOpciones() {
 }
 
 async function sugerirPacientes(texto) {
+    if (estado.esPro && estado.tipo === 'pacientes') {
+        const respuesta = await reportes.pacientes();
+        return buscarEnLista(respuesta.resultados.map((p) => ({
+            valor: p.id, texto: `${p.apellido}, ${p.nombre}`,
+            detalle: `DNI ${p.dni || 'S/D'}`, item: p,
+        })))(texto);
+    }
     const opciones = await obtenerPacientesOpciones();
     return buscarEnLista(opciones)(texto);
 }
@@ -151,21 +158,17 @@ function configurarPermisosYRoles() {
     if (campoTrabajo) campoTrabajo.hidden = estado.usuario?.rol?.nombre === 'Administrador';
 
     if (estado.esPro) {
-        // Un profesional solo ve Reporte de Turnos
-        const tabPacientes = $('tab-pacientes');
-        const labelPacientes = $('label-tab-pacientes');
+        // El padrón está limitado por el servidor a pacientes autorizados.
         const tabProfesionales = $('tab-profesionales');
         const labelProfesionales = $('label-tab-profesionales');
 
-        if (tabPacientes) tabPacientes.hidden = true;
-        if (labelPacientes) labelPacientes.style.display = 'none';
         if (tabProfesionales) tabProfesionales.hidden = true;
         if (labelProfesionales) labelProfesionales.style.display = 'none';
 
         const campoPro = $('campo-turno-profesional');
         if (campoPro) campoPro.hidden = true;
 
-        $('reportes-subtitulo').textContent = 'Tus turnos y sesiones asignadas';
+        $('reportes-subtitulo').textContent = 'Tus turnos y pacientes autorizados';
         estado.tipo = 'turnos';
     } else {
         // Administrador o SuperAdministrador: habilitar selector de profesionales
@@ -202,13 +205,12 @@ async function cargarCatalogos() {
     if (!estado.esPro) {
         await cargar('profesionales', () => profesionales.listar(), ['filtro-turno-profesional'],
             'Todos los profesionales', (lista) => { estado.profesionalesLista = lista; });
-        await cargar('obras sociales', () => catalogos.obrasSociales(), ['filtro-paciente-obra-social'],
-            'Todas las obras sociales', (lista) => { estado.obrasSocialesLista = lista; });
         await cargar('especialidades', () => catalogos.especialidades(), ['filtro-profesional-especialidad'],
             'Todas las especialidades');
     }
-    await cargar('tutores', () => tutores.listar(), estado.esPro
-        ? ['filtro-turno-tutor'] : ['filtro-turno-tutor', 'filtro-paciente-tutor'],
+    await cargar('obras sociales', () => catalogos.obrasSociales(), ['filtro-paciente-obra-social'],
+        'Todas las obras sociales', (lista) => { estado.obrasSocialesLista = lista; });
+    await cargar('tutores', () => tutores.listar(), ['filtro-turno-tutor', 'filtro-paciente-tutor'],
         'Todos los tutores', (lista) => { estado.tutoresLista = lista; });
     const aviso = $('reportes-catalogos-error');
     aviso.hidden = fallidos.length === 0;
@@ -436,7 +438,7 @@ function actualizarVisibilidadFiltros() {
     // Actualizar encabezados según el reporte seleccionado
     const titulos = {
         turnos: 'Listado de Turnos y Sesiones',
-        pacientes: 'Padrón General de Pacientes',
+        pacientes: estado.esPro ? 'Mis pacientes autorizados' : 'Padrón General de Pacientes',
         profesionales: 'Equipo de Profesionales',
     };
     $('reporte-titulo-tabla').textContent = titulos[estado.tipo] || 'Listado detallado';
@@ -557,29 +559,9 @@ async function consultarReporte() {
             if (altaDesde) queryParams.fecha_alta_desde = altaDesde;
             if (altaHasta) queryParams.fecha_alta_hasta = altaHasta;
 
-            // Enriquecemos con los datos completos de pacientes (fecha_alta y profesional_responsable)
-            let mapaPacientes = new Map();
-            try {
-                const listaCompleta = await pacientes.listar();
-                listaCompleta.forEach((p) => {
-                    const id = p.id_paciente || p.id;
-                    if (id) mapaPacientes.set(id, p);
-                });
-            } catch (errPacientes) {
-                console.warn('No se pudieron obtener datos enriquecidos de pacientes:', errPacientes);
-            }
-            if (consulta !== estado.consulta) return;
-
             respuesta = await reportes.pacientes(queryParams);
             if (consulta !== estado.consulta) return;
-            let items = (respuesta.resultados || []).map((p) => {
-                const completo = mapaPacientes.get(p.id) || {};
-                return {
-                    ...p,
-                    fecha_alta: p.fecha_alta || completo.fecha_alta || null,
-                    profesional_responsable: p.profesional_responsable || completo.profesional_responsable || null,
-                };
-            });
+            let items = respuesta.resultados || [];
 
             if (altaDesde || altaHasta) {
                 items = items.filter((p) => {
@@ -600,8 +582,7 @@ async function consultarReporte() {
                             p.dni,
                             p.obra_social?.nombre,
                             p.numero_afiliado,
-                            p.profesional_responsable?.nombre,
-                            p.profesional_responsable?.apellido,
+                            ...(p.profesionales_asignados || []).flatMap((pro) => [pro.nombre, pro.apellido]),
                         ],
                         textoBusqueda
                     )
@@ -902,7 +883,7 @@ function renderizarTabla() {
                 <th scope="col">Paciente</th>
                 <th scope="col" style="width: 110px;">DNI</th>
                 <th scope="col" style="width: 120px;">F. de Alta</th>
-                <th scope="col">Profesional asignado</th>
+                <th scope="col">Profesionales con asignación vigente</th>
                 <th scope="col" style="width: 130px;">Edad / F. Nac.</th>
                 <th scope="col">Obra Social</th>
                 <th scope="col">CUD</th>
@@ -919,13 +900,7 @@ function renderizarTabla() {
             const esActivo = p.estado?.id === 1;
 
             const fechaAltaStr = p.fecha_alta ? formatearFecha(p.fecha_alta) : '—';
-            const pro = p.profesional_responsable;
-            const proNombre = pro
-                ? (pro.apellido ? `${pro.apellido}, ${pro.nombre}` : (pro.nombre || 'Asignado'))
-                : null;
-            const proHtml = proNombre
-                ? html`<div class="fw-semibold text-primary d-flex align-items-center gap-1">${icono('person')}<span>${proNombre}</span></div>`
-                : html`<span class="text-muted small fst-italic">Sin asignar</span>`;
+            const proHtml = html`<span>${asignacionesPaciente(p)}</span>`;
 
             return html`
                 <tr>
@@ -1022,7 +997,7 @@ function actualizarMembreteImpresion() {
 
     const titulos = {
         turnos: 'Reporte Consolidado de Turnos y Sesiones',
-        pacientes: 'Reporte de Padrón General de Pacientes',
+        pacientes: estado.esPro ? 'Reporte de Mis Pacientes Autorizados' : 'Reporte de Padrón General de Pacientes',
         profesionales: 'Reporte Oficial del Equipo Profesional',
     };
     const tituloEl = $('print-reporte-titulo');
@@ -1101,6 +1076,12 @@ function actualizarMembreteImpresion() {
 // ============================================================
 // Exportación a archivo CSV
 // ============================================================
+function asignacionesPaciente(paciente) {
+    if (!Array.isArray(paciente.profesionales_asignados)) return 'Asignación no disponible';
+    return paciente.profesionales_asignados.map((pro) => `${pro.apellido}, ${pro.nombre}`).join(' / ')
+        || 'Sin asignación vigente';
+}
+
 function exportarCSV(tipo, resultados) {
     if (!resultados || resultados.length === 0) {
         notificar('No hay datos disponibles para exportar con los filtros actuales.', 'info');
@@ -1130,10 +1111,9 @@ function exportarCSV(tipo, resultados) {
             filas.push(fila);
         });
     } else if (tipo === 'pacientes') {
-        filas.push(['ID', 'Apellido', 'Nombre', 'DNI', 'Fecha Alta', 'Profesional Asignado', 'Fecha Nacimiento', 'Obra Social', 'Nro Afiliado', 'CUD Vencimiento', 'Estado']);
+        filas.push(['ID', 'Apellido', 'Nombre', 'DNI', 'Fecha Alta', 'Profesionales con asignación vigente', 'Fecha Nacimiento', 'Obra Social', 'Nro Afiliado', 'CUD Vencimiento', 'Estado']);
         resultados.forEach((p) => {
-            const pro = p.profesional_responsable;
-            const proNombre = pro ? (pro.apellido ? `${pro.apellido}, ${pro.nombre}` : (pro.nombre || 'Asignado')) : 'Sin asignar';
+            const proNombre = asignacionesPaciente(p);
             filas.push([
                 p.id,
                 p.apellido || '',

@@ -92,6 +92,64 @@ function reportesEntorno() {
 }
 
 const turno = (id) => ({ id, fecha: '2026-11-10', hora: '09:00', paciente: { nombre: 'Ana', apellido: 'Ficticia' }, profesional: { nombre: 'Luis', apellido: 'Prueba' }, estado: { id: 1, nombre: 'Pendiente' } });
+
+test('Profesional: pacientes autorizados en pestaña, filtros, indicadores, CSV e impresión', async () => {
+    const e = reportesEntorno();
+    e.c.estadoPrueba.esPro = true;
+    e.c.estadoPrueba.usuario = { rol: { nombre: 'Profesional' } };
+    e.c.configurarPermisosYRoles();
+    assert.equal(e.nodo('tab-pacientes').hidden, false);
+    assert.equal(e.nodo('tab-profesionales').hidden, true);
+    e.c.estadoPrueba.tipo = 'pacientes';
+    e.c.pacientes.listar = async () => { throw new Error('No usar listado auxiliar'); };
+    const filas = [
+        { id: 1, nombre: 'Activa', apellido: 'Propia', estado: { id: 1, nombre: 'Activo' },
+          obra_social: { id: 8, nombre: 'Obra A' }, profesionales_asignados: [{ id: 1, nombre: 'Luis', apellido: 'Prueba' }] },
+        { id: 2, nombre: 'Inactiva', apellido: 'Propia', estado: { id: 2, nombre: 'Inactivo' },
+          obra_social: { id: 9, nombre: 'Obra B' }, profesionales_asignados: [] },
+    ];
+    e.c.reportes.pacientes = async (f = {}) => {
+        const resultados = filas.filter(p => (!f.estado_id || p.estado.id === f.estado_id)
+            && (!f.obra_social_id || p.obra_social.id === f.obra_social_id));
+        return { total: resultados.length, resultados };
+    };
+    await e.c.consultarReporte();
+    assert.equal(e.c.estadoPrueba.resultados.length, 2);
+    assert.match(e.nodo('reporte-kpis').innerHTML, /eg-stat__value">2<\/span>/);
+    assert.equal((e.nodo('reporte-kpis').innerHTML.match(/eg-stat__value">1<\/span>/g) || []).length, 2);
+    assert.match(e.nodo('reporte-cuerpo').innerHTML, /Prueba, Luis/);
+    assert.match(e.nodo('reporte-cuerpo').innerHTML, /Sin asignación vigente/);
+    const sugerencias = await e.c.sugerirPacientes('Inactiva');
+    assert.equal(sugerencias[0].valor, 2);
+    e.nodo('filtro-paciente-estado').value = '2';
+    e.nodo('filtro-paciente-obra-social').value = '9';
+    await e.c.consultarReporte();
+    assert.equal(e.nodo('reporte-total').textContent, '1 registro');
+    assert.doesNotMatch(e.nodo('reporte-cuerpo').innerHTML, />Activa/);
+    await e.nodo('btn-exportar-csv').emitir('click');
+    assert.equal(e.c.descargas[0].split('\r\n').length, 2);
+    assert.match(e.c.descargas[0], /Inactiva/);
+    assert.doesNotMatch(e.c.descargas[0], /"Activa"|diagnostico|nota_sesion/);
+    await e.nodo('btn-imprimir').emitir('click');
+    assert.equal(e.c.impresiones, 1);
+    assert.match(e.nodo('print-reporte-titulo').textContent, /Mis Pacientes Autorizados/);
+    e.c.reportes.pacientes = async () => { throw new Error('Fallo controlado'); };
+    await e.c.consultarReporte();
+    sinResultados(e);
+    assert.equal(e.c.asignacionesPaciente({}), 'Asignación no disponible');
+});
+
+test('Profesional carga obras sociales y tutores para pacientes sin catálogo de profesionales', async () => {
+    const e = reportesEntorno();
+    e.c.estadoPrueba.esPro = true;
+    e.c.catalogos = { obrasSociales: async () => [{ id: 8, nombre: 'Obra ficticia' }] };
+    e.c.tutores.listar = async () => [{ id: 7, nombre: 'Tutor autorizado' }];
+    e.c.profesionales.listar = async () => { assert.fail('No corresponde'); };
+    await e.c.cargarCatalogos();
+    assert.match(e.nodo('filtro-paciente-obra-social').innerHTML, /Obra ficticia/);
+    assert.match(e.nodo('filtro-paciente-tutor').innerHTML, /Tutor autorizado/);
+});
+
 for (const esPro of [true, false]) {
     test(`H03: tabla, totales, indicadores, CSV e impresion usan respuesta autorizada (${esPro ? 'Profesional' : 'Administrador'})`, async () => {
         const e = reportesEntorno();

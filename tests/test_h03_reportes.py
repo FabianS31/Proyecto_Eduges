@@ -158,7 +158,11 @@ class ReportesPropiosTests(unittest.TestCase):
                     self.assertEqual(self.ids(cliente.get(f'/api/reportes/{tipo}/',
                         {parametro: objeto.pk})), [objeto.pk])
                 self.assertEqual(len(self.ids(cliente.get(f'/api/reportes/{tipo}/', {'nombre': 'Ana'}))), 2)
-            self.assertEqual(self.f.login('A').get(f'/api/reportes/{tipo}/').status_code, 403)
+            respuesta = self.f.login('A').get(f'/api/reportes/{tipo}/')
+            if tipo == 'profesionales':
+                self.assertEqual(respuesta.status_code, 403)
+            else:
+                self.assertEqual(self.ids(respuesta), [])  # A ya fue reemplazado por B.
         especialidades = [self.f.profesionales['A'].especialidad]
         especialidades += [s.Especialidad.objects.create(especialidad=f'Sintética {i}') for i in (2, 3)]
         profesional = self.f.profesionales['B']
