@@ -2,14 +2,15 @@
 // Integración de impresión en Chromium/Edge, con datos ficticios y sin base de datos.
 // Requiere Playwright y el CSS Bootstrap 5.3.3 usado por base.html.
 // PLAYWRIGHT_MODULE: ruta opcional al módulo; BOOTSTRAP_CSS: CSS local.
-// Salidas de revisión: tmp/pdf-reportes/. Con PRINT_BASELINE=1 solo registra medidas.
+// PRINT_OUTPUT: carpeta de salida; por defecto usa el directorio temporal del sistema.
+// Con PRINT_BASELINE=1 solo registra medidas. Revisar también todas las páginas del PDF.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..');
 const frontend = path.join(root, 'SistemaEduGes/Frontend');
-const output = path.join(root, 'tmp/pdf-reportes');
+const output = process.env.PRINT_OUTPUT || path.join(require('node:os').tmpdir(), 'eduges-impresion-reportes');
 const bootstrap = fs.readFileSync(process.env.BOOTSTRAP_CSS || path.join(output, 'bootstrap.min.css'));
 const read = p => fs.readFileSync(path.join(frontend, p), 'utf8');
 const content = read('templates/reportes.html').match(/{% block content %}([\s\S]*?){% endblock %}/)[1];
@@ -55,9 +56,9 @@ const profesionales = pacientes.map(p => ({ id: p.id, nombre: p.nombre, apellido
             assert.ok(file.startsWith(frontend + path.sep));
             let body = fs.readFileSync(file);
             if (url.pathname.endsWith('/paginas/reportes.js')) body = body.toString() + `
-                export function prepararImpresion(tipo, items, esPro) {
+                export function prepararImpresion(tipo, items, esPro, rol) {
                     estado.tipo = tipo; estado.resultados = items; estado.esPro = esPro;
-                    estado.usuario = {usuario:'Prueba ficticia',rol:{nombre:esPro?'Profesional':'Administrador'}};
+                    estado.usuario = {usuario:'Prueba ficticia',rol:{nombre:rol}};
                     actualizarVisibilidadFiltros(); renderizarKPIs(); renderizarTabla(); actualizarMembreteImpresion();
                 }`;
             return route.fulfill({ body, contentType: file.endsWith('.js') ? 'text/javascript'
@@ -67,13 +68,27 @@ const profesionales = pacientes.map(p => ({ id: p.id, nombre: p.nombre, apellido
         // Importar después de DOMContentLoaded evita inicializar llamadas API: solo renderizado real.
         await page.evaluate(async () => { window.reportePrueba = await import('/static/js/paginas/reportes.js'); });
         const resultados = [];
-        for (const [tipo, items, esPro, nombre] of [
-            ['pacientes', pacientes, true, 'pacientes-profesional'],
-            ['pacientes', pacientes, false, 'pacientes-administrador'],
-            ['turnos', turnos, true, 'turnos'],
-            ['profesionales', profesionales, false, 'profesionales'],
-        ]) {
-            await page.evaluate(args => window.reportePrueba.prepararImpresion(...args), [tipo, items, esPro]);
+        const escenarios = [
+            ['turnos', 'Administrador'], ['turnos', 'Profesional'], ['turnos', 'SuperAdministrador'],
+            ['pacientes', 'Administrador'], ['pacientes', 'Profesional'],
+            ['profesionales', 'Administrador'], ['profesionales', 'SuperAdministrador'],
+        ];
+        for (const [tipo, rol] of escenarios) for (const cantidad of [1, 5, 20]) {
+            const fuente = tipo === 'turnos' ? turnos : tipo === 'pacientes' ? pacientes : profesionales;
+            const items = Array.from({length: cantidad}, (_, i) => {
+                const item = structuredClone(fuente[i % fuente.length]);
+                item.id = i + 1;
+                if (cantidad === 20 && tipo === 'turnos') item.trabajo_sesion =
+                    `Atenci\u00f3n y acompa\u00f1amiento: actividades de comunicaci\u00f3n, coordinaci\u00f3n y memoria.\nSegunda l\u00ednea; texto completo autorizado. FIN-SESION-${i + 1}`;
+                if (cantidad === 20 && tipo === 'profesionales') {
+                    item.especialidad.nombre = 'Psicolog\u00eda cl\u00ednica y acompa\u00f1amiento terap\u00e9utico interdisciplinario';
+                    item.mail = `profesional.apellido.extenso${i + 1}@example.invalid`;
+                }
+                return item;
+            });
+            const esPro = rol === 'Profesional';
+            const nombre = `${tipo}-${rol}-${cantidad}`;
+            await page.evaluate(args => window.reportePrueba.prepararImpresion(...args), [tipo, items, esPro, rol]);
             await page.emulateMedia({ media: 'print' });
             const horizontal = tipo === 'pacientes' && !process.env.PRINT_BASELINE;
             const ancho = (horizontal ? 269 : 182) * 96 / 25.4;
@@ -83,6 +98,8 @@ const profesionales = pacientes.map(p => ({ id: p.id, nombre: p.nombre, apellido
                     return { x: r.x, right: r.right, y: r.y, bottom: r.bottom, width: r.width }; };
                 return { tabla: rect('#tabla-reporte'), encabezado: rect('#reporte-membrete-print'),
                     indicadores: rect('#reporte-kpis'), firma: rect('.eg-print-signature-box'),
+                    tarjetas: [...document.querySelectorAll('#reporte-kpis .eg-stat')].map(e => ({right:e.getBoundingClientRect().right, overflow:e.scrollWidth > e.clientWidth + 2})),
+                    truncados: [...document.querySelectorAll('#tabla-reporte .text-truncate')].filter(e => e.scrollWidth > e.clientWidth + 2 || e.scrollHeight > e.clientHeight + 2).length,
                     pie: rect('.eg-card__foot'), filas: document.querySelectorAll('#reporte-cuerpo tr').length,
                     desbordes: [...document.querySelectorAll('#tabla-reporte th, #tabla-reporte td')]
                         .filter(e => getComputedStyle(e).display !== 'none' && e.scrollWidth > e.clientWidth + 2)
@@ -90,7 +107,9 @@ const profesionales = pacientes.map(p => ({ id: p.id, nombre: p.nombre, apellido
             });
             resultados.push({ nombre, ancho, ...medidas });
             if (!process.env.PRINT_BASELINE) {
-                assert.equal(medidas.filas, 5);
+                assert.equal(medidas.filas, cantidad);
+                assert.equal(medidas.truncados, 0);
+                assert.ok(medidas.tarjetas.every(t => t.right <= ancho + 1 && !t.overflow), `${nombre}: indicador desbordado`);
                 assert.ok(medidas.tabla.right <= ancho + 1, `${nombre}: tabla fuera de página`);
                 assert.deepEqual(medidas.desbordes, [], `${nombre}: texto desbordado`);
                 assert.ok(medidas.encabezado.bottom <= medidas.indicadores.y);

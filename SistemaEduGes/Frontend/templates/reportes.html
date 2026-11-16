@@ -801,6 +801,66 @@
         margin-bottom: 4px !important;
     }
 
+    /* Ajustes exclusivos de impresión: no alteran datos ni vistas de pantalla. */
+    #filtros-reporte[data-tipo="turnos"] ~ section #reporte-kpis {
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    }
+
+    #filtros-reporte[data-tipo="turnos"] ~ section #reporte-kpis .eg-stat {
+        grid-column: auto !important;
+        min-width: 0;
+        padding: 8px 6px !important;
+        overflow-wrap: anywhere;
+    }
+
+    #filtros-reporte[data-tipo="turnos"] ~ section #reporte-kpis .eg-stat__label {
+        white-space: normal !important;
+    }
+
+    #filtros-reporte:is([data-tipo="turnos"], [data-tipo="profesionales"]) ~ .eg-card .eg-report-table {
+        table-layout: fixed;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    #filtros-reporte:is([data-tipo="turnos"], [data-tipo="profesionales"]) ~ .eg-card .eg-report-table :is(th, td) {
+        padding: 5px 6px !important;
+        overflow-wrap: anywhere;
+        white-space: normal !important;
+    }
+
+    #filtros-reporte:is([data-tipo="turnos"], [data-tipo="profesionales"]) ~ .eg-card .eg-chip {
+        max-width: 100%;
+        white-space: normal !important;
+        padding: 2px 4px !important;
+    }
+
+    #filtros-reporte[data-tipo="turnos"] ~ .eg-card .text-truncate {
+        max-width: none !important;
+        white-space: pre-wrap !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere;
+    }
+
+    #filtros-reporte[data-tipo="turnos"] ~ .eg-card th:nth-child(1) { width: 17% !important; }
+    #filtros-reporte[data-tipo="turnos"] ~ .eg-card th:nth-child(2) { width: 21% !important; }
+    #filtros-reporte[data-tipo="turnos"] ~ .eg-card th:nth-child(3) { width: 18% !important; }
+    #filtros-reporte[data-tipo="turnos"] ~ .eg-card th:nth-child(4) { width: 14% !important; }
+    #filtros-reporte[data-tipo="turnos"] ~ .eg-card th:nth-child(5) { width: 30% !important; }
+
+    #filtros-reporte[data-tipo="profesionales"] ~ .eg-card th:nth-child(1) { width: 18% !important; }
+    #filtros-reporte[data-tipo="profesionales"] ~ .eg-card th:nth-child(2) { width: 12% !important; }
+    #filtros-reporte[data-tipo="profesionales"] ~ .eg-card th:nth-child(3) { width: 13% !important; }
+    #filtros-reporte[data-tipo="profesionales"] ~ .eg-card th:nth-child(4) { width: 22% !important; }
+    #filtros-reporte[data-tipo="profesionales"] ~ .eg-card th:nth-child(5) { width: 23% !important; }
+    #filtros-reporte[data-tipo="profesionales"] ~ .eg-card th:nth-child(6) { width: 12% !important; }
+
+    #filtros-reporte:is([data-tipo="turnos"], [data-tipo="profesionales"]) ~ .eg-card .eg-card__foot {
+        margin-top: 12px !important;
+        padding-top: 6px !important;
+    }
+
     /* Ocho columnas: el ancho automático y los textos sin corte pueden
        superar el papel incluso con width: 100%. Solo Pacientes usa esta página. */
     @page pacientes {
