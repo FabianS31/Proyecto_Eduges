@@ -17,6 +17,9 @@ from profesionales.models.asignacion_model import (
 
 class SesionesService:
 
+    # Mismo mensaje para identificadores inexistentes y recursos no accesibles.
+    ACCESO_DENEGADO = 'No tenés autorización para acceder a este recurso.'
+
     @classmethod
     def puede_consultar_historial(cls, usuario, paciente_id):
         rol = cls.obtener_rol(usuario)
@@ -63,27 +66,20 @@ class SesionesService:
             return None
 
         if rol != 'Profesional':
-            raise PermissionDenied(
-                'No tenés permisos para realizar esta operación.'
-            )
+            raise PermissionDenied(SesionesService.ACCESO_DENEGADO)
 
         try:
             profesional = usuario.profesional
         except Exception:
-            raise PermissionDenied(
-                'El usuario no está vinculado a un profesional.'
-            )
+            raise PermissionDenied(SesionesService.ACCESO_DENEGADO)
 
         if profesional.pk != turno.profesional_id:
-            raise PermissionDenied(
-                'No podés modificar registros de sesión '
-                'de otro profesional.'
-            )
+            raise PermissionDenied(SesionesService.ACCESO_DENEGADO)
 
         return profesional
 
-    @staticmethod
-    def obtener_turno(turno_id, bloquear=False):
+    @classmethod
+    def obtener_turno(cls, turno_id, usuario, bloquear=False, escritura=False):
         turnos = Turno.objects.all()
 
         if bloquear:
@@ -91,7 +87,6 @@ class SesionesService:
         else:
             turnos = turnos.select_related(
                 'profesional',
-                'registro_sesion',
                 'paciente',
                 'estado',
             )
@@ -99,9 +94,16 @@ class SesionesService:
         try:
             return turnos.get(pk=turno_id)
         except Turno.DoesNotExist:
-            raise NotFound(
-                'El turno solicitado no existe.'
+            # Solo los roles con alcance global para esta operación pueden
+            # distinguir un turno inexistente. El resto recibe la misma
+            # denegación que para un turno ajeno, sin activar el modo de alta
+            # que el cliente reserva para los 404 de lectura autorizada.
+            roles_globales = ('SuperAdministrador',) if escritura else (
+                'Administrador', 'SuperAdministrador',
             )
+            if cls.obtener_rol(usuario) not in roles_globales:
+                raise PermissionDenied(cls.ACCESO_DENEGADO)
+            raise NotFound('El turno solicitado no existe.')
 
     @staticmethod
     def validar_turno_no_cancelado(turno):
@@ -220,15 +222,17 @@ class SesionesService:
     ):
         turno = cls.obtener_turno(
             turno_id,
+            usuario,
             bloquear=True,
+            escritura=True,
         )
-
-        cls.validar_turno_habilitado_para_registro(turno)
 
         cls.validar_profesional_autorizado(
             turno,
             usuario,
         )
+
+        cls.validar_turno_habilitado_para_registro(turno)
 
         if turno.registro_sesion_id is not None:
             raise ValidationError({
@@ -260,15 +264,17 @@ class SesionesService:
     ):
         turno = cls.obtener_turno(
             turno_id,
+            usuario,
             bloquear=True,
+            escritura=True,
         )
-
-        cls.validar_turno_no_cancelado(turno)
 
         cls.validar_profesional_autorizado(
             turno,
             usuario,
         )
+
+        cls.validar_turno_no_cancelado(turno)
 
         if turno.registro_sesion_id is None:
             raise NotFound(
@@ -312,7 +318,8 @@ class SesionesService:
 
     @classmethod
     def obtener_sesion(cls, turno_id, usuario):
-        turno = cls.obtener_turno(turno_id)
+        turno = cls.obtener_turno(turno_id, usuario)
+        acceso_completo = cls.validar_lectura_autorizada(turno, usuario)
 
         if turno.registro_sesion_id is None:
             raise NotFound(
@@ -320,38 +327,37 @@ class SesionesService:
                 'un registro de sesión.'
             )
 
+        return turno.registro_sesion, acceso_completo
+
+    @classmethod
+    def validar_lectura_autorizada(cls, turno, usuario):
+        # La lectura histórica no concede permiso de escritura.
+
         rol = cls.obtener_rol(usuario)
 
         # Administrador: acceso únicamente al diagnóstico.
         if rol == 'Administrador':
-            return turno.registro_sesion, False
+            return False
 
         # SuperAdministrador: acceso completo.
         if rol == 'SuperAdministrador':
-            return turno.registro_sesion, True
+            return True
 
         if rol != 'Profesional':
-            raise PermissionDenied(
-                'No tenés permisos para consultar este registro.'
-            )
+            raise PermissionDenied(cls.ACCESO_DENEGADO)
 
         try:
             profesional = usuario.profesional
         except Exception:
-            raise PermissionDenied(
-                'El usuario no está vinculado a un profesional.'
-            )
+            raise PermissionDenied(cls.ACCESO_DENEGADO)
 
         # El profesional del turno conserva el acceso completo.
         if profesional.pk == turno.profesional_id:
-            return turno.registro_sesion, True
+            return True
 
         # Un profesional nuevo asignado al paciente puede ver
         # únicamente el diagnóstico de los registros históricos.
         if cls.puede_consultar_historial(usuario, turno.paciente_id):
-            return turno.registro_sesion, False
+            return False
 
-        raise PermissionDenied(
-            'No tenés autorización para consultar '
-            'el registro de sesión de este paciente.'
-        )
+        raise PermissionDenied(cls.ACCESO_DENEGADO)

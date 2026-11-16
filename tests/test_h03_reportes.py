@@ -6,6 +6,32 @@ from django.db import connection
 
 
 class ReportesPropiosTests(unittest.TestCase):
+    def test_reportes_no_cache_en_exitos_y_errores(self):
+        for tipo, filtro in (('turnos', 'paciente_id'),
+                             ('pacientes', 'paciente_id'),
+                             ('profesionales', 'profesional_id')):
+            url = f'/api/reportes/{tipo}/'
+            for actor, parametros, codigo in (
+                ('admin', {}, 200), ('super', {}, 200),
+                ('admin', {filtro: 'invalido'}, 400), ('otro', {}, 403),
+                ('A', {}, 403 if tipo == 'profesionales' else 200),
+            ):
+                with self.subTest(tipo=tipo, actor=actor, codigo=codigo):
+                    respuesta = self.f.login(actor).get(url, parametros)
+                    self.assertEqual(respuesta.status_code, codigo)
+                    self.assertIn('no-store', respuesta['Cache-Control'])
+                    self.assertIn('private', respuesta['Cache-Control'])
+                    self.assertIn('Expires', respuesta)
+                    if codigo == 200:
+                        self.assertEqual(set(respuesta.json()), {'total', 'resultados'})
+                    else:
+                        self.assertNotIn('resultados', respuesta.json())
+                        self.assertNotIn('Privada', respuesta.content.decode())
+            anonima = s.Client().get(url)
+            self.assertEqual(anonima.status_code, 401)
+            self.assertIn('no-store', anonima['Cache-Control'])
+            self.assertNotIn('resultados', anonima.json())
+
     @classmethod
     def setUpClass(cls):
         assert connection.settings_dict['ENGINE'] == 'django.db.backends.sqlite3'

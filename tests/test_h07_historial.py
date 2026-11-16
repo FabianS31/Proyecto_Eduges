@@ -9,6 +9,132 @@ from django.db import connection
 
 
 class HistorialTests(unittest.TestCase):
+    def test_identificador_conserva_conversion_sin_consultar_existencia(self):
+        from rest_framework import serializers
+        from APIs.sesiones.serializers.sesiones_serializers import IdentificadorTurnoField
+        anterior = serializers.PrimaryKeyRelatedField(queryset=s.Turno.objects.all())
+        actual = IdentificadorTurnoField(queryset=s.Turno.objects.all())
+        pk = self.turno.pk
+        for valor in (pk, str(pk), float(pk), pk + 0.5, f' {pk} ',
+                      f'{pk}.0', True, False, [], {}, None, 'invalido'):
+            with self.subTest(valor=valor):
+                try:
+                    esperado = anterior.run_validation(valor).pk
+                except serializers.ValidationError as error:
+                    with self.assertRaises(serializers.ValidationError) as nuevo:
+                        actual.run_validation(valor)
+                    self.assertEqual(nuevo.exception.detail, error.detail)
+                else:
+                    with CaptureQueriesContext(connection) as consultas:
+                        self.assertEqual(actual.run_validation(valor), esperado)
+                    self.assertEqual(len(consultas), 0)
+
+    def pedir(self, cliente, metodo, turno_id, datos=None):
+        url = '/api/sesiones/' if metodo == 'post' else f'/api/sesiones/{turno_id}/'
+        if metodo == 'get':
+            return cliente.get(url)
+        cuerpo = {'trabajo_sesion': 'Trabajo sintético',
+                  'diagnostico': 'Diagnóstico sintético', 'nota_sesion': 'Nota sintética'}
+        if datos is not None:
+            cuerpo = datos.copy()
+        if metodo == 'post':
+            cuerpo['turno_id'] = turno_id
+        return getattr(cliente, metodo)(url, cuerpo, content_type='application/json',
+                                       HTTP_X_CSRFTOKEN=self.f.token(cliente))
+
+    def comprobar_denegacion_uniforme(self, actor, metodos):
+        cliente = self.f.login(actor)
+        ausente = s.EstadoTurno.objects.create(estado='Ausente')
+        for estado in (*self.f.estados_turno.values(), ausente):
+            self.f.turno.estado = estado
+            self.f.turno.save(update_fields=['estado'])
+            antes = self.f.snapshot()
+            for metodo in metodos:
+                respuestas = [self.pedir(cliente, metodo, pk) for pk in (
+                    self.turno.pk, self.f.turno.pk, self.f.turno_sesion.pk, 999999)]
+                for respuesta in respuestas:
+                    self.assertEqual(respuesta.status_code, 403)
+                    self.assertEqual(respuesta.content, respuestas[0].content)
+                    self.assertEqual(set(respuesta.json()), {'detail'})
+                    self.assertIn('no-store', respuesta['Cache-Control'])
+                    for privado in (self.f.registro.trabajo_sesion,
+                                    self.f.registro.diagnostico, 'NOTA PRIVADA B'):
+                        self.assertNotIn(privado, respuesta.content.decode())
+            self.assertEqual(self.f.snapshot(), antes)
+
+    def test_ajeno_no_distingue_existencia_ni_estado_en_get_post_patch(self):
+        self.comprobar_denegacion_uniforme('A', ('get', 'post', 'patch'))
+
+    def test_administrador_no_distingue_existencia_en_escrituras(self):
+        self.comprobar_denegacion_uniforme('admin', ('post', 'patch'))
+
+    def test_sin_vinculo_y_rol_ajeno_no_distinguen_existencia(self):
+        for actor in ('sin_vinculo', 'otro'):
+            self.comprobar_denegacion_uniforme(actor, ('get', 'post', 'patch'))
+
+    def test_nuevo_asignado_lee_resumen_pero_no_infiere_por_escrituras(self):
+        self.asignar_a()
+        self.comprobar_resumen(self.historial('A'))
+        self.assertEqual(set(self.detalle('A').json()), {'id', 'diagnostico'})
+        self.comprobar_denegacion_uniforme('A', ('post', 'patch'))
+
+    def test_anonimo_no_distingue_existencia_ni_escribe(self):
+        cliente = s.Client()
+        antes = self.f.snapshot()
+        for metodo in ('get', 'post', 'patch'):
+            respuestas = []
+            for pk in (self.turno.pk, self.f.turno.pk, 999999):
+                url = '/api/sesiones/' if metodo == 'post' else f'/api/sesiones/{pk}/'
+                respuesta = getattr(cliente, metodo)(url, {'turno_id': pk},
+                                                      content_type='application/json')
+                self.assertEqual(respuesta.status_code, 401)
+                self.assertIn('no-store', respuesta['Cache-Control'])
+                self.assertEqual(set(respuesta.json()), {'detail'})
+                respuestas.append(respuesta.content)
+            self.assertEqual(len(set(respuestas)), 1)
+        self.assertEqual(self.f.snapshot(), antes)
+
+    def test_autorizados_conservan_mensajes_sin_sesion_y_validaciones(self):
+        self.asignar_a()
+        for actor in ('A', 'B', 'admin', 'super'):
+            respuesta = self.pedir(self.f.login(actor), 'get', self.f.turno.pk)
+            self.assertEqual(respuesta.status_code, 404)
+            self.assertEqual(respuesta.json(), {
+                'detail': 'Este turno todavía no tiene un registro de sesión.'})
+        for actor in ('B', 'super'):
+            cliente = self.f.login(actor)
+            antes = self.f.snapshot()
+            respuesta = self.pedir(cliente, 'post', self.turno.pk)
+            self.assertEqual(respuesta.status_code, 400)
+            self.assertIn('ya tiene un registro', respuesta.json()['turno_id'])
+            respuesta = self.pedir(cliente, 'patch', self.f.turno.pk)
+            self.assertEqual(respuesta.status_code, 404)
+            self.assertIn('todavía no tiene', respuesta.json()['detail'])
+            respuesta = self.pedir(cliente, 'post', self.f.turno.pk)
+            self.assertEqual(respuesta.status_code, 400)
+            self.assertIn('Confirmado iniciado o Realizado', respuesta.json()['turno_id'])
+            self.assertEqual(self.f.snapshot(), antes)
+
+    def test_super_conserva_creacion_edicion_y_contenido_completo(self):
+        cliente = self.f.login('super')
+        respuesta = self.pedir(cliente, 'post', self.f.turno_sesion.pk)
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(set(respuesta.json()), {
+            'id', 'descripcion', 'trabajo_sesion', 'diagnostico', 'nota_sesion', 'mensaje'})
+        self.assertEqual(respuesta.json()['descripcion'],
+                         f'Registro clínico correspondiente al turno {self.f.turno_sesion.pk}')
+        self.assertEqual(respuesta.json()['nota_sesion'], 'Nota sintética')
+        respuesta = self.pedir(cliente, 'patch', self.turno.pk, {'nota_sesion': 'Nota técnica'})
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta.json(), {
+            'id': self.f.registro.pk, 'trabajo_sesion': self.f.registro.trabajo_sesion,
+            'diagnostico': self.f.registro.diagnostico, 'nota_sesion': 'Nota técnica'})
+        self.assertEqual(self.detalle('super').json(), respuesta.json())
+        antes = self.f.snapshot()
+        respuesta = self.pedir(cliente, 'patch', self.turno.pk, {'profesional_id': 999999})
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertEqual(self.f.snapshot(), antes)
+
     @classmethod
     def setUpClass(cls):
         assert connection.settings_dict['ENGINE'] == 'django.db.backends.sqlite3'

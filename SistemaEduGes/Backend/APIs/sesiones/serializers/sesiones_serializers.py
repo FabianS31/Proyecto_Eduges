@@ -33,6 +33,18 @@ class RegistroSesionEdicionSerializer(serializers.Serializer):
         return attrs
 
 
+class IdentificadorTurnoField(serializers.PrimaryKeyRelatedField):
+    def to_internal_value(self, data):
+        # Conservar la conversión del PK anterior sin consultar su existencia.
+        # La resolución y autorización se realizan juntas en el servicio.
+        if isinstance(data, bool):
+            self.fail('incorrect_type', data_type=type(data).__name__)
+        try:
+            return Turno._meta.pk.get_prep_value(data)
+        except (TypeError, ValueError):
+            self.fail('incorrect_type', data_type=type(data).__name__)
+
+
 class RegistroSesionEntradaSerializer(RegistroSesionEdicionSerializer):
     """
     Valida los datos necesarios para registrar una sesión.
@@ -40,11 +52,7 @@ class RegistroSesionEntradaSerializer(RegistroSesionEdicionSerializer):
     posteriormente en el servicio.
     """
 
-    turno_id = serializers.PrimaryKeyRelatedField(
-        source='turno',
-        queryset=Turno.objects.all(),
-        write_only=True,
-    )
+    turno_id = IdentificadorTurnoField(queryset=Turno.objects.all(), write_only=True)
 
 
 class RegistroSesionProfesionalSerializer(

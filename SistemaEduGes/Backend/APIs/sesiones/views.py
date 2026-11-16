@@ -97,10 +97,10 @@ class RegistroSesionCrearView(APIView):
         serializer.is_valid(raise_exception=True)
 
         datos = serializer.validated_data
-        turno = datos.pop('turno')
+        turno_id = datos.pop('turno_id')
 
         registro = SesionesService.registrar_sesion(
-            turno_id=turno.pk,
+            turno_id=turno_id,
             trabajo_sesion=datos['trabajo_sesion'],
             diagnostico=datos['diagnostico'],
             nota_sesion=datos.get('nota_sesion'),
@@ -112,7 +112,7 @@ class RegistroSesionCrearView(APIView):
                 'id': registro.pk,
                 'descripcion': (
                     f'Registro clínico correspondiente al turno '
-                    f'{turno.pk}'
+                    f'{turno_id}'
                 ),
                 'trabajo_sesion': registro.trabajo_sesion,
                 'diagnostico': registro.diagnostico,
