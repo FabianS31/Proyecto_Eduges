@@ -800,6 +800,45 @@
         height: 40px !important;
         margin-bottom: 4px !important;
     }
+
+    /* Ocho columnas: el ancho automático y los textos sin corte pueden
+       superar el papel incluso con width: 100%. Solo Pacientes usa esta página. */
+    @page pacientes {
+        size: A4 landscape;
+        margin: 1.2cm 1.4cm 1.4cm;
+    }
+
+    body:has(#filtros-reporte[data-tipo="pacientes"]) {
+        page: pacientes;
+    }
+
+    #filtros-reporte[data-tipo="pacientes"] ~ .eg-card .eg-report-table {
+        table-layout: fixed;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        font-size: 9pt !important;
+    }
+
+    #filtros-reporte[data-tipo="pacientes"] ~ .eg-card .eg-report-table :is(th, td) {
+        padding: 5px 6px !important;
+        overflow-wrap: anywhere;
+        white-space: normal !important;
+    }
+
+    #filtros-reporte[data-tipo="pacientes"] ~ .eg-card .eg-report-table .eg-chip {
+        max-width: 100%;
+        white-space: normal !important;
+        padding: 2px 4px !important;
+    }
+
+    #filtros-reporte[data-tipo="pacientes"] ~ .eg-card th:nth-child(1) { width: 18% !important; }
+    #filtros-reporte[data-tipo="pacientes"] ~ .eg-card th:nth-child(2) { width: 9% !important; }
+    #filtros-reporte[data-tipo="pacientes"] ~ .eg-card th:nth-child(3) { width: 9% !important; }
+    #filtros-reporte[data-tipo="pacientes"] ~ .eg-card th:nth-child(4) { width: 19% !important; }
+    #filtros-reporte[data-tipo="pacientes"] ~ .eg-card th:nth-child(5) { width: 10% !important; }
+    #filtros-reporte[data-tipo="pacientes"] ~ .eg-card th:nth-child(6) { width: 16% !important; }
+    #filtros-reporte[data-tipo="pacientes"] ~ .eg-card th:nth-child(7) { width: 11% !important; }
+    #filtros-reporte[data-tipo="pacientes"] ~ .eg-card th:nth-child(8) { width: 8% !important; }
 }
 </style>
 
