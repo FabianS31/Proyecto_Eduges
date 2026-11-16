@@ -529,6 +529,29 @@
         margin: 0 !important;
     }
 
+    /* El layout flex de pantalla no debe intervenir en la paginación. */
+    .eg-app, .eg-main {
+        display: block !important;
+        min-height: 0 !important;
+    }
+
+    .eg-main > section.mb-4 {
+        margin-bottom: 10px !important;
+    }
+
+    .eg-report-table .small {
+        font-size: 9pt !important;
+        line-height: 1.3 !important;
+    }
+
+    #reporte-tabla-contenedor {
+        break-after: avoid-page;
+    }
+
+    .eg-card__foot {
+        break-before: avoid-page;
+    }
+
     /* Encabezado Ejecutivo */
     .eg-print-header {
         margin-bottom: 20px !important;
@@ -856,7 +879,7 @@
     #filtros-reporte[data-tipo="profesionales"] ~ .eg-card th:nth-child(5) { width: 23% !important; }
     #filtros-reporte[data-tipo="profesionales"] ~ .eg-card th:nth-child(6) { width: 12% !important; }
 
-    #filtros-reporte:is([data-tipo="turnos"], [data-tipo="profesionales"]) ~ .eg-card .eg-card__foot {
+    #filtros-reporte ~ .eg-card .eg-card__foot {
         margin-top: 12px !important;
         padding-top: 6px !important;
     }
@@ -870,6 +893,23 @@
 
     body:has(#filtros-reporte[data-tipo="pacientes"]) {
         page: pacientes;
+    }
+
+    body:has(#filtros-reporte[data-tipo="pacientes"]) .eg-print-header {
+        margin-bottom: 8px !important;
+        padding-bottom: 6px !important;
+    }
+
+    body:has(#filtros-reporte[data-tipo="pacientes"]) .eg-print-header__brand-row {
+        margin-bottom: 6px !important;
+    }
+
+    #filtros-reporte[data-tipo="pacientes"] ~ section .eg-stats {
+        margin-bottom: 6px !important;
+    }
+
+    #filtros-reporte[data-tipo="pacientes"] ~ section .eg-stat {
+        padding: 6px 10px !important;
     }
 
     #filtros-reporte[data-tipo="pacientes"] ~ .eg-card .eg-report-table {

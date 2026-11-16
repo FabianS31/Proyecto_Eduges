@@ -73,11 +73,18 @@ const profesionales = pacientes.map(p => ({ id: p.id, nombre: p.nombre, apellido
             ['pacientes', 'Administrador'], ['pacientes', 'Profesional'],
             ['profesionales', 'Administrador'], ['profesionales', 'SuperAdministrador'],
         ];
-        for (const [tipo, rol] of escenarios) for (const cantidad of [1, 5, 20]) {
+        for (const [tipo, rol] of escenarios) for (const cantidad of [1, 4, 5, 7, 20]) {
             const fuente = tipo === 'turnos' ? turnos : tipo === 'pacientes' ? pacientes : profesionales;
             const items = Array.from({length: cantidad}, (_, i) => {
                 const item = structuredClone(fuente[i % fuente.length]);
                 item.id = i + 1;
+                if (tipo === 'pacientes' && [4, 7].includes(cantidad)) {
+                    item.apellido = 'Pérez';
+                    item.mail = `paciente${i}@example.invalid`;
+                    item.profesionales_asignados = [{nombre: 'María', apellido: 'Gómez'}];
+                    item.obra_social.nombre = 'Cobertura de prueba';
+                    item.numero_afiliado = `AF-${i + 1}`;
+                }
                 if (cantidad === 20 && tipo === 'turnos') item.trabajo_sesion =
                     `Atenci\u00f3n y acompa\u00f1amiento: actividades de comunicaci\u00f3n, coordinaci\u00f3n y memoria.\nSegunda l\u00ednea; texto completo autorizado. FIN-SESION-${i + 1}`;
                 if (cantidad === 20 && tipo === 'profesionales') {
@@ -119,6 +126,16 @@ const profesionales = pacientes.map(p => ({ id: p.id, nombre: p.nombre, apellido
             }
             await page.pdf({ path: path.join(output, `${process.env.PRINT_BASELINE ? 'antes-' : ''}${nombre}.pdf`),
                 preferCSSPageSize: true, printBackground: true });
+            if (process.env.PDF_PYTHON && !process.env.PRINT_BASELINE) {
+                const textos = JSON.parse(require('node:child_process').execFileSync(process.env.PDF_PYTHON,
+                    ['-c', 'import sys,json; from pypdf import PdfReader; print(json.dumps([p.extract_text() for p in PdfReader(sys.argv[1]).pages]))',
+                        path.join(output, `${nombre}.pdf`)], {encoding: 'utf8'}));
+                if ([1, 4, 7].includes(cantidad)) assert.equal(textos.length, 1, `${nombre}: páginas innecesarias`);
+                for (const texto of textos) {
+                    assert.ok(items.some(item => texto.includes((item.nombre || item.paciente.nombre).split(' ')[0])), `${nombre}: página sin registros`);
+                }
+                assert.ok(textos.join('\n').includes('Firma y Sello del Profesional'), `${nombre}: falta firma`);
+            }
         }
         fs.writeFileSync(path.join(output, process.env.PRINT_BASELINE ? 'antes.json' : 'medidas.json'), JSON.stringify(resultados, null, 2));
         console.log(JSON.stringify(resultados, null, 2));

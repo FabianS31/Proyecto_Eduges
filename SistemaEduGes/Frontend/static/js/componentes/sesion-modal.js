@@ -19,10 +19,25 @@ import { ApiError } from '../api.js';
 import { ESTADO_TURNO } from '../constantes.js';
 import { sesiones, turnos } from '../endpoints.js';
 import { guardar, prepararModal } from './formularios.js';
+import { buscarEnLista, crearCombobox } from './combobox.js';
 import { formatearFecha, html, icono, nombreCompleto, renderizar } from '../ui.js';
 import { formatearHora } from './turnos.js';
 
 const $ = (id) => document.getElementById(id);
+
+function opcionesPacientesPendientes(turnos) {
+    const pacientes = new Map();
+    for (const turno of turnos) {
+        const paciente = turno.paciente;
+        if (!paciente || pacientes.has(paciente.id)) continue;
+        pacientes.set(paciente.id, {
+            valor: paciente.id,
+            texto: nombreCompleto(paciente),
+            detalle: `Turno: ${formatearFecha(turno.fecha)}, ${formatearHora(turno.hora)} hs`,
+        });
+    }
+    return [...pacientes.values()];
+}
 
 export function prepararModalSesion({ usuario, alGuardar } = {}) {
     const modalElemento = $('modal-sesion');
@@ -63,6 +78,26 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
     let cargaValida = false;
     let listaPendientesActual = [];
     let peticionCargaActual = 0;
+
+    const pacientePendienteInput = $('pend-paciente');
+    // Consultar el mismo alcance autorizado, incluidos los turnos históricos
+    // propios. No usar un padrón general ni mantener un catálogo en caché.
+    const pacientePendiente = pacientePendienteInput ? crearCombobox(pacientePendienteInput, {
+        buscar: async (texto) => {
+            const turnos = await sesiones.pendientes({
+                fecha_desde: $('pend-fecha-desde')?.value || undefined,
+                fecha_hasta: $('pend-fecha-hasta')?.value || undefined,
+            });
+            return buscarEnLista(opcionesPacientesPendientes(turnos || []))(texto);
+        },
+        mensajeVacio: 'No hay pacientes con turnos pendientes para estos criterios.',
+        alElegir: () => pacientePendienteInput.setCustomValidity(''),
+    }) : null;
+    pacientePendienteInput?.addEventListener('input', () => pacientePendienteInput.setCustomValidity(''));
+    modalPendientesElemento?.addEventListener('hidden.bs.modal', () => {
+        pacientePendiente?.limpiar();
+        pacientePendienteInput?.setCustomValidity('');
+    });
 
     const rolNombre = usuario?.rol?.nombre ?? usuario?.rol ?? '';
     const esAdmin = rolNombre === 'Administrador';
@@ -327,7 +362,13 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
 
         const fDesde = $('pend-fecha-desde')?.value || undefined;
         const fHasta = $('pend-fecha-hasta')?.value || undefined;
-        const pacId = $('pend-paciente-id')?.value || undefined;
+        const pacId = pacientePendiente?.valor() || undefined;
+        if (pacientePendienteInput?.value.trim() && !pacId) {
+            pacientePendienteInput.setCustomValidity('Seleccioná un paciente de las sugerencias o limpiá la búsqueda.');
+            pacientePendienteInput.reportValidity();
+            if (spinner) spinner.hidden = true;
+            return;
+        }
 
         try {
             const lista = await sesiones.pendientes({
@@ -386,7 +427,8 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
         btnLimpiarFiltrosPend.addEventListener('click', () => {
             if ($('pend-fecha-desde')) $('pend-fecha-desde').value = '';
             if ($('pend-fecha-hasta')) $('pend-fecha-hasta').value = '';
-            if ($('pend-paciente-id')) $('pend-paciente-id').value = '';
+            pacientePendiente?.limpiar();
+            pacientePendienteInput?.setCustomValidity('');
             cargarPendientes();
         });
     }
