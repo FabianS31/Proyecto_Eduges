@@ -223,6 +223,7 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
                 for (const campo of ['telefono', 'movil', 'mail', 'domicilio']) {
                     $('tutor-' + campo).value = t[campo] || '';
                 }
+                $('form-paciente')?.dispatchEvent?.(new CustomEvent('eduges:sincronizar-campos'));
 
                 const primerParentesco = (t.relaciones || [])[0]?.parentesco?.id;
                 if (primerParentesco && !selectParentesco.value) {

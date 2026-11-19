@@ -409,119 +409,516 @@ function inicializarDesplegablesNav() {
 }
 
 // ------------------------------------------------------------
-// DNI: validar sin borrar ni convertir caracteres ingresados.
-// El pegado se intercepta antes de que maxlength pueda truncar el texto.
+// DNI: bloquear letras/símbolos y >8 dígitos al tipear, conservando
+// la protección H19 ante pegados/autocompletados e intactos históricos.
 // ------------------------------------------------------------
 function prepararInputsDni() {
+    const MAX_DNI_DIGITOS = 8;
     const estados = new WeakMap();
     const mensaje = 'El DNI debe contener 7 u 8 dígitos del 0 al 9, sin puntos, guiones, letras ni espacios.';
+    const mensajeSoloDigitos = 'Solo se permiten números del 0 al 9.';
+    const mensajeMaximo = 'El DNI admite hasta 8 dígitos.';
+    const mensajePegado = 'Pegado rechazado: el DNI solo admite dígitos del 0 al 9 (máximo 8), sin puntos, guiones ni espacios.';
+    const mensajePegadoLargo = 'Pegado rechazado: el DNI admite hasta 8 dígitos (no se recortó automáticamente).';
     const esCampoDni = el => el instanceof HTMLInputElement
         && (el.name === 'dni' || el.name === 'tutor_dni');
-    const validar = campo => {
+
+    const obtenerEstado = campo => {
+        let estado = estados.get(campo);
+        if (!estado) {
+            estado = { original: campo.value, ultimo: campo.value, modificado: false, rechazo: null };
+            estados.set(campo, estado);
+        }
+        return estado;
+    };
+
+    const validar = (campo, { mostrarError = false } = {}) => {
         const estado = estados.get(campo);
-        if (estado?.rechazo) { campo.setCustomValidity(estado.rechazo); return false; }
+        if (estado?.rechazo) {
+            campo.setCustomValidity(estado.rechazo);
+            if (mostrarError) mostrarAvisoPreventivo(campo, estado.rechazo, { invalido: true });
+            return false;
+        }
         const intacto = estado && estado.original === campo.value;
         const valido = intacto || /^[0-9]{7,8}$/.test(campo.value);
         campo.setCustomValidity(valido ? '' : mensaje);
         if (estado) estado.ultimo = campo.value;
+        if (valido) {
+            limpiarAvisoPreventivo(campo, { quitarInvalido: true });
+        } else if (mostrarError) {
+            mostrarAvisoPreventivo(campo, mensaje, { invalido: true });
+        }
         return valido;
     };
+
+    const sincronizarCampo = (campo) => {
+        if (!esCampoDni(campo)) return;
+        estados.set(campo, { original: campo.value, ultimo: campo.value, modificado: false, rechazo: null });
+        campo.setCustomValidity('');
+        limpiarAvisoPreventivo(campo, { quitarInvalido: true });
+    };
+
+    const procesarPegado = (evento, campo, texto) => {
+        if (typeof evento.preventDefault === 'function') {
+            evento.preventDefault();
+        }
+        const estado = obtenerEstado(campo);
+        const candidato = valorCandidatoCampo(campo, texto);
+        let errorPegado = null;
+        if (/[\r\n]/.test(texto) || /[^0-9]/.test(texto)) {
+            errorPegado = mensajePegado;
+        } else if (candidato.length > MAX_DNI_DIGITOS) {
+            errorPegado = mensajePegadoLargo;
+        }
+
+        if (errorPegado) {
+            estado.rechazo = errorPegado;
+            estado.modificado = true;
+            estado.ultimo = campo.value;
+            validar(campo, { mostrarError: true });
+            return;
+        }
+
+        estado.rechazo = null;
+        campo.setRangeText(texto, campo.selectionStart ?? campo.value.length,
+            campo.selectionEnd ?? campo.value.length, 'end');
+        campo.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    const manejarEntradaActualizada = (campo) => {
+        const estado = estados.get(campo) ?? { original: null, ultimo: '', modificado: false, rechazo: null };
+        estado.modificado = campo.value !== estado.original;
+        estado.rechazo = null;
+        estado.ultimo = campo.value;
+        estados.set(campo, estado);
+
+        if (campo.value === estado.original || /^[0-9]{7,8}$/.test(campo.value)) {
+            validar(campo);
+            return;
+        }
+        // Si autocompletado o composición no cancelable insertó caracteres inválidos o >8 dígitos,
+        // no se recortan ni limpian en silencio: queda visible e inválido.
+        if (/[^0-9]/.test(campo.value) || campo.value.length > MAX_DNI_DIGITOS) {
+            validar(campo, { mostrarError: true });
+            return;
+        }
+        // 0..6 dígitos mientras el usuario sigue escribiendo: no flashear error prematuro.
+        campo.setCustomValidity(campo.value ? mensaje : '');
+        limpiarAvisoPreventivo(campo, { quitarInvalido: true });
+    };
+
     document.addEventListener('focusin', evento => {
         const campo = evento.target;
         if (!esCampoDni(campo)) return;
         const previo = estados.get(campo);
         if (!previo || previo.ultimo !== campo.value) {
-            estados.set(campo, {original: campo.value, ultimo: campo.value, modificado: false});
-            campo.setCustomValidity('');
+            sincronizarCampo(campo);
         }
     });
-    const insertarCompleto = (evento, texto) => {
-        const campo = evento.target;
-        evento.preventDefault();
-        // Un input de una linea elimina saltos automaticamente: no insertarlos.
-        if (/[\r\n]/.test(texto)) {
-            const estado = estados.get(campo) ?? {original: null};
-            estado.rechazo = mensaje;
-            estado.modificado = true;
-            estado.ultimo = campo.value;
-            estados.set(campo, estado);
-            validar(campo);
-            campo.reportValidity();
-            return;
-        }
-        campo.setRangeText(texto, campo.selectionStart ?? campo.value.length,
-            campo.selectionEnd ?? campo.value.length, 'end');
-        campo.dispatchEvent(new Event('input', {bubbles: true}));
-        if (!validar(campo)) campo.reportValidity();
-    };
+
     document.addEventListener('paste', evento => {
         if (!esCampoDni(evento.target)) return;
         if (!evento.clipboardData) {
             evento.preventDefault();
             const campo = evento.target;
-            const estado = estados.get(campo) ?? {original: null};
+            const estado = obtenerEstado(campo);
             estado.rechazo = 'No se pudo leer el pegado. Ingresá el DNI manualmente.';
             estado.modificado = true;
             estado.ultimo = campo.value;
-            estados.set(campo, estado);
-            validar(campo);
-            evento.target.reportValidity();
+            validar(campo, { mostrarError: true });
             return;
         }
-        insertarCompleto(evento, evento.clipboardData.getData('text/plain'));
+        procesarPegado(evento, evento.target, evento.clipboardData.getData('text/plain'));
     });
+
+    document.addEventListener('drop', evento => {
+        if (esCampoDni(evento.target) && evento.dataTransfer) {
+            procesarPegado(evento, evento.target, evento.dataTransfer.getData('text/plain'));
+        }
+    });
+
     document.addEventListener('beforeinput', evento => {
         const campo = evento.target;
         if (!esCampoDni(campo) || evento.isComposing || !evento.cancelable) return;
+        const tipo = evento.inputType ?? '';
+        if (!tipo.startsWith('insert')) return;
         const texto = evento.data ?? evento.dataTransfer?.getData('text/plain');
-        if (!evento.inputType?.startsWith('insert') || texto == null) return;
-        const longitud = campo.value.length - ((campo.selectionEnd ?? 0) - (campo.selectionStart ?? 0)) + texto.length;
-        if (/[\r\n]/.test(texto) || (campo.maxLength >= 0 && longitud > campo.maxLength)) insertarCompleto(evento, texto);
-    });
-    document.addEventListener('drop', evento => {
-        if (esCampoDni(evento.target) && evento.dataTransfer) {
-            insertarCompleto(evento, evento.dataTransfer.getData('text/plain'));
+        if (texto == null) return;
+
+        if (tipo === 'insertFromPaste' || tipo === 'insertFromDrop') {
+            procesarPegado(evento, campo, texto);
+            return;
+        }
+
+        const estado = obtenerEstado(campo);
+        const candidato = valorCandidatoCampo(campo, texto);
+        if (/[\r\n]/.test(texto) || /[^0-9]/.test(texto)) {
+            evento.preventDefault();
+            if (campo.value === estado.original && /[^0-9]/.test(campo.value)) {
+                mostrarAvisoPreventivo(campo, 'Para modificar el DNI histórico, seleccionalo e ingresá 7 u 8 dígitos.');
+            } else {
+                mostrarAvisoPreventivo(campo, mensajeSoloDigitos);
+            }
+            return;
+        }
+        if (candidato.length > MAX_DNI_DIGITOS) {
+            evento.preventDefault();
+            if (campo.value === estado.original && /[^0-9]/.test(campo.value)) {
+                mostrarAvisoPreventivo(campo, 'Para modificar el DNI histórico, seleccionalo e ingresá 7 u 8 dígitos.');
+            } else {
+                mostrarAvisoPreventivo(campo, mensajeMaximo);
+            }
         }
     });
+
     document.addEventListener('input', evento => {
         const campo = evento.target;
+        if (!esCampoDni(campo) || evento.isComposing) return;
+        manejarEntradaActualizada(campo);
+    });
+
+    document.addEventListener('compositionend', evento => {
+        const campo = evento.target;
         if (!esCampoDni(campo)) return;
-        if (!estados.has(campo)) estados.set(campo, {original: null});
-        estados.get(campo).modificado = true;
-        estados.get(campo).rechazo = null;
+        manejarEntradaActualizada(campo);
+    });
+
+    document.addEventListener('focusout', evento => {
+        const campo = evento.target;
+        if (!esCampoDni(campo)) return;
+        const estado = estados.get(campo);
+        if (estado?.rechazo) {
+            validar(campo, { mostrarError: true });
+            return;
+        }
+        if (estado?.modificado && campo.value !== '' && !/^[0-9]{7,8}$/.test(campo.value)) {
+            validar(campo, { mostrarError: true });
+            return;
+        }
         validar(campo);
     });
-    document.addEventListener('focusout', evento => {
-        if (esCampoDni(evento.target) && estados.get(evento.target)?.modificado
-            && !validar(evento.target)) evento.target.reportValidity();
-    });
+
     document.addEventListener('submit', evento => {
-        for (const campo of evento.target.elements ?? []) {
-            if (esCampoDni(campo) && estados.get(campo)?.modificado && !validar(campo)) {
+        for (const campo of evento.target?.elements ?? []) {
+            const estado = esCampoDni(campo) ? estados.get(campo) : null;
+            if (estado && (estado.rechazo || (estado.modificado && !validar(campo, { mostrarError: true })))) {
                 evento.preventDefault();
                 evento.stopImmediatePropagation();
-                campo.reportValidity();
+                validar(campo, { mostrarError: true });
+                campo.focus?.();
                 return;
             }
         }
     }, true);
-    document.addEventListener('reset', evento => {
-        for (const campo of evento.target.elements ?? []) {
-            if (esCampoDni(campo)) { estados.delete(campo); campo.setCustomValidity(''); }
+
+    const reiniciarContenedor = (raiz) => {
+        for (const campo of raiz?.elements ?? raiz?.querySelectorAll?.('input') ?? []) {
+            sincronizarCampo(campo);
         }
-    }, true);
+    };
+    document.addEventListener('reset', evento => reiniciarContenedor(evento.target), true);
     document.addEventListener('show.bs.modal', evento => {
-        for (const campo of evento.target.querySelectorAll?.('input') ?? []) {
-            if (esCampoDni(campo)) { estados.delete(campo); campo.setCustomValidity(''); }
-        }
+        reiniciarContenedor(evento.target);
+        queueMicrotask(() => reiniciarContenedor(evento.target));
     }, true);
+    document.addEventListener('hidden.bs.modal', evento => reiniciarContenedor(evento.target), true);
+    document.addEventListener('eduges:sincronizar-campos', evento => reiniciarContenedor(evento.target), true);
 }
 
+// ------------------------------------------------------------
+// Utilidades compartidas de validación preventiva en vivo (DNI / Nombre / Apellido)
+// ------------------------------------------------------------
+const piesPreventivos = new WeakMap();
+
+function obtenerPiePreventivo(campo, { conContador = false } = {}) {
+    let pie = piesPreventivos.get(campo);
+    if (pie) return pie;
+    if (typeof document?.createElement !== 'function') return null;
+
+    const contenedor = document.createElement('div');
+    contenedor.className = 'form-text d-flex justify-content-between align-items-start gap-2 mt-1';
+    contenedor.dataset.piePreventivo = '';
+    contenedor.hidden = !conContador;
+
+    const aviso = document.createElement('span');
+    aviso.className = 'text-danger fw-semibold';
+    aviso.dataset.avisoPreventivo = '';
+    aviso.setAttribute('role', 'status');
+    aviso.setAttribute('aria-live', 'polite');
+    aviso.hidden = true;
+    contenedor.appendChild(aviso);
+
+    let contador = null;
+    if (conContador) {
+        contador = document.createElement('span');
+        contador.className = 'ms-auto flex-shrink-0 text-muted';
+        contador.dataset.contadorCampo = '';
+        contenedor.appendChild(contador);
+    }
+
+    const ancla = typeof campo.closest === 'function'
+        ? (campo.closest('.combobox, .input-group') ?? campo)
+        : campo;
+    if (typeof ancla?.insertAdjacentElement === 'function') {
+        ancla.insertAdjacentElement('afterend', contenedor);
+    }
+    pie = { contenedor, aviso, contador, conContador };
+    piesPreventivos.set(campo, pie);
+    return pie;
+}
+
+function mostrarAvisoPreventivo(campo, mensaje, { invalido = false, conContador = false } = {}) {
+    if (invalido) {
+        campo.classList?.add('is-invalid');
+    } else {
+        campo.classList?.remove('is-invalid');
+    }
+    const pie = obtenerPiePreventivo(campo, { conContador });
+    if (!pie) return;
+    pie.aviso.textContent = mensaje || '';
+    pie.aviso.hidden = !mensaje;
+    pie.contenedor.hidden = !conContador && !mensaje;
+}
+
+function limpiarAvisoPreventivo(campo, { quitarInvalido = true, conContador = false } = {}) {
+    if (quitarInvalido) {
+        campo.classList?.remove('is-invalid');
+    }
+    const pie = piesPreventivos.get(campo);
+    if (!pie) return;
+    pie.aviso.textContent = '';
+    pie.aviso.hidden = true;
+    pie.contenedor.hidden = !conContador;
+}
+
+function valorCandidatoCampo(campo, texto) {
+    const valor = String(campo.value ?? '');
+    const inicio = campo.selectionStart ?? valor.length;
+    const fin = campo.selectionEnd ?? valor.length;
+    return valor.slice(0, inicio) + texto + valor.slice(fin);
+}
+
+// ------------------------------------------------------------
+// Nombre y Apellido: máximo 60 caracteres, contador en vivo, bloqueo
+// al llegar a 60 y rechazo de pegado/arrastre sin truncamiento silencioso.
+// ------------------------------------------------------------
+function prepararInputsNombreApellido() {
+    const MAX_NOMBRE = 60;
+    const FORMULARIOS_NOMBRE = new Set([
+        'form-paciente',
+        'form-editar-paciente',
+        'form-agregar-tutor',
+        'form-editar-tutor',
+        'form-nuevo-profesional',
+        'form-profesional',
+    ]);
+    const CAMPOS_NOMBRE = new Set(['nombre', 'apellido', 'tutor_nombre', 'tutor_apellido']);
+    const CAMPOS_COMBOBOX_BUSQUEDA = new Set(['tutor-nombre', 'add-tutor-nombre']);
+    const estados = new WeakMap();
+
+    const esCampoNombre = el => el instanceof HTMLInputElement
+        && (FORMULARIOS_NOMBRE.has(el.form?.id) || el.dataset?.nombrePersonal === 'true')
+        && CAMPOS_NOMBRE.has(el.name);
+
+    const largoCaracteres = texto => [...String(texto ?? '')].length;
+
+    const actualizarContador = (campo) => {
+        const pie = obtenerPiePreventivo(campo, { conContador: true });
+        if (!pie?.contador) return;
+        const longitud = largoCaracteres(campo.value);
+        const enTope = longitud >= MAX_NOMBRE;
+        pie.contador.textContent = enTope
+            ? `${longitud}/${MAX_NOMBRE} — Límite alcanzado`
+            : `${longitud}/${MAX_NOMBRE}`;
+        pie.contador.className = longitud > MAX_NOMBRE
+            ? 'ms-auto flex-shrink-0 text-danger fw-semibold'
+            : enTope
+                ? 'ms-auto flex-shrink-0 text-warning-emphasis fw-semibold'
+                : 'ms-auto flex-shrink-0 text-muted';
+    };
+
+    const validarContenidoNombre = (campo, { alSalir = false } = {}) => {
+        const estado = estados.get(campo);
+        actualizarContador(campo);
+
+        if (estado?.avisoPegado && alSalir) {
+            return false;
+        }
+
+        if (estado && campo.value === estado.original) {
+            limpiarAvisoPreventivo(campo, { quitarInvalido: true, conContador: true });
+            return true;
+        }
+
+        const longitud = largoCaracteres(campo.value);
+        if (longitud > MAX_NOMBRE) {
+            mostrarAvisoPreventivo(campo, `No puede superar los ${MAX_NOMBRE} caracteres.`, { invalido: true, conContador: true });
+            return false;
+        }
+
+        const esBusquedaTutor = CAMPOS_COMBOBOX_BUSQUEDA.has(campo.id);
+        const texto = String(campo.value ?? '').trim().replace(/\s+/gu, ' ');
+        if (!texto) {
+            limpiarAvisoPreventivo(campo, { quitarInvalido: true, conContador: true });
+            return true;
+        }
+        if (esBusquedaTutor && (!alSalir || campo.dataset?.valor)) {
+            limpiarAvisoPreventivo(campo, { quitarInvalido: true, conContador: true });
+            return true;
+        }
+        if (!/^[\p{L}\s\-'\u2019]+$/u.test(texto)) {
+            mostrarAvisoPreventivo(campo, 'Solo se permiten letras, espacios, guiones y apóstrofes.', { invalido: true, conContador: true });
+            return false;
+        }
+        if (!/\p{L}/u.test(texto)) {
+            mostrarAvisoPreventivo(campo, 'Debe contener al menos una letra.', { invalido: true, conContador: true });
+            return false;
+        }
+        limpiarAvisoPreventivo(campo, { quitarInvalido: true, conContador: true });
+        return true;
+    };
+
+    const sincronizarCampo = (campo) => {
+        if (!esCampoNombre(campo)) return;
+        estados.set(campo, { original: campo.value, ultimo: campo.value, avisoPegado: false });
+        limpiarAvisoPreventivo(campo, { quitarInvalido: true, conContador: true });
+        actualizarContador(campo);
+    };
+
+    const procesarPegado = (evento, campo, texto) => {
+        const limpio = String(texto ?? '').replace(/[\r\n]+/g, ' ');
+        const candidato = valorCandidatoCampo(campo, limpio);
+        const largoFinal = largoCaracteres(candidato);
+        if (largoFinal > MAX_NOMBRE) {
+            if (typeof evento.preventDefault === 'function') {
+                evento.preventDefault();
+            }
+            const estado = estados.get(campo) ?? { original: campo.value, ultimo: campo.value };
+            estado.avisoPegado = true;
+            estados.set(campo, estado);
+            actualizarContador(campo);
+            mostrarAvisoPreventivo(
+                campo,
+                `No se pegó el texto: supera el máximo de ${MAX_NOMBRE} caracteres (${largoFinal}/${MAX_NOMBRE}).`,
+                { invalido: false, conContador: true },
+            );
+            return;
+        }
+        if (typeof evento.preventDefault === 'function') {
+            evento.preventDefault();
+        }
+        const estado = estados.get(campo);
+        if (estado) estado.avisoPegado = false;
+        campo.setRangeText(limpio, campo.selectionStart ?? campo.value.length,
+            campo.selectionEnd ?? campo.value.length, 'end');
+        campo.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    document.addEventListener('focusin', evento => {
+        const campo = evento.target;
+        if (!esCampoNombre(campo)) return;
+        const previo = estados.get(campo);
+        if (!previo || previo.ultimo !== campo.value) {
+            sincronizarCampo(campo);
+        } else {
+            actualizarContador(campo);
+        }
+    });
+
+    document.addEventListener('paste', evento => {
+        if (!esCampoNombre(evento.target)) return;
+        if (!evento.clipboardData) {
+            evento.preventDefault();
+            mostrarAvisoPreventivo(evento.target, 'No se pudo leer el pegado.', { conContador: true });
+            return;
+        }
+        procesarPegado(evento, evento.target, evento.clipboardData.getData('text/plain'));
+    });
+
+    document.addEventListener('drop', evento => {
+        if (esCampoNombre(evento.target) && evento.dataTransfer) {
+            procesarPegado(evento, evento.target, evento.dataTransfer.getData('text/plain'));
+        }
+    });
+
+    document.addEventListener('beforeinput', evento => {
+        const campo = evento.target;
+        if (!esCampoNombre(campo) || evento.isComposing || !evento.cancelable) return;
+        const tipo = evento.inputType ?? '';
+        if (!tipo.startsWith('insert')) return;
+        const texto = evento.data ?? evento.dataTransfer?.getData('text/plain');
+        if (texto == null) return;
+
+        if (tipo === 'insertFromPaste' || tipo === 'insertFromDrop') {
+            procesarPegado(evento, campo, texto);
+            return;
+        }
+
+        const candidato = valorCandidatoCampo(campo, texto);
+        if (largoCaracteres(candidato) > MAX_NOMBRE) {
+            evento.preventDefault();
+            actualizarContador(campo);
+            mostrarAvisoPreventivo(
+                campo,
+                `Alcanzaste el máximo de ${MAX_NOMBRE} caracteres.`,
+                { invalido: false, conContador: true },
+            );
+        }
+    });
+
+    const alActualizarNombre = campo => {
+        const estado = estados.get(campo) ?? { original: null, ultimo: '', avisoPegado: false };
+        estado.ultimo = campo.value;
+        estado.avisoPegado = false;
+        estados.set(campo, estado);
+        validarContenidoNombre(campo, { alSalir: false });
+    };
+
+    document.addEventListener('input', evento => {
+        const campo = evento.target;
+        if (!esCampoNombre(campo) || evento.isComposing) return;
+        alActualizarNombre(campo);
+    });
+
+    document.addEventListener('compositionend', evento => {
+        const campo = evento.target;
+        if (!esCampoNombre(campo)) return;
+        alActualizarNombre(campo);
+    });
+
+    document.addEventListener('focusout', evento => {
+        const campo = evento.target;
+        if (!esCampoNombre(campo)) return;
+        const estado = estados.get(campo);
+        if (estado) estado.ultimo = campo.value;
+        validarContenidoNombre(campo, { alSalir: true });
+    });
+
+    const reiniciarContenedor = (raiz) => {
+        for (const campo of raiz?.elements ?? raiz?.querySelectorAll?.('input') ?? []) {
+            sincronizarCampo(campo);
+        }
+    };
+
+    if (typeof document.querySelectorAll === 'function') {
+        for (const campo of document.querySelectorAll('input')) {
+            sincronizarCampo(campo);
+        }
+    }
+    document.addEventListener('reset', evento => reiniciarContenedor(evento.target), true);
+    document.addEventListener('show.bs.modal', evento => {
+        reiniciarContenedor(evento.target);
+        queueMicrotask(() => reiniciarContenedor(evento.target));
+    }, true);
+    document.addEventListener('hidden.bs.modal', evento => reiniciarContenedor(evento.target), true);
+    document.addEventListener('eduges:sincronizar-campos', evento => reiniciarContenedor(evento.target), true);
+}
 async function iniciar() {
     prepararModalesApilados();
     prepararMenuMovil();
     inicializarDesplegablesNav();
     prepararInputsDni();
+    prepararInputsNombreApellido();
     const botonSalir = document.getElementById('btn-cerrar-sesion');
     botonSalir?.addEventListener('click', () => cerrarSesion(botonSalir));
     prepararCambioPassword();

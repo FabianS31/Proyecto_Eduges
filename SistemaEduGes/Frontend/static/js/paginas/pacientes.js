@@ -940,6 +940,7 @@ function prepararGestionTutores() {
                 for (const campo of ['telefono', 'movil', 'mail', 'domicilio']) {
                     $('add-tutor-' + campo).value = t[campo] || '';
                 }
+                $('form-agregar-tutor')?.dispatchEvent?.(new CustomEvent('eduges:sincronizar-campos'));
 
                 const selectParentesco = $('add-tutor-parentesco');
                 const primerParentesco = (t.relaciones || [])[0]?.parentesco?.id;
