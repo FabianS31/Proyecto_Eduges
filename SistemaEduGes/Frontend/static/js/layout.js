@@ -9,6 +9,7 @@
 // ============================================================
 
 import { ApiError } from './api.js';
+import { errorDomicilio, mostrarErroresDelFormulario, validarCamposPreventivos } from './componentes/formularios.js';
 import { inicializarModalObrasSociales } from './componentes/obras-sociales-modal.js';
 import { prepararMostrarPassword } from './componentes/mostrar-password.js';
 import { CONFIG } from './config.js';
@@ -291,10 +292,29 @@ function prepararMenuMovil() {
     });
 }
 
+function mostrarErrorEnModal(form, contErrores, err) {
+    if (contErrores && typeof mostrarErroresDelFormulario === 'function') {
+        mostrarErroresDelFormulario(form, contErrores, err);
+        return;
+    }
+    if (contErrores) {
+        const mensaje = err?.message || 'No se pudo completar la operación. Intentá nuevamente.';
+        renderizar(contErrores, html`
+            <div class="alert alert-danger py-2 small mb-3 d-flex align-items-center gap-2" role="alert">
+                <span class="ms" aria-hidden="true">error</span>
+                <span>${mensaje}</span>
+            </div>`);
+        return;
+    }
+    notificarError(err);
+}
+
 function prepararModalEspecialidad() {
     const modalEl = document.getElementById('modal-especialidad');
     const form = document.getElementById('form-nueva-especialidad');
     if (!modalEl || !form) return;
+
+    form.addEventListener('input', (e) => e.target?.classList?.remove('is-invalid'));
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -304,12 +324,19 @@ function prepararModalEspecialidad() {
         const contErrores = document.getElementById('form-especialidad-errores');
         const btn = document.getElementById('btn-guardar-especialidad');
 
-        if (!nombre) {
+        if (typeof limpiarErroresFormulario === 'function') limpiarErroresFormulario(form);
+        if (contErrores) renderizar(contErrores, '');
+
+        let errorNombre = null;
+        if (!nombre) errorNombre = 'Ingresá el nombre de la especialidad.';
+        else if ([...nombre].length > 100) errorNombre = 'La especialidad admite hasta 100 caracteres.';
+
+        if (errorNombre) {
             if (contErrores) {
                 renderizar(contErrores, html`
                     <div class="alert alert-danger py-2 small mb-3 d-flex align-items-center gap-2" role="alert">
                         <span class="ms" aria-hidden="true">error</span>
-                        <span>Ingresá el nombre de la especialidad.</span>
+                        <span>${errorNombre}</span>
                     </div>`);
             }
             input?.focus();
@@ -321,10 +348,11 @@ function prepararModalEspecialidad() {
             await profesionales.crearEspecialidad({ nombre });
             window.bootstrap.Modal.getOrCreateInstance(modalEl).hide();
             form.reset();
+            if (typeof limpiarErroresFormulario === 'function') limpiarErroresFormulario(form);
             if (contErrores) renderizar(contErrores, '');
             notificar(`Especialidad "${nombre}" creada exitosamente.`);
         } catch (err) {
-            notificarError(err);
+            mostrarErrorEnModal(form, contErrores, err);
         } finally {
             botonCargando(btn, false);
         }
@@ -332,6 +360,7 @@ function prepararModalEspecialidad() {
 
     modalEl.addEventListener('hidden.bs.modal', () => {
         form.reset();
+        if (typeof limpiarErroresFormulario === 'function') limpiarErroresFormulario(form);
         const contErrores = document.getElementById('form-especialidad-errores');
         if (contErrores) renderizar(contErrores, '');
     });
@@ -342,6 +371,8 @@ function prepararModalNuevoUsuario() {
     const form = document.getElementById('form-nuevo-usuario');
     if (!modalEl || !form) return;
 
+    form.addEventListener('input', (e) => e.target?.classList?.remove('is-invalid'));
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (document.getElementById('btn-guardar-nuevo-usuario')?.disabled) return;
@@ -350,6 +381,9 @@ function prepararModalNuevoUsuario() {
         const inputConf = document.getElementById('nuevo-usuario-password-confirm');
         const contErrores = document.getElementById('form-nuevo-usuario-errores');
         const btn = document.getElementById('btn-guardar-nuevo-usuario');
+
+        if (typeof limpiarErroresFormulario === 'function') limpiarErroresFormulario(form);
+        if (contErrores) renderizar(contErrores, '');
 
         const usuario = inputUsuario?.value?.trim() ?? '';
         const password = inputPass?.value ?? '';
@@ -381,10 +415,11 @@ function prepararModalNuevoUsuario() {
             await auth.crearAdministrador({ usuario, password });
             window.bootstrap.Modal.getOrCreateInstance(modalEl).hide();
             form.reset();
+            if (typeof limpiarErroresFormulario === 'function') limpiarErroresFormulario(form);
             if (contErrores) renderizar(contErrores, '');
             notificar(`Administrador "${usuario}" creado exitosamente.`);
         } catch (err) {
-            notificarError(err);
+            mostrarErrorEnModal(form, contErrores, err);
         } finally {
             botonCargando(btn, false);
         }
@@ -392,6 +427,7 @@ function prepararModalNuevoUsuario() {
 
     modalEl.addEventListener('hidden.bs.modal', () => {
         form.reset();
+        if (typeof limpiarErroresFormulario === 'function') limpiarErroresFormulario(form);
         const contErrores = document.getElementById('form-nuevo-usuario-errores');
         if (contErrores) renderizar(contErrores, '');
     });
@@ -913,12 +949,294 @@ function prepararInputsNombreApellido() {
     document.addEventListener('hidden.bs.modal', evento => reiniciarContenedor(evento.target), true);
     document.addEventListener('eduges:sincronizar-campos', evento => reiniciarContenedor(evento.target), true);
 }
+
+// ------------------------------------------------------------
+// Etapa 2: validaci?n preventiva en vivo (l?mites, pegado sin truncar,
+// emails y domicilios al salir del campo, preservando hist?ricos intactos).
+// ------------------------------------------------------------
+function prepararInputsEtapa2() {
+    const REGLAS_ETAPA2 = {
+        'form-paciente': {
+            mail: { max: 50, tipo: 'email' },
+            direccion: { max: 255, noEmail: true },
+            numero_afiliado: { max: 20 },
+            cud_numero: { max: 20 },
+            tutor_telefono: { max: 30 },
+            tutor_movil: { max: 30 },
+            tutor_mail: { max: 150, tipo: 'email' },
+            tutor_domicilio: { max: 225, noEmail: true },
+        },
+        'form-editar-paciente': {
+            direccion: { max: 255, noEmail: true },
+            mail: { max: 50, tipo: 'email' },
+            cud_numero: { max: 20 },
+            numero_afiliado: { max: 20 },
+        },
+        'form-agregar-tutor': {
+            telefono: { max: 30 },
+            movil: { max: 30 },
+            mail: { max: 150, tipo: 'email' },
+            domicilio: { max: 225, noEmail: true },
+        },
+        'form-editar-tutor': {
+            telefono: { max: 30 },
+            movil: { max: 30 },
+            mail: { max: 150, tipo: 'email' },
+            domicilio: { max: 225, noEmail: true },
+        },
+        'form-nuevo-profesional': {
+            matricula: { max: 50 },
+            contacto: { max: 50 },
+            mail: { max: 50, tipo: 'email' },
+            usuario: { max: 100, sinEspacios: true },
+        },
+        'form-profesional': {
+            matricula: { max: 50 },
+            contacto: { max: 50 },
+            mail: { max: 50, tipo: 'email' },
+        },
+        'form-nueva-especialidad': {
+            nombre: { max: 100 },
+        },
+        'form-nuevo-usuario': {
+            usuario: { max: 100, sinEspacios: true },
+            password: { max: 128, ocultarContador: true },
+            password_confirm: { max: 128, ocultarContador: true },
+        },
+        'form-crear-obra-social': {
+            nombre: { max: 150 },
+            contacto: { max: 150 },
+            mail: { max: 150, tipo: 'email' },
+            web: { max: 255, tipo: 'url' },
+        },
+    };
+    const estados = new WeakMap();
+    const largoCaracteres = texto => [...String(texto ?? '')].length;
+
+    const reglaDeCampo = el => {
+        if (!(el instanceof HTMLInputElement)) return null;
+        const formId = el.form?.id;
+        return formId && REGLAS_ETAPA2[formId]?.[el.name] ? REGLAS_ETAPA2[formId][el.name] : null;
+    };
+
+    const actualizarContador = (campo, regla) => {
+        if (regla.ocultarContador) return;
+        const longitud = largoCaracteres(campo.value);
+        const mostrarContador = longitud >= Math.ceil(regla.max * 0.8);
+        const pie = piesPreventivos.get(campo) || (mostrarContador ? obtenerPiePreventivo(campo, { conContador: true }) : null);
+        if (!pie?.contador) return;
+        if (!mostrarContador && pie.aviso.hidden) {
+            pie.contador.textContent = '';
+            pie.contenedor.hidden = true;
+            return;
+        }
+        const enTope = longitud >= regla.max;
+        pie.contador.textContent = enTope
+            ? `${longitud}/${regla.max} \u2014 L\u00edmite alcanzado`
+            : `${longitud}/${regla.max}`;
+        pie.contador.className = longitud > regla.max
+            ? 'ms-auto flex-shrink-0 text-danger fw-semibold'
+            : enTope
+                ? 'ms-auto flex-shrink-0 text-warning-emphasis fw-semibold'
+                : 'ms-auto flex-shrink-0 text-muted';
+        pie.contenedor.hidden = false;
+    };
+
+    const mostrarAvisoEtapa2 = (campo, regla, texto, { invalido = false } = {}) => {
+        mostrarAvisoPreventivo(campo, texto, { invalido, conContador: !regla.ocultarContador });
+        actualizarContador(campo, regla);
+    };
+
+    const limpiarAvisoEtapa2 = (campo, regla) => {
+        limpiarAvisoPreventivo(campo, { quitarInvalido: true, conContador: false });
+        actualizarContador(campo, regla);
+    };
+
+    const validarCampo = (campo, regla, { alSalir = false } = {}) => {
+        const estado = estados.get(campo);
+        if (estado?.avisoPegado && alSalir) {
+            return false;
+        }
+        if (estado && campo.value === estado.original) {
+            limpiarAvisoEtapa2(campo, regla);
+            return true;
+        }
+        const longitud = largoCaracteres(campo.value);
+        if (longitud > regla.max) {
+            mostrarAvisoEtapa2(campo, regla, `No puede superar los ${regla.max} caracteres.`, { invalido: true });
+            return false;
+        }
+        if (regla.sinEspacios && /\s/.test(campo.value)) {
+            mostrarAvisoEtapa2(campo, regla, 'El usuario no puede contener espacios.', { invalido: true });
+            return false;
+        }
+        if (alSalir) {
+            const recortado = String(campo.value ?? '').trim();
+            if (recortado && regla.noEmail && typeof errorDomicilio === 'function') {
+                const errDom = errorDomicilio(recortado);
+                if (errDom) {
+                    mostrarAvisoEtapa2(campo, regla, errDom, { invalido: true });
+                    return false;
+                }
+            }
+            if (recortado && (regla.tipo === 'email' || regla.tipo === 'url') && typeof validarCamposPreventivos === 'function') {
+                const errs = validarCamposPreventivos({ [campo.name]: recortado }, { [campo.name]: { max: regla.max, tipo: regla.tipo } });
+                if (errs[campo.name]?.length) {
+                    mostrarAvisoEtapa2(campo, regla, errs[campo.name][0], { invalido: true });
+                    return false;
+                }
+            }
+        }
+        limpiarAvisoEtapa2(campo, regla);
+        return true;
+    };
+
+    const sincronizarCampo = (campo) => {
+        const regla = reglaDeCampo(campo);
+        if (!regla) return;
+        estados.set(campo, { original: campo.value, ultimo: campo.value, avisoPegado: false });
+        limpiarAvisoEtapa2(campo, regla);
+    };
+
+    const procesarPegado = (evento, campo, regla, textoCrudo) => {
+        if (regla.ocultarContador && /[\r\n]/.test(String(textoCrudo ?? ''))) {
+            if (typeof evento.preventDefault === 'function') evento.preventDefault();
+            const estado = estados.get(campo) ?? { original: campo.value, ultimo: campo.value };
+            estado.avisoPegado = true;
+            estados.set(campo, estado);
+            mostrarAvisoEtapa2(campo, regla, 'La contrase\u00f1a no admite saltos de l\u00ednea.');
+            return;
+        }
+        const texto = regla.ocultarContador
+            ? String(textoCrudo ?? '')
+            : String(textoCrudo ?? '').replace(/[\r\n]+/g, ' ');
+        const candidato = valorCandidatoCampo(campo, texto);
+        const largoFinal = largoCaracteres(candidato);
+        if (largoFinal > regla.max) {
+            if (typeof evento.preventDefault === 'function') evento.preventDefault();
+            const estado = estados.get(campo) ?? { original: campo.value, ultimo: campo.value };
+            estado.avisoPegado = true;
+            estados.set(campo, estado);
+            mostrarAvisoEtapa2(
+                campo,
+                regla,
+                `No se peg\u00f3 el texto: supera el m\u00e1ximo de ${regla.max} caracteres (${largoFinal}/${regla.max}).`,
+            );
+            return;
+        }
+        if (typeof evento.preventDefault === 'function') evento.preventDefault();
+        const estado = estados.get(campo);
+        if (estado) estado.avisoPegado = false;
+        campo.setRangeText(texto, campo.selectionStart ?? campo.value.length,
+            campo.selectionEnd ?? campo.value.length, 'end');
+        campo.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    document.addEventListener('focusin', evento => {
+        const campo = evento.target;
+        const regla = reglaDeCampo(campo);
+        if (!regla) return;
+        const previo = estados.get(campo);
+        if (!previo || previo.ultimo !== campo.value) {
+            sincronizarCampo(campo);
+        } else {
+            actualizarContador(campo, regla);
+        }
+    });
+
+    document.addEventListener('paste', evento => {
+        const campo = evento.target;
+        const regla = reglaDeCampo(campo);
+        if (!regla) return;
+        if (!evento.clipboardData) {
+            evento.preventDefault();
+            mostrarAvisoEtapa2(campo, regla, 'No se pudo leer el pegado.');
+            return;
+        }
+        procesarPegado(evento, campo, regla, evento.clipboardData.getData('text/plain'));
+    });
+
+    document.addEventListener('drop', evento => {
+        const campo = evento.target;
+        const regla = reglaDeCampo(campo);
+        if (regla && evento.dataTransfer) {
+            procesarPegado(evento, campo, regla, evento.dataTransfer.getData('text/plain'));
+        }
+    });
+
+    document.addEventListener('beforeinput', evento => {
+        const campo = evento.target;
+        const regla = reglaDeCampo(campo);
+        if (!regla || evento.isComposing || !evento.cancelable) return;
+        const tipo = evento.inputType ?? '';
+        if (!tipo.startsWith('insert')) return;
+        const texto = evento.data ?? evento.dataTransfer?.getData('text/plain');
+        if (texto == null) return;
+
+        if (tipo === 'insertFromPaste' || tipo === 'insertFromDrop') {
+            procesarPegado(evento, campo, regla, texto);
+            return;
+        }
+
+        const candidato = valorCandidatoCampo(campo, texto);
+        if (largoCaracteres(candidato) > regla.max) {
+            evento.preventDefault();
+            mostrarAvisoEtapa2(campo, regla, `Alcanzaste el m\u00e1ximo de ${regla.max} caracteres.`);
+        }
+    });
+
+    const alActualizar = campo => {
+        const regla = reglaDeCampo(campo);
+        if (!regla) return;
+        const estado = estados.get(campo) ?? { original: null, ultimo: '', avisoPegado: false };
+        estado.ultimo = campo.value;
+        estado.avisoPegado = false;
+        estados.set(campo, estado);
+        validarCampo(campo, regla, { alSalir: false });
+    };
+
+    document.addEventListener('input', evento => {
+        if (!evento.isComposing) alActualizar(evento.target);
+    });
+
+    document.addEventListener('compositionend', evento => alActualizar(evento.target));
+
+    document.addEventListener('focusout', evento => {
+        const campo = evento.target;
+        const regla = reglaDeCampo(campo);
+        if (!regla) return;
+        const estado = estados.get(campo);
+        if (estado) estado.ultimo = campo.value;
+        validarCampo(campo, regla, { alSalir: true });
+    });
+
+    const reiniciarContenedor = (raiz) => {
+        for (const campo of raiz?.elements ?? raiz?.querySelectorAll?.('input') ?? []) {
+            sincronizarCampo(campo);
+        }
+    };
+
+    if (typeof document.querySelectorAll === 'function') {
+        for (const campo of document.querySelectorAll('input')) {
+            sincronizarCampo(campo);
+        }
+    }
+    document.addEventListener('reset', evento => reiniciarContenedor(evento.target), true);
+    document.addEventListener('show.bs.modal', evento => {
+        reiniciarContenedor(evento.target);
+        queueMicrotask(() => reiniciarContenedor(evento.target));
+    }, true);
+    document.addEventListener('hidden.bs.modal', evento => reiniciarContenedor(evento.target), true);
+    document.addEventListener('eduges:sincronizar-campos', evento => reiniciarContenedor(evento.target), true);
+}
+
 async function iniciar() {
     prepararModalesApilados();
     prepararMenuMovil();
     inicializarDesplegablesNav();
     prepararInputsDni();
     prepararInputsNombreApellido();
+    prepararInputsEtapa2();
     const botonSalir = document.getElementById('btn-cerrar-sesion');
     botonSalir?.addEventListener('click', () => cerrarSesion(botonSalir));
     prepararCambioPassword();

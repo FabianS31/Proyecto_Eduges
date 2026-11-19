@@ -54,8 +54,10 @@ function entorno(rol = 'Profesional') {
         for(const field of fields) form.elements[field].value='Prueba';
         Object.assign(form.elements.dni,{value:'40123456'});
         form.elements.fecha_nacimiento.value='2010-01-01';
+        form.elements.mail.value='prueba@example.com';
         form.elements.cud_vencimiento.value='2027-01-01';
         form.elements.tutor_dni.value='20123456';
+        form.elements.tutor_mail.value='tutor@example.com';
         form.elements.tutor_parentesco_id.value='37';
         form.elements.consentimiento.checked=true;
         form.elements.profesional.value='';
@@ -184,8 +186,40 @@ test('H02: conserva domicilio del paciente como valor por defecto del tutor',asy
 });
 
 test('H02: correo informado invalido bloquea alta',async()=>{
-    const e=entorno();e.form.elements.tutor_mail.checkValidity=()=>false;
-    await e.submit();assert.equal(e.calls.length,0);
+    for(const malo of ['sin-arroba','a@dominio','a'.repeat(139)+'@example.com']) {
+        const e=entorno();e.form.elements.tutor_mail.value=malo;
+        await e.submit();assert.equal(e.calls.length,0,malo);
+    }
+    for(const [mail,ok] of [['',true],['a@dominio',false],['a'.repeat(38)+'@example.com',true],['a'.repeat(39)+'@example.com',false]]) {
+        const e=entorno();e.form.elements.mail.value=mail;
+        await e.submit();assert.equal(e.calls.length,ok?1:0,mail);
+    }
+});
+
+test('Etapa2 alta paciente: limites y telefonos con signos internacionales',async()=>{
+    const e1=entorno();e1.form.elements.direccion.value='A'.repeat(255);e1.form.elements.tutor_domicilio.value='B'.repeat(225);
+    await e1.submit();assert.equal(e1.calls.length,1);
+
+    const e2=entorno();e2.form.elements.direccion.value='A'.repeat(256);e2.form.elements.tutor_domicilio.value='B'.repeat(225);
+    await e2.submit();assert.equal(e2.calls.length,0);
+
+    const e3=entorno();e3.form.elements.numero_afiliado.value='A'.repeat(21);
+    await e3.submit();assert.equal(e3.calls.length,0);
+
+    const e4=entorno();
+    e4.form.elements.tutor_telefono.value='+54 (011) 4444-5555';
+    e4.form.elements.tutor_movil.value='+54 9 11 5555-6666';
+    await e4.submit();assert.equal(e4.calls.length,1);
+
+    const e5=entorno();e5.form.elements.tutor_telefono.value='1'.repeat(31);
+    await e5.submit();assert.equal(e5.calls.length,0);
+
+    const e6=entorno();e6.form.elements.tutor_movil.value='1'.repeat(31);
+    await e6.submit();assert.equal(e6.calls.length,0);
+
+    const manana = new Date(Date.now() + 2 * 86400000).toISOString().slice(0,10);
+    const e7=entorno();e7.form.elements.fecha_nacimiento.value=manana;
+    await e7.submit();assert.equal(e7.calls.length,0);
 });
 
 test('H02: HTML requiere telefono, correo y domicilio; movil opcional',()=>{

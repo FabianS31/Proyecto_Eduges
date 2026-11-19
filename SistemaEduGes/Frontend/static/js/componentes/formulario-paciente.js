@@ -129,23 +129,18 @@ function validar(datos, formulario, reutilizarTutor = false) {
     } else if (!soloDigitos(datos.dni) || datos.dni.length < 7 || datos.dni.length > 8) {
         errores.dni = ['El DNI tiene que tener 7 u 8 números, sin puntos.'];
     }
-    if (!datos.fecha_nacimiento) {
-        errores.fecha_nacimiento = ['Indicá la fecha de nacimiento.'];
-    } else if (datos.fecha_nacimiento > hoyISO()) {
-        errores.fecha_nacimiento = ['La fecha de nacimiento no puede ser futura.'];
-    }
-    if (datos.mail && !formulario.elements.mail.checkValidity()) {
-        errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
-    }
-    obligatorio('direccion', datos.direccion, 'Indicá la dirección.');
     if (!datos.obra_social) {
         errores.obra_social = [$('pac-obra-social').value.trim()
             ? 'Elegí la obra social de la lista de sugerencias.'
             : 'Indicá la obra social.'];
     }
-    obligatorio('numero_afiliado', datos.numero_afiliado, 'Indicá el número de afiliado.');
     Object.assign(errores, validarCamposPreventivos(datos, {
-        cud_numero: { max: 20 }, cud_vencimiento: { tipo: 'fecha' },
+        fecha_nacimiento: { requerido: true, tipo: 'nacimiento', mensajeRequerido: 'Indicá la fecha de nacimiento.' },
+        mail: { max: 50, tipo: 'email' },
+        direccion: { requerido: true, max: 255, mensajeRequerido: 'Indicá la dirección.' },
+        numero_afiliado: { requerido: true, max: 20, mensajeRequerido: 'Indicá el número de afiliado.' },
+        cud_numero: { max: 20 },
+        cud_vencimiento: { tipo: 'fecha' },
     }), validarCud(datos));
     if (formulario.elements.cud_vencimiento.validity?.badInput) {
         errores.cud_vencimiento = ['Ingresá una fecha válida.'];
@@ -163,13 +158,15 @@ function validar(datos, formulario, reutilizarTutor = false) {
         errores.tutor_dni = ['El DNI del tutor tiene que tener 7 u 8 números, sin puntos.'];
     }
     obligatorio('tutor_parentesco_id', !$('tutor-parentesco').disabled && datos.tutor.parentesco_id, 'Seleccioná el parentesco.');
-    obligatorio('tutor_telefono', datos.tutor.telefono, 'Indicá un teléfono de contacto.');
-    if (!datos.tutor.mail) {
-        errores.tutor_mail = ['Indicá el mail del tutor.'];
-    } else if (!formulario.elements.tutor_mail.checkValidity()) {
-        errores.tutor_mail = ['Revisá el mail del tutor: falta la @ o el dominio.'];
+    const erroresTutor = validarCamposPreventivos(datos.tutor, {
+        telefono: { requerido: true, max: 30, mensajeRequerido: 'Indicá un teléfono de contacto.' },
+        movil: { max: 30 },
+        mail: { requerido: true, max: 150, tipo: 'email', mensajeRequerido: 'Indicá el mail del tutor.' },
+        domicilio: { requerido: true, mensajeRequerido: 'Indicá el domicilio del tutor.' },
+    });
+    for (const [clave, mensajes] of Object.entries(erroresTutor)) {
+        errores['tutor_' + clave] = mensajes;
     }
-    obligatorio('tutor_domicilio', datos.tutor.domicilio, 'Indicá el domicilio del tutor.');
     if (errorDomicilio(datos.direccion)) errores.direccion = [errorDomicilio(datos.direccion)];
     if (errorDomicilio(datos.tutor.domicilio)) errores.tutor_domicilio = [errorDomicilio(datos.tutor.domicilio)];
 

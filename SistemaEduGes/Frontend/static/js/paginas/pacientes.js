@@ -17,7 +17,7 @@ import { crearHistorialClinico } from '../componentes/historial-clinico.js';
 import { cargarParentescos } from '../componentes/catalogo-parentescos.js';
 import { prepararFormularioPaciente } from '../componentes/formulario-paciente.js?v=20261022_1';
 import { crearCombobox } from '../componentes/combobox.js';
-import { errorDomicilio, guardar, validarNombrePersonal } from '../componentes/formularios.js';
+import { errorDomicilio, guardar, validarCamposPreventivos, validarNombrePersonal } from '../componentes/formularios.js';
 import { prepararEdicionPaciente } from '../componentes/editar-paciente.js';
 import {
     enteroDeUrl,
@@ -1004,12 +1004,12 @@ function prepararGestionTutores() {
         if (!datos.dni) errores.dni = ['Indicá el DNI.'];
         else if (!/^[0-9]{7,8}$/.test(datos.dni)) errores.dni = ['El DNI debe tener 7 u 8 números, sin puntos.'];
         if ($('add-tutor-parentesco').disabled || !datos.parentesco_id) errores.parentesco_id = ['Seleccioná el parentesco.'];
-        if (!datos.mail) {
-            errores.mail = ['Indicá el mail.'];
-        } else if (!formAgregar.elements.mail.checkValidity()) {
-            errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
-        }
-        if (!datos.domicilio) errores.domicilio = ['Indicá el domicilio.'];
+        Object.assign(errores, validarCamposPreventivos(datos, {
+            telefono: { max: 30 },
+            movil: { max: 30 },
+            mail: { requerido: true, max: 150, tipo: 'email', mensajeRequerido: 'Indicá el mail.' },
+            domicilio: { requerido: true, max: 225, mensajeRequerido: 'Indicá el domicilio.' },
+        }));
         if (errorDomicilio(datos.domicilio)) errores.domicilio = [errorDomicilio(datos.domicilio)];
 
         if (typeof tutoresDisponibles !== 'undefined' && tutoresDisponibles?.some(t => String(t.dni) === datos.dni)) {
@@ -1047,6 +1047,9 @@ function prepararGestionTutores() {
         if (campo('telefono') === formEditar.elements.telefono?.dataset?.original) {
             delete datos.telefono;
         }
+        if (campo('movil') === formEditar.elements.movil?.dataset?.original) {
+            delete datos.movil;
+        }
 
         const errores = {};
         for (const campo of ['nombre', 'apellido']) {
@@ -1055,16 +1058,20 @@ function prepararGestionTutores() {
         }
         if (datos.mail === mailTutorOriginal) {
             delete datos.mail;
-        } else if (!datos.mail) {
-            errores.mail = ['Indicá el mail.'];
-        } else if (!formEditar.elements.mail.checkValidity()) {
-            errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
         }
         if (datos.domicilio === domicilioTutorOriginal) {
             delete datos.domicilio;
-        } else {
-            if (!datos.domicilio) errores.domicilio = ['Indicá el domicilio.'];
-            if (errorDomicilio(datos.domicilio)) errores.domicilio = [errorDomicilio(datos.domicilio)];
+        } else if (errorDomicilio(datos.domicilio)) {
+            errores.domicilio = [errorDomicilio(datos.domicilio)];
+        }
+        const erroresContacto = validarCamposPreventivos(datos, {
+            telefono: { max: 30 },
+            movil: { max: 30 },
+            mail: { requerido: true, max: 150, tipo: 'email', mensajeRequerido: 'Indicá el mail.' },
+            domicilio: { requerido: true, max: 225, mensajeRequerido: 'Indicá el domicilio.' },
+        });
+        for (const [k, v] of Object.entries(erroresContacto)) {
+            if (!errores[k]) errores[k] = v;
         }
 
         for (const campo of ['nombre', 'apellido']) {
@@ -1144,6 +1151,7 @@ function prepararGestionTutores() {
             $('edit-tutor-telefono').value = btnEditar.dataset.tutorTelefono;
             $('edit-tutor-telefono').dataset.original = $('edit-tutor-telefono').value.trim();
             $('edit-tutor-movil').value = btnEditar.dataset.tutorMovil;
+            $('edit-tutor-movil').dataset.original = $('edit-tutor-movil').value.trim();
             $('edit-tutor-mail').value = btnEditar.dataset.tutorMail;
             mailTutorOriginal = $('edit-tutor-mail').value.trim();
             $('edit-tutor-domicilio').value = btnEditar.dataset.tutorDomicilio;

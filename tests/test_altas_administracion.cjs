@@ -29,21 +29,19 @@ function entorno() {
         ESTADO_PACIENTE: {}, closed: 0, reply: async () => ({}), catalog: async () => [],
         botonCargando: (btn, value) => { btn.disabled = value; },
         notificar: text => notices.push(text), notificarError: err => errors.push(err),
-        renderizar() {}, html: () => '', $: node,
+        renderizar(el, markup) { if (el) el.rendered = String(markup ?? ''); },
+        html: (s, ...v) => s.reduce((a, p, i) => a + p + (v[i] ?? ''), ''), $: node,
+        ApiError: class extends Error {},
+        limpiarErroresFormulario() {},
+        mostrarErroresDelFormulario: null,
         prepararMostrarPassword() {}, capitalizar: s => s, normalizarTexto: s => s.toLowerCase(),
         prepararModal: options => { ctx.modal = options; return () => ({show() {}}); },
         guardar: options => { ctx.save = options; }, cargarListado: async () => {},
-        validarNombrePersonal: (valor) => {
-            const texto = String(valor ?? '').trim().replace(/\s+/gu, ' ');
-            if (!texto) return 'Indicá el nombre.';
-            if ([...texto].length > 60) return 'El nombre no puede superar los 60 caracteres.';
-            if (!/\p{L}/u.test(texto)) return 'Debe contener al menos una letra.';
-            return null;
-        },
     });
     vm.runInContext(leer('endpoints.js').replace(/^import .*;\r?\n/gm, '').replace(/export /g, ''), ctx);
+    vm.runInContext(((s => s.slice(s.indexOf('export function errorDomicilio(')).replace(/\bexport\s+/g, ''))(leer('componentes/formularios.js'))), ctx);
     const layout = leer('layout.js');
-    vm.runInContext(layout.slice(layout.indexOf('function prepararModalEspecialidad()'),
+    vm.runInContext(layout.slice(layout.indexOf('function mostrarErrorEnModal('),
         layout.indexOf('function inicializarDesplegablesNav()')), ctx);
     return {ctx, node, calls, errors, notices};
 }
@@ -73,12 +71,14 @@ for (const tipo of ['administrador', 'especialidad']) {
             ? {url: '/auth/administradores/', data: {usuario: 'nuevo_admin', password: 'ClaveFicticia123'}}
             : {url: '/profesionales/especialidades/', data: {nombre: 'Nueva'}});
     });
-    test(`${tipo}: error conserva formulario, no anuncia éxito y permite reintento`, async () => {
+    test(`${tipo}: error conserva formulario, renderiza dentro del modal y permite reintento`, async () => {
         const e = preparar();
+        const contId = tipo === 'administrador' ? 'form-nuevo-usuario-errores' : 'form-especialidad-errores';
         e.ctx.reply = async () => { throw new Error('400/403/500 o red'); };
         await e.submit();
         assert.equal(e.ctx.closed, 0); assert.equal(e.form.resets, 0);
-        assert.equal(e.errors.length, 1); assert.equal(e.notices.length, 0);
+        assert.ok(e.node(contId).rendered.includes('400/403/500 o red'));
+        assert.equal(e.errors.length, 0); assert.equal(e.notices.length, 0);
         e.ctx.reply = async () => ({}); await e.submit();
         assert.equal(e.notices.length, 1);
     });
@@ -153,4 +153,50 @@ test('H14 H19: alta profesional conserva escritura y rechaza DNI sin recortar', 
             form.elements.dni.value=dni;e.submit();assert.ok(e.ctx.save.errores.dni);
         }
     }
+});
+
+
+test('Etapa2 especialidad: admite 100 caracteres, rechaza 101 en el contenedor modal', async () => {
+    for (const [largo, ok] of [[100, true], [101, false]]) {
+        const e = entorno();
+        e.node('especialidad-nombre').value = 'E'.repeat(largo);
+        vm.runInContext('prepararModalEspecialidad()', e.ctx);
+        await e.node('form-nueva-especialidad').handlers.submit({preventDefault() {}});
+        assert.equal(e.calls.length, ok ? 1 : 0);
+        if (!ok) assert.ok(e.node('form-especialidad-errores').rendered.includes('100'));
+    }
+});
+
+test('Etapa2 profesional alta: matricula, contacto, mail, usuario y maxlength passwords', async () => {
+    const baseValido = e => {
+        const els = e.node('form-nuevo-profesional').elements;
+        els.matricula.value = 'M'.repeat(50);
+        els.contacto.value = '+54 (011) 1234-5678';
+        els.mail.value = 'prof@example.com';
+        els.usuario.value = 'u'.repeat(100);
+    };
+    const okEnv = profesional();
+    okEnv.ctx.catalog = async () => [{id: 47, nombre: 'Psi'}];
+    await okEnv.ctx.modal.alAbrir();
+    baseValido(okEnv);
+    okEnv.submit();
+    assert.deepEqual(plain(okEnv.ctx.save.errores), {});
+
+    for (const [campo, valor] of [['matricula', ''], ['matricula', 'M'.repeat(51)], ['contacto', 'C'.repeat(51)],
+        ['mail', 'sin-arroba'], ['mail', 'a@dominio'], ['mail', 'a'.repeat(39) + '@example.com'],
+        ['usuario', 'u'.repeat(101)], ['usuario', 'con espacio']]) {
+        const e = profesional();
+        e.ctx.catalog = async () => [{id: 47, nombre: 'Psi'}];
+        await e.ctx.modal.alAbrir();
+        baseValido(e);
+        e.node('form-nuevo-profesional').elements[campo].value = valor;
+        e.submit();
+        assert.ok(e.ctx.save.errores[campo], `esperaba error en ${campo}=${valor}`);
+    }
+
+    const tplAdmin = fs.readFileSync(path.join(__dirname, '../SistemaEduGes/Frontend/templates/componentes/modal_nuevo_usuario.html'), 'utf8');
+    assert.match(tplAdmin, /id="nuevo-usuario-password"[^>]*maxlength="128"/);
+    assert.match(tplAdmin, /id="nuevo-usuario-password-confirm"[^>]*maxlength="128"/);
+    const tplProf = fs.readFileSync(path.join(__dirname, '../SistemaEduGes/Frontend/templates/componentes/modal_nuevo_profesional.html'), 'utf8');
+    assert.doesNotMatch(tplProf, /id="nuevo-prof-password"[^>]*maxlength="128"/);
 });

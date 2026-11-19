@@ -22,12 +22,8 @@ test('H07 cambio: exteriores rechazados, interiores y confirmación conservados'
 
 test('H07 profesional: validar sin modificar el valor y conservar confirmación', () => {
     const src = leer('paginas/profesionales.js');
-    const c = vm.createContext({validarNombrePersonal: valor => {
-        const texto = String(valor ?? '').trim().replace(/\s+/gu, ' ');
-        if (!texto) return 'Indicá el nombre.';
-        if ([...texto].length > 60) return 'El nombre no puede superar los 60 caracteres.';
-        return /\p{L}/u.test(texto) ? null : 'Debe contener al menos una letra.';
-    }});
+    const c = vm.createContext({document: {}, ApiError: class extends Error {}});
+    vm.runInContext(((s => s.slice(s.indexOf('export function errorDomicilio(')).replace(/\bexport\s+/g, ''))(leer('componentes/formularios.js'))), c);
     vm.runInContext(src.slice(src.indexOf('function validarAlta('),src.indexOf('function prepararAlta(')),c);
     const datos = {nombre:'Nombre',apellido:'Ficticio',dni:'12345678',matricula:'Ficticia',especialidad:1,usuario:'ficticio'};
     for (const valor of [' Ficticia123','Ficticia123 ','\tFicticia123','Ficticia123\n']) {

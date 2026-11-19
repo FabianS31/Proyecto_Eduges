@@ -238,6 +238,8 @@ function entornoIniciarReal() {
         },
     });
 
+    const formulariosSrc = ((s => s.slice(s.indexOf('export function errorDomicilio(')).replace(/\bexport\s+/g, ''))(leer('componentes/formularios.js')));
+    vm.runInContext(formulariosSrc, ctx);
     vm.runInContext(sinImports, ctx);
     return { emit, Input, DOMNode, ctx, handlers };
 }
@@ -604,9 +606,9 @@ test('Etapa1 iniciar() real: registra listeners una sola vez y ejecuta pegado si
     await new Promise(r => setImmediate(r));
 
     // Confirmar exactamente 1 registro de paste/beforeinput/drop para DNI y 1 para Nombre/Apellido
-    assert.equal(e.handlers.paste.length, 2);
-    assert.equal(e.handlers.beforeinput.length, 2);
-    assert.equal(e.handlers.drop.length, 2);
+    assert.equal(e.handlers.paste.length, 3);
+    assert.equal(e.handlers.beforeinput.length, 3);
+    assert.equal(e.handlers.drop.length, 3);
 
     const form = crearFormCon(e, 'form-paciente', [
         { name: 'nombre', id: 'pac-nombre', maxLength: 60 },
@@ -751,15 +753,17 @@ test('H14 H19: tutor adicional conserva nombres y edicion ajena los omite', () =
         mail: { value: 'ficticio@example.com', checkValidity: () => true }, domicilio: { value: 'Ficticio' }, tutor_id: { value: '1' },
     };
     const form = { elements: campos, addEventListener: (n, f) => { c.submit = f; } };
+    const formulariosSrc = ((s => s.slice(s.indexOf('export function errorDomicilio(')).replace(/\bexport\s+/g, ''))(leer('componentes/formularios.js')));
     const c = vm.createContext({
+        document: {}, ApiError: class extends Error {},
         formAgregar: form, formEditar: form, estado: { fichaId: 1 },
         guardar: opts => { c.guardado = opts; },
         tutores: { crear: datos => { c.enviado = datos; }, actualizar: (id, datos) => { c.enviado = datos; } },
         $: () => ({ checked: false }), erroresAgregar: {}, erroresEditar: {}, modalAgregar() {}, modalEditar() {},
-        cargarTutoresFicha() {}, errorDomicilio: () => null, mailTutorOriginal: 'ficticio@example.com',
+        cargarTutoresFicha() {}, mailTutorOriginal: 'ficticio@example.com',
         domicilioTutorOriginal: 'Ficticio', nombresTutorOriginales: { nombre: 'McDonald', apellido: "O'Neill" },
-        validarNombrePersonal: valor => (valor && String(valor).length <= 60 ? null : 'El nombre no puede superar los 60 caracteres.'),
     });
+    vm.runInContext(formulariosSrc, c);
     const inicio = ui.indexOf('export function capitalizar(');
     vm.runInContext(ui.slice(inicio, ui.indexOf('\n}', inicio) + 2).replace('export ', ''), c);
     for (const tipo of ['Agregar', 'Editar']) {
@@ -775,4 +779,146 @@ test('H14 H19: tutor adicional conserva nombres y edicion ajena los omite', () =
             assert.equal(c.enviado.nombre, 'De La Cruz');
         }
     }
+});
+
+
+// ------------------------------------------------------------
+// 6. Etapa 2 iniciar() real ? l?mites preventivos, pegado sin truncar,
+//    emails al salir (sin bloquear escritura parcial), tel?fonos,
+//    contadores din?micos, contrase?as 128 admin y preservaci?n hist?rica
+// ------------------------------------------------------------
+test('Etapa2 iniciar() real: paciente y tutor respetan topes, pegado completo y signos telef?nicos', async () => {
+    const e = entornoIniciarReal();
+    await new Promise(r => setImmediate(r));
+
+    const formPac = crearFormCon(e, 'form-paciente', [
+        { name: 'mail', id: 'pac-mail', maxLength: 50 },
+        { name: 'direccion', id: 'pac-direccion', maxLength: 255 },
+        { name: 'numero_afiliado', id: 'pac-afiliado', maxLength: 20 },
+        { name: 'cud_numero', id: 'pac-cud-numero', maxLength: 20 },
+        { name: 'tutor_telefono', id: 'tutor-telefono', maxLength: 30 },
+        { name: 'tutor_movil', id: 'tutor-movil', maxLength: 30 },
+        { name: 'tutor_mail', id: 'tutor-mail', maxLength: 150 },
+        { name: 'tutor_domicilio', id: 'tutor-domicilio', maxLength: 225 },
+    ]);
+    e.emit('show.bs.modal', formPac);
+    await new Promise(r => queueMicrotask(r));
+
+    // Pegado excedido en numero_afiliado (21 > 20) rechaza ?ntegro sin truncar
+    e.emit('focusin', formPac.numero_afiliado);
+    const evAfBad = e.emit('paste', formPac.numero_afiliado, { clipboardData: { getData: () => '1'.repeat(21) } });
+    assert.equal(evAfBad.cancelado, true);
+    assert.equal(formPac.numero_afiliado.value, '');
+    assert.ok(avisoDe(formPac.numero_afiliado).textContent.includes('21/20'));
+
+    // Pegado v?lido de 20 caracteres en cud_numero -> contador muestra 20/20 ? L?mite alcanzado
+    e.emit('focusin', formPac.cud_numero);
+    e.emit('paste', formPac.cud_numero, { clipboardData: { getData: () => 'C'.repeat(20) } });
+    assert.equal(formPac.cud_numero.value, 'C'.repeat(20));
+    assert.match(contadorDe(formPac.cud_numero).textContent, /20\/20/);
+
+    // Tel?fonos internacionales no sufren bloqueo de escritura
+    for (const ch of ['+', '5', '4', ' ', '(', '1', '1', ')']) {
+        const evTel = e.emit('beforeinput', formPac.tutor_telefono, { data: ch, inputType: 'insertText' });
+        assert.equal(evTel.cancelado, undefined);
+    }
+    formPac.tutor_telefono.value = '+54 (011) 4444-5555';
+    e.emit('input', formPac.tutor_telefono);
+    e.emit('focusout', formPac.tutor_telefono);
+    assert.equal(avisoDe(formPac.tutor_telefono)?.hidden ?? true, true);
+    assert.equal(formPac.tutor_telefono.classList.contains('is-invalid'), false);
+
+    // Email paciente: NO muestra error mientras escribe "ana@", S? al salir con dominio incompleto
+    e.emit('focusin', formPac.mail);
+    formPac.mail.value = 'ana@';
+    e.emit('input', formPac.mail);
+    assert.equal(formPac.mail.classList.contains('is-invalid'), false);
+    assert.equal(avisoDe(formPac.mail)?.hidden ?? true, true);
+
+    e.emit('focusout', formPac.mail);
+    assert.equal(formPac.mail.classList.contains('is-invalid'), true);
+    assert.equal(avisoDe(formPac.mail).hidden, false);
+
+    // Al corregir a email v?lido o vaciar opcional, limpia el aviso
+    formPac.mail.value = 'ana@ejemplo.com';
+    e.emit('input', formPac.mail);
+    e.emit('focusout', formPac.mail);
+    assert.equal(formPac.mail.classList.contains('is-invalid'), false);
+    assert.equal(avisoDe(formPac.mail).hidden, true);
+
+    // Direcci?n paciente admite 255 pero tutor_domicilio rechaza 226 al pegar
+    e.emit('focusin', formPac.direccion);
+    e.emit('paste', formPac.direccion, { clipboardData: { getData: () => 'D'.repeat(255) } });
+    assert.equal(formPac.direccion.value.length, 255);
+    e.emit('focusin', formPac.tutor_domicilio);
+    const evDomBad = e.emit('paste', formPac.tutor_domicilio, { clipboardData: { getData: () => 'T'.repeat(226) } });
+    assert.equal(evDomBad.cancelado, true);
+    assert.equal(formPac.tutor_domicilio.value, '');
+
+    // Domicilio igual a email avisa al salir
+    formPac.tutor_domicilio.value = 'tutor@dominio.com';
+    e.emit('input', formPac.tutor_domicilio);
+    e.emit('focusout', formPac.tutor_domicilio);
+    assert.equal(formPac.tutor_domicilio.classList.contains('is-invalid'), true);
+});
+
+test('Etapa2 iniciar() real: credenciales admin 128 sin contador, profesionales, obras sociales e hist?ricos intactos', async () => {
+    const e = entornoIniciarReal();
+    await new Promise(r => setImmediate(r));
+
+    // Usuario administrador: password 128 sin contador, rechaza pegado 129 y saltos de l?nea; usuario rechaza espacios
+    const formAdmin = crearFormCon(e, 'form-nuevo-usuario', [
+        { name: 'usuario', id: 'nuevo-usuario-nombre', maxLength: 100 },
+        { name: 'password', id: 'nuevo-usuario-password', maxLength: 128 },
+        { name: 'password_confirm', id: 'nuevo-usuario-password-confirm', maxLength: 128 },
+    ]);
+    e.emit('show.bs.modal', formAdmin);
+    await new Promise(r => queueMicrotask(r));
+
+    e.emit('focusin', formAdmin.password);
+    const evPass129 = e.emit('paste', formAdmin.password, { clipboardData: { getData: () => 'P'.repeat(129) } });
+    assert.equal(evPass129.cancelado, true);
+    assert.equal(formAdmin.password.value, '');
+    assert.equal(contadorDe(formAdmin.password), null);
+    assert.ok(avisoDe(formAdmin.password).textContent.includes('129/128'));
+
+    const evPassNl = e.emit('paste', formAdmin.password, { clipboardData: { getData: () => 'Clave\nSegura1' } });
+    assert.equal(evPassNl.cancelado, true);
+    assert.equal(formAdmin.password.value, '');
+
+    e.emit('paste', formAdmin.password, { clipboardData: { getData: () => 'P'.repeat(128) } });
+    assert.equal(formAdmin.password.value.length, 128);
+    assert.equal(contadorDe(formAdmin.password), null);
+
+    formAdmin.usuario.value = 'admin test';
+    e.emit('input', formAdmin.usuario);
+    assert.equal(formAdmin.usuario.classList.contains('is-invalid'), true);
+
+    // Edici?n hist?rica: valores heredados inv?lidos/largos sin editar no marcan error al abrir ni al salir
+    const formEdit = crearFormCon(e, 'form-editar-paciente', [
+        { name: 'mail', id: 'edit-pac-mail', maxLength: 50, value: 'correo-historico-invalido' },
+        { name: 'direccion', id: 'edit-pac-direccion', maxLength: 255, value: 'A'.repeat(260) },
+    ]);
+    e.emit('show.bs.modal', formEdit);
+    await new Promise(r => queueMicrotask(r));
+    e.emit('focusin', formEdit.mail);
+    e.emit('focusout', formEdit.mail);
+    assert.equal(formEdit.mail.classList.contains('is-invalid'), false);
+    e.emit('focusin', formEdit.direccion);
+    e.emit('focusout', formEdit.direccion);
+    assert.equal(formEdit.direccion.classList.contains('is-invalid'), false);
+
+    // Obras sociales: nombre/contacto/mail 150 y web URL en focusout
+    const formOS = crearFormCon(e, 'form-crear-obra-social', [
+        { name: 'nombre', id: 'os-nombre', maxLength: 150 },
+        { name: 'web', id: 'os-web', maxLength: 255 },
+    ]);
+    e.emit('show.bs.modal', formOS);
+    await new Promise(r => queueMicrotask(r));
+    e.emit('focusin', formOS.web);
+    formOS.web.value = 'no-es-url';
+    e.emit('input', formOS.web);
+    assert.equal(formOS.web.classList.contains('is-invalid'), false);
+    e.emit('focusout', formOS.web);
+    assert.equal(formOS.web.classList.contains('is-invalid'), true);
 });

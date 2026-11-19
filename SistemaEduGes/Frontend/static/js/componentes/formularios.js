@@ -135,7 +135,8 @@ export function validarCamposPreventivos(datos, reglas) {
         if (!regla) continue;
         const texto = String(valor ?? '').trim();
         let error;
-        if (regla.requerido && (!texto || valor === 0)) error = 'Este campo es obligatorio.';
+        if (regla.requerido && (!texto || valor === 0)) error = regla.mensajeRequerido || 'Este campo es obligatorio.';
+        else if (regla.sinEspacios && /\s/.test(String(valor ?? ''))) error = 'No puede contener espacios.';
         else if (regla.max && [...texto].length > regla.max) error = `Ingresá hasta ${regla.max} caracteres.`;
         else if (texto && regla.tipo === 'email') {
             const arroba = texto.lastIndexOf('@');

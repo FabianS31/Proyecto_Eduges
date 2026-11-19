@@ -41,12 +41,13 @@ test('H18 ficha: reutilización omite datos personales y conserva parentesco', (
     const campos = Object.fromEntries(['nombre','apellido','dni','telefono','mail','domicilio','parentesco_id']
         .map(k => [k, {value:'', checkValidity:()=>false}]));
     campos.dni.value = '20123456'; campos.parentesco_id.value = '1';
+    const formJs = ((s => s.slice(s.indexOf('export function errorDomicilio(')).replace(/\bexport\s+/g, ''))(fs.readFileSync('SistemaEduGes/Frontend/static/js/componentes/formularios.js','utf8')));
     const c = vm.createContext({formAgregar:{elements:campos,addEventListener:(n,f)=>c.submit=f},
         estado:{fichaId:42}, tutoresDisponibles:[{dni:'20123456'}],
-        capitalizar:s=>s, $:()=>({disabled:false}), errorDomicilio:()=>null,
+        capitalizar:s=>s, $:()=>({disabled:false}), document:{}, ApiError:class extends Error{},
         guardar:opciones=>c.opciones=opciones, tutores:{crear:datos=>c.datos=datos},
-        erroresAgregar:{}, modalAgregar:{}, cargarTutoresFicha(){},
-        validarNombrePersonal:valor=>[...String(valor ?? '')].length>60?'El nombre no puede superar los 60 caracteres.':null});
+        erroresAgregar:{}, modalAgregar:{}, cargarTutoresFicha(){}});
+    vm.runInContext(formJs, c);
     const inicio = fuente.indexOf("formAgregar.addEventListener('submit'");
     vm.runInContext(fuente.slice(inicio, fuente.indexOf('\n    });', inicio) + 8), c);
     c.submit({preventDefault(){}});

@@ -12,7 +12,7 @@
 // en la URL, así se puede recargar o compartir sin perder el lugar.
 // ============================================================
 
-import { guardar, prepararModal, validarNombrePersonal } from '../componentes/formularios.js';
+import { guardar, prepararModal, validarCamposPreventivos, validarNombrePersonal } from '../componentes/formularios.js';
 import { prepararMostrarPassword } from '../componentes/mostrar-password.js';
 import {
     enteroDeUrl,
@@ -264,12 +264,11 @@ function validarEdicion(datos, formulario) {
     } else if (!/^\d{7,8}$/.test(datos.dni)) {
         errores.dni = ['El DNI tiene que tener 7 u 8 números, sin puntos.'];
     }
-    if (!datos.matricula) {
-        errores.matricula = ['Indicá la matrícula.'];
-    }
-    if (datos.mail && !formulario.elements.mail.checkValidity()) {
-        errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
-    }
+    Object.assign(errores, validarCamposPreventivos(datos, {
+        matricula: { requerido: true, max: 50, mensajeRequerido: 'Indicá la matrícula.' },
+        contacto: { max: 50 },
+        mail: { max: 50, tipo: 'email' },
+    }));
     return errores;
 }
 
@@ -435,20 +434,18 @@ function validarAlta(datos, formulario) {
     } else if (!/^\d{7,8}$/.test(datos.dni)) {
         errores.dni = ['El DNI tiene que tener 7 u 8 números, sin puntos.'];
     }
-    obligatorio('matricula', datos.matricula, 'Indicá la matrícula profesional.');
     obligatorio('especialidad', datos.especialidad, 'Seleccioná la especialidad.');
-
-    if (datos.mail && !formulario.elements.mail.checkValidity()) {
-        errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
-    }
-
-    if (!datos.usuario) {
-        errores.usuario = ['Indicá un nombre de usuario para el ingreso.'];
-    } else if (/\s/.test(datos.usuario)) {
-        errores.usuario = ['El usuario no puede contener espacios.'];
-    } else if (datos.usuario.length > 100) {
-        errores.usuario = ['El usuario no puede superar los 100 caracteres.'];
-    }
+    Object.assign(errores, validarCamposPreventivos(datos, {
+        matricula: { requerido: true, max: 50, mensajeRequerido: 'Indicá la matrícula profesional.' },
+        contacto: { max: 50 },
+        mail: { max: 50, tipo: 'email' },
+        usuario: {
+            requerido: true,
+            max: 100,
+            sinEspacios: true,
+            mensajeRequerido: 'Indicá un nombre de usuario para el ingreso.',
+        },
+    }));
 
     if (!datos.password) {
         errores.password = ['Indicá una contraseña inicial.'];
