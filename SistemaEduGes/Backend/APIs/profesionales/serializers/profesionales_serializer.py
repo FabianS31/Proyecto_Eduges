@@ -135,7 +135,11 @@ class ProfesionalSerializer(ValidarNombreApellidoMixin, serializers.ModelSeriali
 
     class Meta:
         model = Profesional
-        extra_kwargs = {'dni': {'trim_whitespace': False}}
+        extra_kwargs = {
+            'dni': {'trim_whitespace': False},
+            'nombre': {'max_length': 60},
+            'apellido': {'max_length': 60},
+        }
         fields = [
             'id_profesional',
             'nombre',

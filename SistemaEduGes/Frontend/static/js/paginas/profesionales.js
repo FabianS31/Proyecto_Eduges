@@ -12,7 +12,7 @@
 // en la URL, así se puede recargar o compartir sin perder el lugar.
 // ============================================================
 
-import { guardar, prepararModal } from '../componentes/formularios.js';
+import { guardar, prepararModal, validarNombrePersonal } from '../componentes/formularios.js';
 import { prepararMostrarPassword } from '../componentes/mostrar-password.js';
 import {
     enteroDeUrl,
@@ -254,11 +254,9 @@ let modalEdicion = null;
 
 function validarEdicion(datos, formulario) {
     const errores = {};
-    if (!datos.nombre) {
-        errores.nombre = ['Indicá el nombre.'];
-    }
-    if (!datos.apellido) {
-        errores.apellido = ['Indicá el apellido.'];
+    for (const campo of ['nombre', 'apellido']) {
+        const error = validarNombrePersonal(datos[campo], campo);
+        if (error) errores[campo] = [error];
     }
     if (!datos.dni) {
         errores.dni = ['Indicá el DNI.'];
@@ -270,11 +268,6 @@ function validarEdicion(datos, formulario) {
     }
     if (datos.mail && !formulario.elements.mail.checkValidity()) {
         errores.mail = ['Revisá el mail: falta la @ o el dominio.'];
-    }
-    for (const campo of ['nombre', 'apellido']) {
-        if (datos[campo] && !/\p{L}/u.test(datos[campo])) {
-            errores[campo] = ['Debe contener al menos una letra; no puede ser solo números o símbolos.'];
-        }
     }
     return errores;
 }
@@ -434,9 +427,8 @@ function validarAlta(datos, formulario) {
     }
 
     for (const campo of ['nombre', 'apellido']) {
-        if (datos[campo] && !/\p{L}/u.test(datos[campo])) {
-            errores[campo] = ['Debe contener al menos una letra; no puede ser solo números o símbolos.'];
-        }
+        const error = validarNombrePersonal(datos[campo], campo);
+        if (error) errores[campo] = [error];
     }
     return errores;
 }

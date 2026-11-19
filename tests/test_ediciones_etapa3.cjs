@@ -216,12 +216,14 @@ test('H08: limites y formatos de campos modificados del paciente', async()=>{
         mail:['sin-arroba','a@','a@dominio','a'.repeat(39)+'@example.com'],
         cud_numero:['A'.repeat(21)], fecha_nacimiento:['','2099-01-01','2025-02-30'],
         cud_vencimiento:['2025-02-30'], obra_social:['']};
+    invalidos.nombre.push('A'.repeat(61),'A'.repeat(101));
+    invalidos.apellido.push('A'.repeat(61),'A'.repeat(101));
     for(const [campo,valores] of Object.entries(invalidos)) for(const valor of valores) {
         const e=editorPaciente();await e.ctx.abrir(paciente);e.form.elements[campo].value=valor;await e.submit();
         assert.equal(e.calls.filter(c=>c.method==='patch').length,0,`${campo}: ${valor}`);
         assert.equal(e.errors.length,1);
     }
-    for(const [campo,valor] of Object.entries({nombre:'A'.repeat(100),apellido:'A'.repeat(100),
+    for(const [campo,valor] of Object.entries({nombre:'A'.repeat(60),apellido:'A'.repeat(60),
         direccion:'A'.repeat(255),numero_afiliado:'A'.repeat(20),cud_numero:'A'.repeat(20),
         mail:'a'.repeat(38)+'@example.com',cud_vencimiento:'2020-01-01',fecha_nacimiento:'2012-02-29'})) {
         const e=editorPaciente();await e.ctx.abrir({...paciente,cud_numero:'CUD',cud_vencimiento:'2027-01-01'});e.form.elements[campo].value=valor;await e.submit();

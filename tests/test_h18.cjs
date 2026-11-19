@@ -6,7 +6,11 @@ const vm = require('node:vm');
 function alta() {
     // Reutilizar el arnés DOM existente sin ejecutar ni modificar sus pruebas.
     const fuente = fs.readFileSync('tests/test_altas_etapa4b.cjs', 'utf8').split('\ntest(')[0];
-    const contexto = vm.createContext({ require, console });
+    const contexto = vm.createContext({
+        require, console,
+        validarNombrePersonal: valor => [...String(valor ?? '')].length > 60
+            ? 'El nombre no puede superar los 60 caracteres.' : null,
+    });
     vm.runInContext(fuente + '\nglobalThis.crear = entorno;', contexto);
     return contexto.crear();
 }
@@ -41,7 +45,8 @@ test('H18 ficha: reutilización omite datos personales y conserva parentesco', (
         estado:{fichaId:42}, tutoresDisponibles:[{dni:'20123456'}],
         capitalizar:s=>s, $:()=>({disabled:false}), errorDomicilio:()=>null,
         guardar:opciones=>c.opciones=opciones, tutores:{crear:datos=>c.datos=datos},
-        erroresAgregar:{}, modalAgregar:{}, cargarTutoresFicha(){}});
+        erroresAgregar:{}, modalAgregar:{}, cargarTutoresFicha(){},
+        validarNombrePersonal:valor=>[...String(valor ?? '')].length>60?'El nombre no puede superar los 60 caracteres.':null});
     const inicio = fuente.indexOf("formAgregar.addEventListener('submit'");
     vm.runInContext(fuente.slice(inicio, fuente.indexOf('\n    });', inicio) + 8), c);
     c.submit({preventDefault(){}});

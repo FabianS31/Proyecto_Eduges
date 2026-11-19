@@ -153,7 +153,7 @@ class EdicionesTests(unittest.TestCase):
                 r = self.patch(c, self.url, {campo: valor})
                 self.assertEqual(r.status_code, 400, (campo, r.content))
                 self.assertEqual(self.f.snapshot(), antes)
-        for campo, valor in dict(nombre='A'*100, apellido='A'*100, direccion='A'*255,
+        for campo, valor in dict(nombre='A'*60, apellido='A'*60, direccion='A'*255,
                 numero_afiliado='A'*20, cud_numero='A'*20, mail='a'*38+'@example.com',
                 fecha_nacimiento='2012-02-29').items():
             datos = {campo: valor}

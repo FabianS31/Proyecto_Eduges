@@ -116,6 +116,17 @@ function ipValida(valor) {
     try { return new URL(`http://[${valor}]/`).hostname.startsWith('['); } catch { return false; }
 }
 
+export function validarNombrePersonal(valor, campo = 'nombre') {
+    const texto = String(valor ?? '').trim().replace(/\s+/gu, ' ');
+    if (!texto) return `Indicá el ${campo}.`;
+    if ([...texto].length > 60) return `El ${campo} no puede superar los 60 caracteres.`;
+    if (!/\p{L}/u.test(texto)) return 'Debe contener al menos una letra.';
+    if (!/^[\p{L}\s\-'\u2019]+$/u.test(texto)) {
+        return `El ${campo} solo puede contener letras, espacios, guiones y apóstrofes.`;
+    }
+    return null;
+}
+
 // Solo se validan campos enviados; se omiten los valores históricos intactos.
 export function validarCamposPreventivos(datos, reglas) {
     const errores = {};

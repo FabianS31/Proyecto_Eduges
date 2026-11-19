@@ -26,7 +26,8 @@ test('H10 adicional: teléfono opcional en HTML y validación', () => {
     const c = vm.createContext({formAgregar:{elements:campos,addEventListener:(n,f)=>c.submit=f},
         estado:{fichaId:42},tutoresDisponibles:[],capitalizar:s=>s,$:()=>({disabled:false}),
         errorDomicilio:()=>null,guardar:opts=>c.opts=opts,tutores:{crear:d=>c.enviado=d},
-        erroresAgregar:{},modalAgregar:{},cargarTutoresFicha(){}});
+        erroresAgregar:{},modalAgregar:{},cargarTutoresFicha(){},
+        validarNombrePersonal:valor=>[...String(valor ?? '')].length>60?'El nombre no puede superar los 60 caracteres.':null});
     const inicio = src.indexOf("formAgregar.addEventListener('submit'");
     vm.runInContext(src.slice(inicio,src.indexOf('\n    });',inicio)+8),c);
     c.submit({preventDefault(){}});
@@ -45,7 +46,8 @@ test('H10 edición histórica: omite teléfono intacto y envía vaciado explíci
         capitalizar:s=>s,$:()=>({}),errorDomicilio:()=>null,guardar:opts=>c.opts=opts,
         tutores:{actualizar:(id,d)=>c.enviado=d},erroresEditar:{},modalEditar:{},cargarTutoresFicha(){},
         mailTutorOriginal:'ficticio@example.com',domicilioTutorOriginal:'Ficticio',
-        nombresTutorOriginales:{nombre:'Nombre',apellido:'Ficticio'}});
+        nombresTutorOriginales:{nombre:'Nombre',apellido:'Ficticio'},
+        validarNombrePersonal:valor=>[...String(valor ?? '')].length>60?'El nombre no puede superar los 60 caracteres.':null});
     const inicio=src.indexOf("formEditar.addEventListener('submit'");
     vm.runInContext(src.slice(inicio,src.indexOf('\n    });',inicio)+8),c);
     c.submit({preventDefault(){}});c.opts.enviar();

@@ -45,17 +45,36 @@ class NombresDniTests(unittest.TestCase):
 
     def test_nombres_edicion_presentacion_y_limites(self):
         for url,obj in self.destinos():
-            for nombre in NOMBRES+['A'*99,'A'*100]:
+            for nombre in NOMBRES+['A'*60]:
                 r=self.enviar(url,{'nombre':f' {nombre} ','apellido':nombre})
                 self.assertEqual(r.status_code,200,r.content)
                 obj.refresh_from_db()
                 self.assertEqual(obj.nombre,nombre)
                 self.assertEqual(obj.apellido,nombre)
                 self.assertEqual(r.json()['nombre'],nombre)
-            for nombre in ['', '1234', 'A'*101]:
+            for nombre in ['', '1234', 'A'*61, 'A'*101]:
                 antes=self.f.snapshot()
                 self.assertEqual(self.enviar(url,{'nombre':nombre}).status_code,400)
                 self.assertEqual(self.f.snapshot(),antes)
+
+    def test_historico_largo_se_preserva_al_editar_otros_campos(self):
+        historico='A'*61
+        for url,obj in self.destinos():
+            type(obj).objects.filter(pk=obj.pk).update(nombre=historico)
+            obj.refresh_from_db()
+            datos={'dni': '12345678'} if url.startswith('/api/pacientes/') else {'mail': 'nuevo@example.com'}
+            r=self.enviar(url,datos)
+            self.assertEqual(r.status_code,200,r.content)
+            obj.refresh_from_db()
+            self.assertEqual(obj.nombre,historico)
+
+    def test_unicode_espacios_repetidos_y_apostrofes(self):
+        for url,obj in self.destinos():
+            r=self.enviar(url,{'nombre':'  María   José  ','apellido':"  O'Connor   Núñez  "})
+            self.assertEqual(r.status_code,200,r.content)
+            obj.refresh_from_db()
+            self.assertEqual(obj.nombre,'María José')
+            self.assertEqual(obj.apellido,"O'Connor Núñez")
 
     def test_altas_preservan_nombres_y_dni_validos(self):
         for tipo in ['paciente','profesional','tutor']:
@@ -73,6 +92,38 @@ class NombresDniTests(unittest.TestCase):
                         tutor=s.Tutor.objects.get(dni=datos['tutor']['dni'])
                         self.assertEqual((tutor.nombre,tutor.apellido),('DE LA CRUZ',"D'Angelo"))
                     s.transaction.set_rollback(True)
+
+    def test_altas_rechazan_61_y_101_caracteres(self):
+        for tipo in ('paciente','profesional','tutor','integral'):
+            for cantidad in (61,101):
+                with self.subTest(tipo=tipo,cantidad=cantidad),s.transaction.atomic():
+                    url,datos=self.alta('paciente' if tipo=='integral' else tipo)
+                    datos['nombre']='A'*cantidad
+                    datos['apellido']='B'*cantidad
+                    if tipo=='integral':
+                        datos['tutor']['nombre']='C'*cantidad
+                        datos['tutor']['apellido']='D'*cantidad
+                    antes=self.f.snapshot()
+                    r=self.enviar(url,datos,'post')
+                    self.assertEqual(r.status_code,400,r.content)
+                    self.assertIn('nombre',r.json())
+                    self.assertEqual(self.f.snapshot(),antes)
+                    s.transaction.set_rollback(True)
+
+    def test_altas_admiten_60_caracteres(self):
+        for tipo in ('paciente','profesional','tutor','integral'):
+            with self.subTest(tipo=tipo),s.transaction.atomic():
+                url,datos=self.alta('paciente' if tipo=='integral' else tipo)
+                datos['nombre']='A'*60
+                datos['apellido']='B'*60
+                datos['dni']='12345678'
+                if tipo=='integral':
+                    datos['tutor']['nombre']='C'*60
+                    datos['tutor']['apellido']='D'*60
+                    datos['tutor']['dni']='1234567'
+                r=self.enviar(url,datos,'post')
+                self.assertEqual(r.status_code,201,r.content)
+                s.transaction.set_rollback(True)
 
     def test_dni_invalido_rechazado_en_altas_sin_escrituras(self):
         for tipo in ['paciente','profesional','tutor','tutor_integral']:

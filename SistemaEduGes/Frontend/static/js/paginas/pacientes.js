@@ -17,7 +17,7 @@ import { crearHistorialClinico } from '../componentes/historial-clinico.js';
 import { cargarParentescos } from '../componentes/catalogo-parentescos.js';
 import { prepararFormularioPaciente } from '../componentes/formulario-paciente.js?v=20261022_1';
 import { crearCombobox } from '../componentes/combobox.js';
-import { errorDomicilio, guardar } from '../componentes/formularios.js';
+import { errorDomicilio, guardar, validarNombrePersonal } from '../componentes/formularios.js';
 import { prepararEdicionPaciente } from '../componentes/editar-paciente.js';
 import {
     enteroDeUrl,
@@ -996,13 +996,12 @@ function prepararGestionTutores() {
         };
 
         const errores = {};
-        if (!datos.nombre) errores.nombre = ['Indicá el nombre.'];
-        if (!datos.apellido) errores.apellido = ['Indicá el apellido.'];
+        for (const campo of ['nombre', 'apellido']) {
+            const error = validarNombrePersonal(datos[campo], campo);
+            if (error) errores[campo] = [error];
+        }
         if (!datos.dni) errores.dni = ['Indicá el DNI.'];
         else if (!/^[0-9]{7,8}$/.test(datos.dni)) errores.dni = ['El DNI debe tener 7 u 8 números, sin puntos.'];
-        for (const campo of ['nombre', 'apellido']) {
-            if (datos[campo] && !/\p{L}/u.test(datos[campo])) errores[campo] = ['Debe contener al menos una letra.'];
-        }
         if ($('add-tutor-parentesco').disabled || !datos.parentesco_id) errores.parentesco_id = ['Seleccioná el parentesco.'];
         if (!datos.mail) {
             errores.mail = ['Indicá el mail.'];
@@ -1049,8 +1048,10 @@ function prepararGestionTutores() {
         }
 
         const errores = {};
-        if (!datos.nombre) errores.nombre = ['Indicá el nombre.'];
-        if (!datos.apellido) errores.apellido = ['Indicá el apellido.'];
+        for (const campo of ['nombre', 'apellido']) {
+            const error = validarNombrePersonal(datos[campo], campo);
+            if (error) errores[campo] = [error];
+        }
         if (datos.mail === mailTutorOriginal) {
             delete datos.mail;
         } else if (!datos.mail) {
@@ -1069,8 +1070,9 @@ function prepararGestionTutores() {
             if (datos[campo] === nombresTutorOriginales[campo]) {
                 delete datos[campo];
                 delete errores[campo];
-            } else if (!/\p{L}/u.test(datos[campo])) {
-                errores[campo] = ['Debe contener al menos una letra; no puede ser solo números o símbolos.'];
+            } else {
+                const error = validarNombrePersonal(datos[campo], campo);
+                if (error) errores[campo] = [error];
             }
         }
 

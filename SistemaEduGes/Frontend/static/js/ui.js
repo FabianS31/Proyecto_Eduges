@@ -104,10 +104,31 @@ export function enlaceTelefono(telefono) {
     return html`<a href="tel:${telefono.replace(/[^\d+]/g, '')}" class="link-secondary">${telefono}</a>`;
 }
 
-// Compatibilidad con los formularios: conserva la escritura de nombres personales.
-// No adivinar mayusculas ni separar/aplanar palabras o signos del nombre.
+// Normaliza espacios y aplica formato al salir del campo sin destruir
+// capitalizaciones personales deliberadas como McDonald u O'Connor.
 export function capitalizar(texto) {
-    return String(texto ?? '').trim();
+    const normalizado = String(texto ?? '').trim().replace(/\s+/gu, ' ');
+    if (!normalizado) return '';
+
+    const capitalizarComponente = (componente) => {
+        if (!componente) return '';
+        const tieneMayuscula = /\p{Lu}/u.test(componente);
+        const tieneMinuscula = /\p{Ll}/u.test(componente);
+        if (tieneMayuscula && tieneMinuscula) return componente;
+
+        const caracteres = Array.from(componente);
+        if (!caracteres.length) return '';
+        const primera = caracteres.shift();
+        return primera.toLocaleUpperCase('es') +
+            caracteres.join('').toLocaleLowerCase('es');
+    };
+
+    return normalizado.split(' ').map((palabra) => {
+        return palabra.split(/([-’'])/u).map((parte) => {
+            if (parte === '-' || parte === '’' || parte === "'") return parte;
+            return capitalizarComponente(parte);
+        }).join('');
+    }).join(' ');
 }
 
 // { nombre: 'Lucas', apellido: 'Pérez' } → "Lucas Pérez" o "Pérez, Lucas"

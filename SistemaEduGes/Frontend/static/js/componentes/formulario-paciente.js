@@ -18,7 +18,7 @@ import { catalogos, pacientes, profesionales, tutores } from '../endpoints.js';
 import { obtenerUsuario } from '../layout.js';
 import { hoyISO } from '../fechas.js';
 import { buscarEnLista, crearCombobox } from './combobox.js';
-import { validarCud, validarCamposPreventivos, errorDomicilio, guardar, prepararModal, mostrarErroresDelFormulario } from './formularios.js';
+import { validarCud, validarCamposPreventivos, validarNombrePersonal, errorDomicilio, guardar, prepararModal, mostrarErroresDelFormulario } from './formularios.js';
 import { capitalizar, notificar } from '../ui.js';
 import { coincideBusqueda } from '../texto.js';
 
@@ -182,14 +182,12 @@ function validar(datos, formulario, reutilizarTutor = false) {
     }
 
     for (const campo of ['nombre', 'apellido']) {
-        if (datos[campo] && !/\p{L}/u.test(datos[campo])) {
-            errores[campo] = ['Debe contener al menos una letra; no puede ser solo números o símbolos.'];
-        }
+        const error = validarNombrePersonal(datos[campo], campo);
+        if (error) errores[campo] = [error];
     }
     for (const campo of ['nombre', 'apellido']) {
-        if (datos.tutor[campo] && !/\p{L}/u.test(datos.tutor[campo])) {
-            errores['tutor_' + campo] = ['Debe contener al menos una letra.'];
-        }
+        const error = validarNombrePersonal(datos.tutor[campo], campo);
+        if (error) errores['tutor_' + campo] = [error];
     }
     if (reutilizarTutor) {
         for (const campo of ['nombre', 'apellido', 'telefono', 'movil', 'mail', 'domicilio']) {

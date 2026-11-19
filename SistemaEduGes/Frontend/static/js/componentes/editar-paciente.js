@@ -1,5 +1,5 @@
 import { catalogos, pacientes } from '../endpoints.js';
-import { validarCud, validarCamposPreventivos, errorDomicilio, prepararModal, guardar } from './formularios.js';
+import { validarCud, validarCamposPreventivos, validarNombrePersonal, errorDomicilio, prepararModal, guardar } from './formularios.js';
 import { notificarError } from '../ui.js';
 
 const CAMPOS = ['nombre', 'apellido', 'dni', 'fecha_nacimiento', 'direccion', 'mail',
@@ -43,7 +43,7 @@ export function prepararEdicionPaciente({ alGuardar, alCerrar }) {
         }
         guardando = true;
         const validaciones = validarCamposPreventivos(cambios, {
-            nombre: { requerido: true, max: 100 }, apellido: { requerido: true, max: 100 },
+            nombre: { requerido: true, max: 60 }, apellido: { requerido: true, max: 60 },
             dni: { requerido: true, max: 20 }, direccion: { requerido: true, max: 255 },
             numero_afiliado: { requerido: true, max: 20 }, mail: { max: 50, tipo: 'email' },
             cud_numero: { max: 20 }, cud_vencimiento: { tipo: 'fecha' },
@@ -51,8 +51,9 @@ export function prepararEdicionPaciente({ alGuardar, alCerrar }) {
             obra_social: { requerido: true },
         });
         for (const campo of ['nombre', 'apellido']) {
-            if (Object.hasOwn(cambios, campo) && !/\p{L}/u.test(cambios[campo])) {
-                validaciones[campo] = ['Debe contener al menos una letra; no puede ser solo números o símbolos.'];
+            if (Object.hasOwn(cambios, campo)) {
+                const error = validarNombrePersonal(cambios[campo], campo);
+                if (error) validaciones[campo] = [error];
             }
         }
         Object.assign(validaciones, validarCud(cambios, actual));

@@ -237,5 +237,5 @@ test('H14 H19: alta integral preserva nombres y rechaza espacios en ambos DNI',a
     }
     await e.submit();assert.equal(e.calls.length,1);
     assert.equal(e.calls[0].nombre,'McDonald');assert.equal(e.calls[0].apellido,"O'Neill");
-    assert.equal(e.calls[0].tutor.nombre,'DE LA CRUZ');assert.equal(e.calls[0].tutor.apellido,"D'Angelo");
+    assert.equal(e.calls[0].tutor.nombre,'De La Cruz');assert.equal(e.calls[0].tutor.apellido,"D'Angelo");
 });

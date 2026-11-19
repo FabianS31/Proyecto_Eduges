@@ -26,10 +26,18 @@ function entorno() {
 test('H14: escritura y presentacion conservan nombres, espacios internos y objeto original',()=>{
     const src=leer('ui.js'); const inicio=src.indexOf('export function capitalizar('), fin=src.indexOf('export function iniciales(');
     const c=vm.createContext({});vm.runInContext(src.slice(inicio,fin).replace(/export /g,''),c);
-    for(const nombre of [...nombres,'María  José']) {
-        assert.equal(c.capitalizar(` ${nombre} `),nombre);
+    assert.equal(c.capitalizar('  juan   perez '),'Juan Perez');
+    assert.equal(c.capitalizar('MARÍA JOSÉ'),'María José');
+    assert.equal(c.capitalizar('gómez-lópez'),'Gómez-López');
+    assert.equal(c.capitalizar('McDonald'),'McDonald');
+    assert.equal(c.capitalizar("O'Connor"),"O'Connor");
+    assert.equal([...c.capitalizar('A'.repeat(60))].length,60);
+    for(const nombre of [...nombres,'María  José'].filter(nombre=>[...nombre].length<=60)) {
+        const esperado=nombre==='DE LA CRUZ'?'De La Cruz':
+            nombre==='María  José'?'María José':nombre;
+        assert.equal(c.capitalizar(` ${nombre} `),esperado);
         const persona={nombre,apellido:"O'Neill"},previo=JSON.stringify(persona);
-        assert.equal(c.nombreCompleto(persona),`${nombre} O'Neill`);
+        assert.equal(c.nombreCompleto(persona),`${esperado} O'Neill`);
         assert.equal(JSON.stringify(persona),previo);
     }
 });
@@ -98,7 +106,8 @@ test('H14 H19: tutor adicional conserva nombres y edicion ajena los omite',()=>{
         guardar:opts=>c.guardado=opts,tutores:{crear:datos=>c.enviado=datos,actualizar:(id,datos)=>c.enviado=datos},
         $:()=>({checked:false}),erroresAgregar:{},erroresEditar:{},modalAgregar(){},modalEditar(){},
         cargarTutoresFicha(){},errorDomicilio:()=>null,mailTutorOriginal:'ficticio@example.com',
-        domicilioTutorOriginal:'Ficticio',nombresTutorOriginales:{nombre:'McDonald',apellido:"O'Neill"}});
+        domicilioTutorOriginal:'Ficticio',nombresTutorOriginales:{nombre:'McDonald',apellido:"O'Neill"},
+        validarNombrePersonal:(valor)=>valor&&String(valor).length<=60?null:'El nombre no puede superar los 60 caracteres.'});
     const inicio=ui.indexOf('export function capitalizar(');
     vm.runInContext(ui.slice(inicio,ui.indexOf('\n}',inicio)+2).replace('export ',''),c);
     for(const tipo of ['Agregar','Editar']) {
@@ -111,7 +120,7 @@ test('H14 H19: tutor adicional conserva nombres y edicion ajena los omite',()=>{
         } else {
             assert.equal(c.enviado.nombre,undefined);assert.equal(c.enviado.apellido,undefined);
             campos.nombre.value='DE LA CRUZ';c.submit({preventDefault(){}});c.guardado.enviar();
-            assert.equal(c.enviado.nombre,'DE LA CRUZ');
+            assert.equal(c.enviado.nombre,'De La Cruz');
         }
     }
 });

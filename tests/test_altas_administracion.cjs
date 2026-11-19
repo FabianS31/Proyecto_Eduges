@@ -33,6 +33,13 @@ function entorno() {
         prepararMostrarPassword() {}, capitalizar: s => s, normalizarTexto: s => s.toLowerCase(),
         prepararModal: options => { ctx.modal = options; return () => ({show() {}}); },
         guardar: options => { ctx.save = options; }, cargarListado: async () => {},
+        validarNombrePersonal: (valor) => {
+            const texto = String(valor ?? '').trim().replace(/\s+/gu, ' ');
+            if (!texto) return 'Indicá el nombre.';
+            if ([...texto].length > 60) return 'El nombre no puede superar los 60 caracteres.';
+            if (!/\p{L}/u.test(texto)) return 'Debe contener al menos una letra.';
+            return null;
+        },
     });
     vm.runInContext(leer('endpoints.js').replace(/^import .*;\r?\n/gm, '').replace(/export /g, ''), ctx);
     const layout = leer('layout.js');
@@ -141,7 +148,7 @@ test('H14 H19: alta profesional conserva escritura y rechaza DNI sin recortar', 
         e.ctx.catalog=async()=>[{id:47,nombre:'Ficticia'}];await e.ctx.modal.alAbrir();
         const form=e.node('form-nuevo-profesional');form.elements.apellido.value=apellido;
         e.submit();assert.deepEqual(plain(e.ctx.save.errores),{});await e.ctx.save.enviar();
-        assert.equal(e.calls.at(-1).data.apellido,apellido);
+        assert.equal(e.calls.at(-1).data.apellido,apellido==='DE LA CRUZ'?'De La Cruz':apellido);
         for(const dni of [' 1234567','1234567 ','12.345.678','1234567\u00b2']) {
             form.elements.dni.value=dni;e.submit();assert.ok(e.ctx.save.errores.dni);
         }

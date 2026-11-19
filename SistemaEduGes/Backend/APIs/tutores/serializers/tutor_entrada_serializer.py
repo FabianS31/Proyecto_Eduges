@@ -23,6 +23,8 @@ class TutorEntradaSerializer(ValidarDomicilioMixin, ValidarNombreApellidoMixin, 
         ]
 
         extra_kwargs = {
+            'nombre': {'max_length': 60},
+            'apellido': {'max_length': 60},
             'mail': {
                 'required': True,
                 'allow_null': False,
