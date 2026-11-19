@@ -244,21 +244,35 @@ test('H20: copia 225, rechaza 226 y permite domicilio independiente sin truncar'
     }
 });
 
-test('H02 CUD: alta opcional, pareja obligatoria, limites y fechas',async()=>{
-    for(const [numero,fecha,ok] of [['','',true],['   ','',true],['A'.repeat(20),'2027-01-01',true],
-        ['A','',false],['','2027-01-01',false],['A'.repeat(21),'2027-01-01',false],['A','2027-02-30',false]]) {
+test('H02 CUD: alta obligatoria, limites, fechas y vencidos',async()=>{
+    for(const [numero,fecha,ok] of [
+        ['','',false],['   ','',false],['A','',false],['','2027-01-01',false],['   ','2027-01-01',false],
+        ['A'.repeat(21),'2027-01-01',false],['A','2027-02-30',false],
+        ['A'.repeat(20),'2027-01-01',true],['CUD-VENC','2020-01-01',true]
+    ]) {
         const e=entorno();e.form.elements.cud_numero.value=numero;e.form.elements.cud_vencimiento.value=fecha;
         await e.submit();assert.equal(e.calls.length,ok?1:0,`${numero} ${fecha}`);
-        if(ok && !numero.trim()) {
-            assert.equal(e.calls[0].cud_numero,null);assert.equal(e.calls[0].cud_vencimiento,null);
+        if(!ok) {
+            const camposError = e.errors.at(-1)?.erroresDeCampo ?? {};
+            assert.ok(camposError.cud_numero || camposError.cud_vencimiento);
+            if (!numero.trim()) assert.equal(camposError.cud_numero[0], 'Ingresá el número de CUD.');
+            if (!fecha) assert.equal(camposError.cud_vencimiento[0], 'Ingresá la fecha de vencimiento del CUD.');
+        } else {
+            assert.equal(e.calls[0].cud_numero,numero.trim());
+            assert.equal(e.calls[0].cud_vencimiento,fecha);
         }
     }
-    const e=entorno();e.form.elements.cud_numero.value='';e.form.elements.cud_vencimiento.value='';
+    const e=entorno();e.form.elements.cud_numero.value='CUD-001';e.form.elements.cud_vencimiento.value='';
     e.form.elements.cud_vencimiento.validity={badInput:true};
     await e.submit();assert.equal(e.calls.length,0);
+
+    const html=fs.readFileSync('SistemaEduGes/Frontend/templates/componentes/modal_paciente.html','utf8');
+    const numInput=html.match(/<input[^>]*id="pac-cud-numero"[^>]*>/)[0];
+    const fecInput=html.match(/<input[^>]*id="pac-cud-vencimiento"[^>]*>/)[0];
+    assert.match(numInput,/\brequired\b/);assert.match(numInput,/maxlength="20"/);
+    assert.match(fecInput,/\brequired\b/);
+    assert.match(html,/N?mero de CUD \*/);assert.match(html,/Vencimiento del CUD \*/);
 });
-
-
 test('H14 H19: alta integral preserva nombres y rechaza espacios en ambos DNI',async()=>{
     const e=entorno();await new Promise(r=>setImmediate(r));
     const ui=leer('ui.js');const start=ui.indexOf('export function capitalizar(');

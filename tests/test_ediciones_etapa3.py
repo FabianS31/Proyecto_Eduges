@@ -195,7 +195,9 @@ class EdicionesTests(unittest.TestCase):
             (None, None, {'cud_vencimiento': '2027-01-01'}, 400),
             ('N', date(2027,1,1), {'cud_numero': None}, 400),
             ('N', date(2027,1,1), {'cud_vencimiento': None}, 400),
-            ('N', date(2027,1,1), {'cud_numero': None, 'cud_vencimiento': None}, 200),
+            (None, None, {'nombre': 'Otro'}, 200),
+            (None, None, {'cud_numero': 'CUD-HIST', 'cud_vencimiento': '2020-01-01'}, 200),
+            ('N', date(2027,1,1), {'cud_numero': None, 'cud_vencimiento': None}, 400),
             ('N', date(2027,1,1), {'cud_numero': 'Nuevo'}, 200),
             ('N', None, {'nombre': 'Otro'}, 200),
             (None, date(2027,1,1), {'nombre': 'Otro'}, 200),
@@ -213,6 +215,17 @@ class EdicionesTests(unittest.TestCase):
             elif 'nombre' in cambios:
                 self.paciente.refresh_from_db()
                 self.assertEqual((self.paciente.cud_numero,self.paciente.cud_vencimiento),(numero,fecha))
+
+    def test_etapa3_reactivacion_historico_sin_cud(self):
+        soporte.Paciente.objects.filter(pk=self.paciente.pk).update(cud_numero=None, cud_vencimiento=None)
+        c = self.f.login('A')
+        r_baja = self.patch(c, f'/api/pacientes/{self.paciente.pk}/estado/', {'estado': 'Inactivo'})
+        self.assertEqual(r_baja.status_code, 200, r_baja.content)
+        r_alta = self.patch(c, f'/api/pacientes/{self.paciente.pk}/estado/', {'estado': 'Activo'})
+        self.assertEqual(r_alta.status_code, 200, r_alta.content)
+        self.paciente.refresh_from_db()
+        self.assertIsNone(self.paciente.cud_numero)
+        self.assertIsNone(self.paciente.cud_vencimiento)
 
 if __name__ == '__main__':
     unittest.main()

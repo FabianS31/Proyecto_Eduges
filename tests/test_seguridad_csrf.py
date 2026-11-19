@@ -209,7 +209,7 @@ class SeguridadCSRFTests(unittest.TestCase):
              {'profesional_id': self.profesionales['A'].pk}, 'B'),
             ('post', '/api/pacientes/', {'nombre': 'Nuevo', 'apellido': 'Ficticio',
              'dni': '40123456', 'fecha_nacimiento': '2010-01-01', 'direccion': 'Ficticia',
-             'consentimiento': True, 'obra_social': obra, 'numero_afiliado': 'AF-NUEVO',
+             'consentimiento': True, 'obra_social': obra, 'numero_afiliado': 'AF-NUEVO', 'cud_numero': 'CUD-001', 'cud_vencimiento': '2027-01-01',
              'profesional': pro, 'tutor': {'nombre': 'Nuevo', 'apellido': 'Tutor', 'dni': '50123456',
              'mail': 'alta@example.com', 'domicilio': 'Ficticio', 'telefono': '123',
              'parentesco_id': self.parentesco.pk}}, 'super'),

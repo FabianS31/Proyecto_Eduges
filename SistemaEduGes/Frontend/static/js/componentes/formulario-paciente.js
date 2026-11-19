@@ -18,7 +18,7 @@ import { catalogos, pacientes, profesionales, tutores } from '../endpoints.js';
 import { obtenerUsuario } from '../layout.js';
 import { hoyISO } from '../fechas.js';
 import { buscarEnLista, crearCombobox } from './combobox.js';
-import { validarCud, validarCamposPreventivos, validarNombrePersonal, errorDomicilio, guardar, prepararModal, mostrarErroresDelFormulario } from './formularios.js';
+import { validarCamposPreventivos, validarNombrePersonal, errorDomicilio, guardar, prepararModal, mostrarErroresDelFormulario } from './formularios.js';
 import { capitalizar, notificar } from '../ui.js';
 import { coincideBusqueda } from '../texto.js';
 
@@ -139,9 +139,9 @@ function validar(datos, formulario, reutilizarTutor = false) {
         mail: { max: 50, tipo: 'email' },
         direccion: { requerido: true, max: 255, mensajeRequerido: 'Indicá la dirección.' },
         numero_afiliado: { requerido: true, max: 20, mensajeRequerido: 'Indicá el número de afiliado.' },
-        cud_numero: { max: 20 },
-        cud_vencimiento: { tipo: 'fecha' },
-    }), validarCud(datos));
+        cud_numero: { requerido: true, max: 20, mensajeRequerido: 'Ingresá el número de CUD.' },
+        cud_vencimiento: { requerido: true, tipo: 'fecha', mensajeRequerido: 'Ingresá la fecha de vencimiento del CUD.' },
+    }));
     if (formulario.elements.cud_vencimiento.validity?.badInput) {
         errores.cud_vencimiento = ['Ingresá una fecha válida.'];
     }

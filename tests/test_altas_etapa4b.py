@@ -18,6 +18,7 @@ class AltaTests(unittest.TestCase):
         return dict(nombre='Nuevo', apellido='Paciente', dni='40123456',
                     fecha_nacimiento='2010-01-01', direccion='Prueba', consentimiento=True,
                     obra_social=self.f.pacientes['A'].obra_social_id, numero_afiliado='AF',
+                    cud_numero='CUD-001', cud_vencimiento='2027-01-01',
                     tutor=dict(nombre='Nuevo', apellido='Tutor', dni='20123456',
                                mail='ficticio@example.com', telefono='123', domicilio='Prueba',
                                parentesco_id=self.f.parentesco.pk))
@@ -179,21 +180,38 @@ class AltaTests(unittest.TestCase):
 
 
     def test_h02_cud_alta_integral(self):
-        casos = [(None,None,201), ('','',201), ('   ','',201),
-                 ('N'*20,'2027-01-01',201), ('N',None,400), (None,'2027-01-01',400),
-                 ('N'*21,'2027-01-01',400), ('N','2027-02-30',400)]
-        for i, (numero,fecha,esperado) in enumerate(casos):
-            datos = self.datos()
-            datos.update(dni=str(41000000+i),cud_numero=numero,cud_vencimiento=fecha)
-            datos['tutor']['dni'] = str(21000000+i)
-            antes = self.f.snapshot()
-            r = self.post(datos)
-            self.assertEqual(r.status_code, esperado, r.content)
-            if esperado == 400:
-                self.assertEqual(self.f.snapshot(), antes)
-            else:
-                p = s.Paciente.objects.get(pk=r.json()['id_paciente'])
-                self.assertEqual(bool(p.cud_numero),bool(p.cud_vencimiento))
+        from datetime import date
+        casos = [
+            ('omitido', 'omitido', 400),
+            (None, None, 400), ('', '', 400), ('   ', '', 400),
+            ('   ', '2027-01-01', 400), ('N', None, 400), ('N', '', 400),
+            (None, '2027-01-01', 400), ('', '2027-01-01', 400),
+            ('N' * 21, '2027-01-01', 400), ('N', '2027-02-30', 400), ('N', 'no-fecha', 400),
+            ('N' * 20, '2027-01-01', 201),
+            ('CUD-VENC', '2020-01-01', 201),
+        ]
+        for i, (numero, fecha, esperado) in enumerate(casos):
+            with self.subTest(numero=numero, fecha=fecha):
+                datos = self.datos()
+                datos['dni'] = str(41000000 + i)
+                datos['tutor']['dni'] = str(21000000 + i)
+                if numero == 'omitido':
+                    datos.pop('cud_numero', None)
+                else:
+                    datos['cud_numero'] = numero
+                if fecha == 'omitido':
+                    datos.pop('cud_vencimiento', None)
+                else:
+                    datos['cud_vencimiento'] = fecha
+                antes = self.f.snapshot()
+                r = self.post(datos)
+                self.assertEqual(r.status_code, esperado, r.content)
+                if esperado == 400:
+                    self.assertEqual(self.f.snapshot(), antes)
+                else:
+                    p = s.Paciente.objects.get(pk=r.json()['id_paciente'])
+                    self.assertEqual(p.cud_numero, numero.strip())
+                    self.assertEqual(p.cud_vencimiento, date.fromisoformat(fecha))
 
     def test_h02_cud_completo_reversion_transaccional(self):
         datos = self.datos()

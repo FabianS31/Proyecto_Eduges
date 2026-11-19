@@ -92,13 +92,20 @@ export async function guardar({ formulario, contenedorErrores, boton, errores, e
 export function validarCud(datos, original = null) {
     const campos = ['cud_numero', 'cud_vencimiento'];
     if (original && !campos.some(campo => Object.hasOwn(datos, campo))) return {};
+    const valorDe = (fuente, campo) => String(fuente?.[campo] ?? '').trim();
     const valor = campo => String((Object.hasOwn(datos, campo) ? datos[campo] : original?.[campo]) ?? '').trim();
     const numero = valor('cud_numero'), fecha = valor('cud_vencimiento');
+    const teniaCud = Boolean(original && valorDe(original, 'cud_numero') && valorDe(original, 'cud_vencimiento'));
+    if (teniaCud && !numero && !fecha) {
+        return {
+            cud_numero: ['No podés eliminar el CUD de un paciente que ya lo tiene registrado.'],
+            cud_vencimiento: ['No podés eliminar el CUD de un paciente que ya lo tiene registrado.'],
+        };
+    }
     return Boolean(numero) === Boolean(fecha) ? {} : {
-        [numero ? 'cud_vencimiento' : 'cud_numero']: ['Completá número y vencimiento del CUD juntos, o dejá ambos vacíos.'],
+        [numero ? 'cud_vencimiento' : 'cud_numero']: ['Completá número y vencimiento del CUD juntos.'],
     };
 }
-
 export function errorDomicilio(valor) {
     // Solo un correo completo: no restringe el formato de las direcciones reales.
     const correo = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;

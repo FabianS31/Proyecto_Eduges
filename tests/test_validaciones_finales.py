@@ -29,7 +29,7 @@ class ValidacionesTests(unittest.TestCase):
 
     def paciente(self):
         return dict(nombre='Nuevo', apellido='Paciente', dni='40123456', fecha_nacimiento='2010-01-01',
-            direccion='Prueba', consentimiento=True, obra_social=self.f.pacientes['B'].obra_social_id,
+            direccion='Prueba', consentimiento=True, cud_numero='CUD-001', cud_vencimiento='2027-01-01', obra_social=self.f.pacientes['B'].obra_social_id,
             numero_afiliado='A1', tutor=dict(nombre='Tutor', apellido='Prueba', dni='30123456',
                 telefono='123', mail='tutor@example.com', domicilio='Prueba', parentesco_id=self.f.parentesco.pk))
 

@@ -206,6 +206,8 @@ class AccesoPacientesTests(unittest.TestCase):
             'consentimiento': True,
             'obra_social': self.f.pacientes['B'].obra_social_id,
             'numero_afiliado': 'AF-NUEVO',
+            'cud_numero': 'CUD-001',
+            'cud_vencimiento': '2027-01-01',
             'profesional': self.f.profesionales['A'].pk,
             'tutor': {
                 'nombre': 'Tutor Nuevo',

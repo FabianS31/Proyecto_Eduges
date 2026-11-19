@@ -160,14 +160,33 @@ class PacienteSerializer(ValidarDomicilioMixin, ValidarNombreApellidoMixin, seri
                         'configuracion_catalogo',
                     )
         # Compatibilidad histórica: PATCH ajeno al CUD no lo revalida ni lo altera.
-        # Si se envía cualquier campo del CUD, el estado final debe ser coherente.
+        # Si se envía cualquier campo del CUD, el estado final debe ser coherente
+        # y no puede eliminar un CUD completo ya registrado.
         if self.instance is not None and not {'cud_numero', 'cud_vencimiento'} & attrs.keys():
             return attrs
-        numero = attrs.get('cud_numero', getattr(self.instance, 'cud_numero', None))
-        vencimiento = attrs.get('cud_vencimiento', getattr(self.instance, 'cud_vencimiento', None))
-        if bool(numero and numero.strip()) != bool(vencimiento):
-            campo = 'cud_vencimiento' if numero and numero.strip() else 'cud_numero'
-            raise serializers.ValidationError({campo: 'Completá número y vencimiento del CUD juntos, o dejá ambos vacíos.'})
+        prev_numero = getattr(self.instance, 'cud_numero', None) if self.instance is not None else None
+        prev_vencimiento = getattr(self.instance, 'cud_vencimiento', None) if self.instance is not None else None
+        tenia_cud = bool(prev_numero and str(prev_numero).strip()) and bool(prev_vencimiento)
+        numero = attrs.get('cud_numero', prev_numero)
+        numero_limpio = numero.strip() if isinstance(numero, str) else numero
+        vencimiento = attrs.get('cud_vencimiento', prev_vencimiento)
+        if self.instance is None:
+            errores_cud = {}
+            if not numero_limpio:
+                errores_cud['cud_numero'] = 'Ingresá el número de CUD.'
+            if not vencimiento:
+                errores_cud['cud_vencimiento'] = 'Ingresá la fecha de vencimiento del CUD.'
+            if errores_cud:
+                raise serializers.ValidationError(errores_cud)
+            return attrs
+        if tenia_cud and not numero_limpio and not vencimiento:
+            raise serializers.ValidationError({
+                'cud_numero': 'No podés eliminar el CUD de un paciente que ya lo tiene registrado.',
+                'cud_vencimiento': 'No podés eliminar el CUD de un paciente que ya lo tiene registrado.',
+            })
+        if bool(numero_limpio) != bool(vencimiento):
+            campo = 'cud_vencimiento' if numero_limpio else 'cud_numero'
+            raise serializers.ValidationError({campo: 'Completá número y vencimiento del CUD juntos.'})
         return attrs
 
     def validate_fecha_nacimiento(self, value):
@@ -419,6 +438,26 @@ class TutorAltaPacienteSerializer(TutorCreacionOReutilizacionSerializer):
 
 
 class PacienteAltaSerializer(PacienteSerializer):
+    cud_numero = serializers.CharField(
+        max_length=20,
+        required=True,
+        allow_null=False,
+        allow_blank=False,
+        error_messages={
+            'required': 'Ingresá el número de CUD.',
+            'blank': 'Ingresá el número de CUD.',
+            'null': 'Ingresá el número de CUD.',
+        },
+    )
+    cud_vencimiento = serializers.DateField(
+        required=True,
+        allow_null=False,
+        error_messages={
+            'required': 'Ingresá la fecha de vencimiento del CUD.',
+            'null': 'Ingresá la fecha de vencimiento del CUD.',
+            'invalid': 'Ingresá una fecha válida.',
+        },
+    )
     tutor = TutorAltaPacienteSerializer(write_only=True)
 
     class Meta(PacienteSerializer.Meta):

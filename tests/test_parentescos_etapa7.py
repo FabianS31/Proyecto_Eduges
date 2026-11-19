@@ -45,7 +45,7 @@ class ParentescosTests(unittest.TestCase):
                      mail='ficticio@example.com', telefono='123', domicilio='Prueba', parentesco_id=pk)
         datos = dict(nombre='Nuevo', apellido='Paciente', dni='40123456',
                      fecha_nacimiento='2010-01-01', direccion='Prueba', consentimiento=True,
-                     obra_social=self.f.pacientes['A'].obra_social_id, numero_afiliado='AF', tutor=tutor)
+                     obra_social=self.f.pacientes['A'].obra_social_id, numero_afiliado='AF', cud_numero='CUD-001', cud_vencimiento='2027-01-01', tutor=tutor)
         r = c.post('/api/pacientes/', datos, content_type='application/json', HTTP_X_CSRFTOKEN=self.f.token(c))
         self.assertEqual(r.status_code, 201, r.content)
         self.assertTrue(s.PacienteTutor.objects.filter(paciente_id=r.json()['id_paciente'], parentesco_id=84).exists())
