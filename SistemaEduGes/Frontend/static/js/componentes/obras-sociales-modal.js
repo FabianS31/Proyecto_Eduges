@@ -12,7 +12,7 @@
 
 import { ApiError } from '../api.js';
 import { obrasSociales } from '../endpoints.js';
-import { mostrarErroresDelFormulario } from './formularios.js';
+import { validarCamposPreventivos, mostrarErroresDelFormulario } from './formularios.js';
 import { normalizarTexto } from '../texto.js';
 import {
     bloqueError,
@@ -257,11 +257,16 @@ async function guardarNuevaObraSocial() {
     const mail = inputMail?.value.trim() || null;
     const web = inputWeb?.value.trim() || null;
 
-    if (!nombre) {
-        mostrarErroresDelFormulario(form, contenedorErrores, new ApiError(400, {
-            nombre: 'Ingresá el nombre de la obra social.',
-        }));
-        inputNombre?.focus();
+    const datos = { nombre, contacto, mail, web };
+    // Comparar antes de normalizar para conservar los datos históricos intactos.
+    const cambios = Object.fromEntries(Object.entries(datos).filter(([campo]) =>
+        !editandoObra || $(`os-${campo}`).value !== String(editandoObra[campo] ?? '')));
+    const errores = validarCamposPreventivos(cambios, {
+        nombre: { requerido: true, max: 150 }, contacto: { max: 150 },
+        mail: { max: 150, tipo: 'email' }, web: { max: 255, tipo: 'url' },
+    });
+    if (Object.keys(errores).length) {
+        mostrarErroresDelFormulario(form, contenedorErrores, new ApiError(400, errores));
         return;
     }
 
@@ -270,15 +275,7 @@ async function guardarNuevaObraSocial() {
     botonCargando(btnGuardar, true, 'Guardando…');
 
     try {
-        const datos = {
-            nombre,
-            contacto,
-            mail,
-            web,
-        };
         if (editando) {
-            const cambios = Object.fromEntries(Object.entries(datos)
-                .filter(([campo, valor]) => valor !== (editando[campo] ?? null)));
             await obrasSociales.actualizar(editando.id, cambios);
         } else {
             await obrasSociales.crear(datos);

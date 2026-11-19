@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from APIs.validadores import validar_password_nueva
 
 from usuarios.models.usuario_model import Usuario
 
@@ -26,8 +27,4 @@ class AdministradorEntradaSerializer(serializers.Serializer):
         return value
 
     def validate_password(self, value):
-        if not value.strip():
-            raise serializers.ValidationError('La contraseña no puede contener solamente espacios.')
-        if value != value.strip():
-            raise serializers.ValidationError('La contraseña no puede comenzar ni terminar con espacios.')
-        return value
+        return validar_password_nueva(value)

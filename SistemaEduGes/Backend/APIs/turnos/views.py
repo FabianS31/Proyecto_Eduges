@@ -1,3 +1,4 @@
+from APIs.validadores import identificador_positivo
 from datetime import date
 
 from rest_framework import status
@@ -235,13 +236,13 @@ class TurnoEstadoView(APIView):
             )
 
         try:
-            estado_id = int(estado_id)
+            estado_id = identificador_positivo(estado_id)
 
         except (TypeError, ValueError):
             return Response(
                 {
                     'ID_EstadoTurno': (
-                        'Debe ser un identificador numérico.'
+                        'Debe ser un identificador entero positivo entre 1 y 2147483647.'
                     )
                 },
                 status=status.HTTP_400_BAD_REQUEST,

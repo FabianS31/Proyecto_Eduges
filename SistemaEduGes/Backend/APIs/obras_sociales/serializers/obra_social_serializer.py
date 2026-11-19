@@ -1,5 +1,6 @@
 
 from rest_framework import serializers
+from APIs.servicios.errores_catalogo import CatalogoNoDisponible
 
 from pacientes.models.obra_social_model import (
     ObraSocial,
@@ -89,13 +90,6 @@ class ObraSocialSerializer(serializers.ModelSerializer):
     def get_cantidad_pacientes(self, obj):
         return getattr(obj, 'pacientes_count', None) or obj.paciente_set.count()
 
-    def create(self, validated_data):
-        if 'tipo' not in validated_data:
-            validated_data['tipo'] = TipoObraSocial.objects.first()
-        if 'estado' not in validated_data:
-            validated_data['estado'] = EstadoObraSocial.objects.get(pk=1)
-        return super().create(validated_data)
-
     class Meta:
         model = ObraSocial
 
@@ -131,19 +125,56 @@ class ObraSocialSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
 
+        if self.instance is None:
+            # El formulario sencillo no elige tipo. No hay un default institucional
+            # configurado: solamente un candidato válido permite resolverlo.
+            if 'tipo' not in attrs:
+                tipos = [tipo for tipo in TipoObraSocial.objects.all()
+                         if tipo.tipo is not None and tipo.tipo.strip()]
+                if len(tipos) != 1:
+                    raise CatalogoNoDisponible(
+                        'Debe existir un único tipo válido de cobertura o definirse un tipo predeterminado institucional. Contacte a administración.',
+                        'configuracion_catalogo',
+                    )
+                attrs['tipo'] = tipos[0]
+            if 'estado' not in attrs or (
+                attrs['estado'].descripcion is not None
+                and attrs['estado'].descripcion.strip().casefold() == 'activa'
+            ):
+                activos = [estado for estado in EstadoObraSocial.objects.all()
+                           if estado.descripcion is not None
+                           and estado.descripcion.strip().casefold() == 'activa']
+                if len(activos) != 1:
+                    raise CatalogoNoDisponible(
+                        'Debe existir una única entrada Activa en los estados de obra social. Contacte a administración.',
+                        'configuracion_catalogo',
+                    )
+                attrs['estado'] = activos[0]
+
+        tipo = attrs.get('tipo', getattr(self.instance, 'tipo', None))
+        if tipo is None or tipo.tipo is None or not tipo.tipo.strip():
+            raise CatalogoNoDisponible(
+                'El tipo de obra social no tiene descripción. Contacte a administración.'
+            )
+
         estado = attrs.get(
             'estado',
-            self.instance.estado if self.instance else None
+            getattr(self.instance, 'estado', None)
         )
+
+        if estado is None or estado.descripcion is None or not estado.descripcion.strip():
+            raise CatalogoNoDisponible(
+                'El estado de obra social no tiene descripción. Contacte a administración.'
+            )
 
         if (
             estado is not None
-            and estado.descripcion.casefold() == 'inactiva'
+            and estado.descripcion.strip().casefold() != 'activa'
             and self.instance is None
         ):
             raise serializers.ValidationError({
                 'estado_id': (
-                    'No se puede crear una obra social inactiva.'
+                    'Toda obra social nueva debe registrarse como Activa.'
                 )
             })
 

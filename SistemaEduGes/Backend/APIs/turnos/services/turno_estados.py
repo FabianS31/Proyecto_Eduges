@@ -213,6 +213,9 @@ class EstadosTurnoMixin:
             nombre_rol=nombre_rol,
         )
 
+        if estado_nuevo.estado == 'Cancelado':
+            cls.validar_original_no_iniciado(turno)
+
         turno.estado = estado_nuevo
         turno.save(update_fields=['estado'])
 

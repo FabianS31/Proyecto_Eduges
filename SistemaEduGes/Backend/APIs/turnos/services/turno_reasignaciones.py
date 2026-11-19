@@ -1,5 +1,6 @@
 from datetime import datetime, time, timedelta
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
@@ -231,6 +232,26 @@ class ReasignacionesTurnoMixin:
                     'con el profesional seleccionado.'
                 )
             })
+
+        # Ya se adquirió el bloqueo del paciente: una solicitud que esperó
+        # debe validar las asignaciones confirmadas por la anterior.
+        restantes = AsignacionProfesional.objects.filter(
+            paciente=paciente, fecha_fin__isnull=True,
+        ).exclude(pk=asignacion_actual.pk)
+        try:
+            profesionales_finales = [profesional_destino] + [a.profesional for a in restantes]
+            ids_especialidades = [p.especialidad.pk for p in profesionales_finales]
+        except (ObjectDoesNotExist, AttributeError):
+            raise serializers.ValidationError({
+                'profesional_id': 'No se puede reasignar sin conocer la especialidad de todos los profesionales que conservarán una asignación activa.'
+            })
+        especialidades = set()
+        for especialidad_id in ids_especialidades:
+            if especialidad_id in especialidades:
+                raise serializers.ValidationError({
+                    'profesional_id': 'La reasignación dejaría dos profesionales activos de la misma especialidad. Revisá las asignaciones existentes.'
+                })
+            especialidades.add(especialidad_id)
 
         ahora = timezone.now()
 

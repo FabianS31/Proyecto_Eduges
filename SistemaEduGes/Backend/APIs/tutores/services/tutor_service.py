@@ -1,11 +1,75 @@
-from django.db import transaction
+from functools import wraps
+
+from django.db import IntegrityError, transaction
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from pacientes.models import Paciente, Tutor, PacienteTutor
 from profesionales.models.asignacion_model import AsignacionProfesional
 
 
+def conflicto_principal():
+    return ValidationError({
+        'responsable_principal': 'Existe otro vínculo marcado como responsable principal, incluso si está inactivo. La situación requiere revisión antes de designar otro.'
+    })
+
+
+def controlar_conflicto_principal(operacion):
+    """Aplicar por fuera de atomic: primero revertir, luego traducir el error."""
+    @wraps(operacion)
+    def ejecutar(*args, **kwargs):
+        try:
+            return operacion(*args, **kwargs)
+        except IntegrityError as error:
+            causa = error.__cause__
+            diagnostico = getattr(causa, 'diag', None)
+            if (
+                (getattr(causa, 'sqlstate', None) or getattr(causa, 'pgcode', None)) == '23505'
+                and getattr(diagnostico, 'constraint_name', None) == 'uq_paciente_responsable_principal'
+                and getattr(diagnostico, 'table_name', None) == 'pacientes_tutores'
+            ):
+                raise conflicto_principal() from error
+            raise
+    return ejecutar
+
+
 class TutorService:
+
+    @staticmethod
+    def validar_principal_disponible(paciente_id, excluir_id=None):
+        # El llamador ya bloqueó al paciente. El índice incluye inactivos.
+        otros = PacienteTutor.objects.filter(
+            paciente_id=paciente_id, responsable_principal=True,
+        )
+        if excluir_id is not None:
+            otros = otros.exclude(pk=excluir_id)
+        if otros.exists():
+            raise conflicto_principal()
+
+    @staticmethod
+    def exigir_telefono_principal(tutor_id):
+        # Mismo bloqueo que la edición del contacto; no usar Movil como sustituto.
+        tutor = Tutor.objects.select_for_update().get(pk=tutor_id)
+        if not (tutor.telefono or '').strip():
+            raise ValidationError({
+                'telefono': 'El responsable principal debe tener teléfono. Completá su teléfono mediante una edición autorizada antes de designarlo.'
+            })
+
+    @staticmethod
+    def buscar_tutor_autorizado(dni, usuario):
+        """Preselección sin exponer tutores ajenos; se reautoriza bajo bloqueo."""
+        rol = getattr(getattr(usuario, 'rol', None), 'rol', None)
+        consulta = Tutor.objects.filter(dni=dni)
+        if rol == 'Profesional':
+            propios = AsignacionProfesional.objects.filter(
+                profesional__usuario=usuario, fecha_fin__isnull=True,
+            ).values('paciente_id')
+            visibles = PacienteTutor.objects.filter(
+                paciente_id__in=propios, activo=True,
+            ).values('tutor_id')
+            consulta = consulta.filter(pk__in=visibles)
+        elif rol not in ('Administrador', 'SuperAdministrador'):
+            return None
+        return consulta.first()
 
     @staticmethod
     def bloquear_paciente(paciente_id, usuario):
@@ -53,6 +117,8 @@ class TutorService:
         y crea/reactiva su relación con el paciente en una transacción.
         """
         dni = datos_tutor['dni']
+        datos_tutor = datos_tutor.copy()
+        tutor_existente_id = datos_tutor.pop('_tutor_existente_id', None)
         pacientes_bloqueados = {datos_relacion['paciente'].pk}
         if getattr(getattr(usuario, 'rol', None), 'rol', None) == 'Profesional':
             propios = AsignacionProfesional.objects.filter(
@@ -66,7 +132,14 @@ class TutorService:
         for paciente_id in sorted(pacientes_bloqueados):
             TutorService.bloquear_paciente(paciente_id, usuario)
         # La unicidad de DNI resuelve también altas simultáneas del mismo tutor.
-        tutor, creado = Tutor.objects.get_or_create(dni=dni, defaults=datos_tutor)
+        if tutor_existente_id is not None:
+            # Si desapareció o cambió de DNI, nunca crear con datos incompletos.
+            tutor = Tutor.objects.select_for_update().filter(pk=tutor_existente_id, dni=dni).first()
+            if tutor is None:
+                raise ValidationError({'detail': 'No se puede completar la vinculación. Recargá los datos.'})
+            creado = False
+        else:
+            tutor, creado = Tutor.objects.get_or_create(dni=dni, defaults=datos_tutor)
         tutor = Tutor.objects.select_for_update().get(pk=tutor.pk)
         if not creado:
             TutorService.verificar_acceso_tutor(tutor, usuario, pacientes_bloqueados)
@@ -86,6 +159,11 @@ class TutorService:
         Actualiza solamente los campos recibidos.
         """
 
+        tutor = Tutor.objects.select_for_update().get(pk=tutor.pk)
+        if 'telefono' in datos and not (datos['telefono'] or '').strip():
+            if PacienteTutor.objects.filter(tutor=tutor, activo=True, responsable_principal=True).exists():
+                raise ValidationError({'telefono': 'El tutor debe conservar un teléfono por su condición de responsable principal activo.'})
+
         for campo, valor in datos.items():
             setattr(tutor, campo, valor)
 
@@ -95,6 +173,7 @@ class TutorService:
         return tutor
 
     @staticmethod
+    @controlar_conflicto_principal
     @transaction.atomic
     def crear_relacion(tutor, datos_relacion, usuario):
         """
@@ -123,19 +202,10 @@ class TutorService:
             })
 
         if responsable_principal:
-            existe_responsable = PacienteTutor.objects.filter(
-                paciente=paciente,
-                activo=True,
-                responsable_principal=True,
-            ).exists()
-
-            if existe_responsable:
-                raise ValidationError({
-                    'responsable_principal': (
-                        'El paciente ya tiene un tutor '
-                        'responsable principal activo.'
-                    )
-                })
+            TutorService.exigir_telefono_principal(tutor.pk)
+            TutorService.validar_principal_disponible(
+                paciente.pk, relacion.pk if relacion else None,
+            )
 
         if relacion:
             relacion.parentesco = parentesco
@@ -159,6 +229,7 @@ class TutorService:
         )
 
     @staticmethod
+    @controlar_conflicto_principal
     @transaction.atomic
     def actualizar_relacion(relacion, datos, usuario):
         """
@@ -202,24 +273,11 @@ class TutorService:
                 )
             })
 
-        # No permite que el paciente tenga dos responsables
-        # principales activos.
+        # Coincidir con el índice, que también contempla vínculos inactivos.
         if activo_solicitado and responsable_principal:
-            otros_responsables = PacienteTutor.objects.filter(
-                paciente=paciente,
-                activo=True,
-                responsable_principal=True,
-            ).exclude(
-                pk=relacion.pk
-            )
-
-            if otros_responsables.exists():
-                raise ValidationError({
-                    'responsable_principal': (
-                        'El paciente ya tiene otro tutor '
-                        'responsable principal activo.'
-                    )
-                })
+            if not relacion.activo or not relacion.responsable_principal:
+                TutorService.exigir_telefono_principal(relacion.tutor_id)
+            TutorService.validar_principal_disponible(paciente.pk, relacion.pk)
 
         if not responsable_principal:
             TutorService.proteger_ultimo_principal(relacion)
@@ -257,6 +315,7 @@ class TutorService:
         return relacion
 
     @staticmethod
+    @controlar_conflicto_principal
     @transaction.atomic
     def reemplazar_principal(relacion, nueva_relacion_id, usuario):
         TutorService.bloquear_paciente(relacion.paciente_id, usuario)
@@ -269,7 +328,9 @@ class TutorService:
         nueva = next((r for r in relaciones if r.pk == nueva_relacion_id), None)
         if nueva is None or nueva.pk == relacion.pk:
             raise ValidationError({'nueva_relacion_id': 'Seleccioná otro tutor activo de este paciente.'})
+        TutorService.exigir_telefono_principal(nueva.tutor_id)
         anterior = principales[0]
+        TutorService.validar_principal_disponible(relacion.paciente_id, anterior.pk)
         anterior.responsable_principal = False
         anterior.save(update_fields=['responsable_principal'])
         nueva.responsable_principal = True

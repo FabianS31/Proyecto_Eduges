@@ -109,6 +109,15 @@ class AltasAdministracionTests(unittest.TestCase):
                 self.post(client, '/api/profesionales/', datos)
         self.assertFalse(soporte.Usuario.objects.filter(usuario='rollback_prof').exists())
 
+    def test_h09_usuario_limite_100(self):
+        c = self.f.login('admin')
+        datos = dict(usuario='a'*101, password='ClaveFicticia123')
+        antes = self.f.snapshot()
+        self.assertEqual(self.post(c, self.admin_url, datos).status_code, 400)
+        self.assertEqual(self.f.snapshot(), antes)
+        datos['usuario'] = 'a'*100
+        self.assertEqual(self.post(c, self.admin_url, datos).status_code, 201)
+
 
 if __name__ == '__main__':
     unittest.main()

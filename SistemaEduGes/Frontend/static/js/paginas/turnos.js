@@ -18,6 +18,7 @@ import {
     diaEnTexto,
     estaCancelado,
     fechaMaximaTurno,
+    hoyAgendamiento,
     formatearHora,
     listaTurnos,
     nombrePaciente,
@@ -134,7 +135,7 @@ const cantidadTurnos = (n) => (n === 1 ? '1 turno' : `${n} turnos`);
 
 function botonAgendar(fecha, { enlace = false } = {}) {
     const puedeCrear = esProfesional(estado.usuario) || estado.usuario?.is_superuser;
-    const sePuede = puedeCrear && fecha >= hoyISO() && fecha <= fechaMaximaTurno() && tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR);
+    const sePuede = puedeCrear && fecha >= hoyAgendamiento() && fecha <= fechaMaximaTurno() && tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR);
     if (!sePuede) {
         return null;
     }

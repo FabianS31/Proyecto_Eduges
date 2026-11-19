@@ -135,6 +135,12 @@ export const pacientes = {
 // y solo con pacientes asignados al profesional.
 let turnosEnMemoria = null;
 
+async function listarTurnosConReloj(opciones) {
+    const lista = await api.get('/turnos/', opciones);
+    const referencia = performance.now();
+    return lista.map(turno => ({ ...turno, referenciaTemporal: referencia }));
+}
+
 async function cambiarTurnos(llamada) {
     const resultado = await llamada();
     turnosEnMemoria = null;
@@ -147,9 +153,9 @@ export const turnos = {
     //    estado: { ID_EstadoTurno: 1, Estado: "Pendiente" } }]
     listar(parametros = null) {
         if (parametros && (parametros.mes || parametros.anio)) {
-            return api.get('/turnos/', { parametros });
+            return listarTurnosConReloj({ parametros });
         }
-        turnosEnMemoria ??= api.get('/turnos/').catch((error) => {
+        turnosEnMemoria ??= listarTurnosConReloj().catch((error) => {
             turnosEnMemoria = null;
             throw error;
         });

@@ -1,4 +1,5 @@
 from django.db import transaction
+from APIs.servicios.conflictos_unicidad import guardar_con_unicidad
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
@@ -21,6 +22,7 @@ from APIs.tutores.serializers import (
 )
 
 from APIs.tutores.services import TutorService
+from APIs.tutores.serializers.tutor_entrada_serializer import TutorCreacionOReutilizacionSerializer
 
 
 class PuedeGestionarTutores(BasePermission):
@@ -118,7 +120,9 @@ class TutorListCreateView(APIView):
 
     @transaction.atomic
     def post(self, request):
-        tutor_serializer = TutorEntradaSerializer(data=request.data)
+        tutor_serializer = TutorCreacionOReutilizacionSerializer(
+            data=request.data, context={'request': request},
+        )
         tutor_serializer.is_valid(raise_exception=True)
 
         relacion_serializer = RelacionTutorEntradaSerializer(
@@ -277,10 +281,13 @@ class TutorDetailView(APIView):
         )
         serializer.is_valid(raise_exception=True)
 
-        tutor = TutorService.actualizar_tutor(
-            tutor,
-            serializer.validated_data,
-        )
+        with guardar_con_unicidad([
+            (Tutor, 'dni', 'dni', 'Ya existe un tutor con ese DNI.'),
+        ]):
+            tutor = TutorService.actualizar_tutor(
+                tutor,
+                serializer.validated_data,
+            )
 
         return Response(
             TutorSerializer(

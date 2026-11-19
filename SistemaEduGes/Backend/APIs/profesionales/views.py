@@ -1,3 +1,4 @@
+from APIs.validadores import identificador_positivo
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -5,6 +6,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 
 from profesionales.models.profesional_model import Profesional
+from usuarios.models.usuario_model import Usuario
+from APIs.servicios.conflictos_unicidad import guardar_con_unicidad
 from APIs.profesionales.serializers.profesionales_serializer import ProfesionalSerializer
 from APIs.autenticacion.permisos import TienePermiso
 from APIs.profesionales.permisos import validar_edicion_cuenta
@@ -13,7 +16,25 @@ from APIs.turnos.services.turno_service import TurnoService
 from APIs.turnos.serializers.turno_serializer import TurnoSerializer
 
 
-class ProfesionalListCreateView(generics.ListCreateAPIView):
+class GuardarProfesionalMixin:
+    def perform_create(self, serializer):
+        self._guardar(serializer)
+
+    def perform_update(self, serializer):
+        self._guardar(serializer)
+
+    @staticmethod
+    def _guardar(serializer):
+        with guardar_con_unicidad([
+            (Profesional, 'dni', 'dni', 'Ya existe un profesional con ese DNI.'),
+            (Profesional, 'matricula', 'matricula', 'Ya existe un profesional con esa matrícula.'),
+            (Usuario, 'usuario', 'usuario', 'El nombre de usuario ya existe.'),
+            (Profesional, 'usuario', 'usuario', 'La cuenta de usuario ya está vinculada a un profesional.'),
+        ]):
+            serializer.save()
+
+
+class ProfesionalListCreateView(GuardarProfesionalMixin, generics.ListCreateAPIView):
     queryset = Profesional.objects.all()
     serializer_class = ProfesionalSerializer
     permission_classes = [TienePermiso]
@@ -28,7 +49,7 @@ class ProfesionalListCreateView(generics.ListCreateAPIView):
         return super().get_permissions()
 
 
-class ProfesionalDetailView(generics.RetrieveUpdateAPIView):
+class ProfesionalDetailView(GuardarProfesionalMixin, generics.RetrieveUpdateAPIView):
     queryset = Profesional.objects.all()
     serializer_class = ProfesionalSerializer
     permission_classes = [TienePermiso]
@@ -152,11 +173,11 @@ class ReasignacionPacienteView(APIView):
             })
 
         try:
-            profesional_id = int(profesional_id)
+            profesional_id = identificador_positivo(profesional_id)
         except (TypeError, ValueError):
             raise ValidationError({
                 'profesional_id': (
-                    'El identificador del profesional debe ser numérico.'
+                    'El identificador del profesional debe ser un entero positivo entre 1 y 2147483647.'
                 )
             })
 

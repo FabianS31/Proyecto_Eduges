@@ -24,7 +24,7 @@
 
 //
 
-// Reglas de la API (APIs/turnos/services/turno_service.py): hasta 30 días hacia adelante,
+// Reglas de la API (APIs/turnos/services/turno_service.py): hasta la misma fecha del año siguiente,
 
 // nunca un horario pasado, 40 minutos de duración, sin superponerse con otro turno del
 
@@ -51,8 +51,6 @@ import {
     ESTADO_TURNO,
 
     PERMISO,
-
-    TURNO_DIAS_ANTICIPACION,
 
     TURNO_DURACION_MINUTOS,
 
@@ -140,7 +138,25 @@ function sumarMinutos(hora, minutos) {
 
 
 
-export const fechaMaximaTurno = () => sumarDias(hoyISO(), TURNO_DIAS_ANTICIPACION);
+// Referencia institucional solo para agendamiento; no depende de la zona del cliente.
+function relojAgendamiento() {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit',
+        day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).formatToParts(new Date());
+    const valor = tipo => partes.find(p => p.type === tipo).value;
+    return { fecha: `${valor('year')}-${valor('month')}-${valor('day')}`,
+        hora: `${valor('hour')}:${valor('minute')}` };
+}
+
+export const hoyAgendamiento = () => relojAgendamiento().fecha;
+
+export function fechaMaximaTurno() {
+    const [anio, mes, dia] = hoyAgendamiento().split('-').map(Number);
+    // Como en date.replace del Backend: el 29/02 pasa al 28/02 del siguiente año.
+    const diaMaximo = mes === 2 && dia === 29 ? 28 : dia;
+    return `${anio + 1}-${String(mes).padStart(2, '0')}-${String(diaMaximo).padStart(2, '0')}`;
+}
 
 
 
@@ -157,6 +173,18 @@ export const estaActivo = (turno) => [ESTADO_TURNO.PENDIENTE, ESTADO_TURNO.CONFI
 
 
 export const estaCancelado = (turno) => idEstado(turno) === ESTADO_TURNO.CANCELADO;
+
+// El instante proviene del servidor; el reloj monotónico solo mide el tiempo transcurrido.
+// La API vuelve a comprobarlo bajo transacción al confirmar, incluso con demora de red.
+export function originalNoIniciado(turno) {
+    const inicio = Date.parse(turno.ventana_modificacion?.inicio);
+    const ahora = Date.parse(turno.ventana_modificacion?.ahora);
+    const referencia = turno.referenciaTemporal;
+    return Number.isFinite(inicio) && Number.isFinite(ahora) && Number.isFinite(referencia)
+        && ahora + Math.max(0, performance.now() - referencia) < inicio;
+}
+
+const MENSAJE_ORIGINAL_INICIADO = 'No se puede cancelar ni reprogramar el turno porque ya llegó su hora de inicio. Recargá la agenda para actualizarla.';
 
 
 
@@ -369,7 +397,7 @@ function accionesTurno(turno, descripcion) {
 
     }
 
-    if (!tieneSesion && puedeEditar() && estaActivo(turno) && !yaEmpezo(turno)) {
+    if (!tieneSesion && puedeEditar() && estaActivo(turno) && originalNoIniciado(turno)) {
 
         secundarias.push(
 
@@ -665,9 +693,17 @@ function estaEnUso(zonas) {
 
 // no repite la agenda entera cada vez que pasa un turno.
 
-export function actualizarConLaHora({ zonas, redibujar, cadaSegundos = 30 }) {
+export function actualizarConLaHora({ zonas, redibujar, cadaSegundos = 1 }) {
 
     return setInterval(async () => {
+
+        document.querySelectorAll('[data-accion="cancelar"][data-turno], [data-accion="reprogramar"][data-turno]').forEach(boton => {
+            const turno = turnosPorId.get(Number(boton.dataset.turno));
+            if (turno && !originalNoIniciado(turno)) {
+                boton.disabled = true;
+                boton.hidden = true;
+            }
+        });
 
         if (firmaDibujada === null || firmaHoraria([...turnosPorId.values()]) === firmaDibujada) {
 
@@ -703,21 +739,24 @@ export function actualizarConLaHora({ zonas, redibujar, cadaSegundos = 30 }) {
 
 
 
-// Turnos activos que se pisan con fecha + hora, del mismo profesional o del mismo paciente
+// Control preventivo sobre los turnos cargados; el servidor verifica la agenda completa.
 
 function turnosQueSePisan(fecha, hora, { profesional, paciente, excepto = null }) {
 
-    const inicio = minutosDe(hora);
+    // Escala de minutos civiles: fecha y hora juntas, independiente del DST del navegador.
+    const inicioDe = (fechaTurno, horaTurno) => {
+        const [anio, mes, dia] = fechaTurno.split('-').map(Number);
+        return Date.UTC(anio, mes - 1, dia) / 60000 + minutosDe(horaTurno);
+    };
+    const inicio = inicioDe(fecha, hora);
 
     return [...turnosPorId.values()].filter((t) => t.id_turno !== excepto
 
-        && t.fecha === fecha
-
-        && estaActivo(t)
+        && !estaCancelado(t)
 
         && (t.profesional_id === profesional || t.paciente_id === paciente)
 
-        && Math.abs(minutosDe(formatearHora(t.hora)) - inicio) < TURNO_DURACION_MINUTOS);
+        && Math.abs(inicioDe(t.fecha, formatearHora(t.hora)) - inicio) < TURNO_DURACION_MINUTOS);
 
 }
 
@@ -940,7 +979,12 @@ function errorDeFecha(fecha) {
 
     }
 
-    if (fecha < hoyISO()) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || !Number.isFinite(Date.parse(fecha))
+        || new Date(fecha).toISOString().slice(0, 10) !== fecha || fecha.startsWith('0000')) {
+        return 'Ingresá una fecha válida.';
+    }
+
+    if (fecha < hoyAgendamiento()) {
 
         return 'La fecha no puede ser anterior a hoy.';
 
@@ -958,7 +1002,18 @@ function errorDeFecha(fecha) {
 
 
 
-const horaYaPaso = (fecha, hora) => fecha === hoyISO() && hora <= ahoraHora();
+const horaYaPaso = (fecha, hora) => {
+    const ahora = relojAgendamiento();
+    return fecha === ahora.fecha && hora <= ahora.hora;
+};
+
+function errorDeFechas(fechas) {
+    for (const fecha of fechas) {
+        const error = errorDeFecha(fecha);
+        if (error) return `La fecha ${fecha}: ${error} No se enviará el lote.`;
+    }
+    return null;
+}
 
 
 
@@ -1146,7 +1201,7 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
 
     const calendario = crearSelectorFechas(contenedorCalendario, {
 
-        desde: hoyISO(),
+        desde: hoyAgendamiento(),
 
         hasta: fechaMaximaTurno(),
 
@@ -1227,13 +1282,13 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
         comboboxes: [paciente, hora, profesional].filter(Boolean),
         alAbrir: () => {
             const fecha = $('turno-fecha');
-            fecha.min = hoyISO();
+            fecha.min = hoyAgendamiento();
             fecha.max = fechaMaximaTurno();
-            fecha.value = inicial.fecha && inicial.fecha >= hoyISO() && inicial.fecha <= fecha.max ? inicial.fecha : hoyISO();
+            fecha.value = inicial.fecha && inicial.fecha >= hoyAgendamiento() && inicial.fecha <= fecha.max ? inicial.fecha : hoyAgendamiento();
 
             const fechaAnual = $('turno-fecha-inicio-anual');
             if (fechaAnual) {
-                fechaAnual.min = hoyISO();
+                fechaAnual.min = hoyAgendamiento();
                 fechaAnual.max = fechaMaximaTurno();
                 fechaAnual.value = fecha.value;
             }
@@ -1280,7 +1335,7 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
         let fechas = [];
         if (anual) {
             const fInicio = $('turno-fecha-inicio-anual')?.value;
-            fechas = fInicio ? generarFechasSemanales(fInicio, 52) : [];
+            fechas = fInicio && !errorDeFecha(fInicio) ? generarFechasSemanales(fInicio, 52) : [];
         } else if (varios) {
             fechas = calendario.fechas();
         } else {
@@ -1300,7 +1355,7 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
             const fInicio = $('turno-fecha-inicio-anual')?.value;
             if (!fInicio) {
                 errores.fecha_inicio_anual = ['Indicá la fecha del primer turno.'];
-            } else if (fInicio < hoyISO()) {
+            } else if (fInicio < hoyAgendamiento()) {
                 errores.fecha_inicio_anual = ['La fecha de inicio no puede ser anterior a hoy.'];
             } else if (fInicio > fechaMaximaTurno()) {
                 errores.fecha_inicio_anual = [`Se pueden dar turnos hasta 1 año hacia adelante (hasta el ${formatearFecha(fechaMaximaTurno())}).`];
@@ -1337,6 +1392,12 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
                         + 'Sacá esas fechas o elegí otra hora.'];
                 }
             }
+        }
+
+        if (anual || varios) {
+            const error = anual && errorDeFecha($('turno-fecha-inicio-anual')?.value)
+                || errorDeFechas(fechas);
+            if (error) errores[anual ? 'fecha_inicio_anual' : 'turnos'] = [error];
         }
 
         if (!datos.paciente) {
@@ -1418,6 +1479,13 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
 
             return;
 
+        }
+
+        // Revalidar también si el resumen quedó abierto al cambiar el día institucional.
+        const errorFechas = errorDeFechas(turnoPendienteDeConfirmar.fechas);
+        if (errorFechas) {
+            renderizar($('confirmar-turno-error'), bloqueError(errorFechas));
+            return;
         }
 
         const botonConfirmar = $('btn-confirmar-agendar');
@@ -1520,7 +1588,7 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
 
             const fecha = $('reprogramar-fecha');
 
-            fecha.min = hoyISO();
+            fecha.min = hoyAgendamiento();
 
             fecha.max = fechaMaximaTurno();
 
@@ -1572,6 +1640,8 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
 
         const cerrado = alCerrar(modalReprogramar);
 
+        if (!originalNoIniciado(turno)) errores.detail = [MENSAJE_ORIGINAL_INICIADO];
+
 
 
         guardar({
@@ -1584,7 +1654,10 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
 
             errores,
 
-            enviar: () => turnos.reprogramar(turno.id_turno, datos),
+            enviar: () => {
+                if (!originalNoIniciado(turno)) throw new ApiError(400, { detail: MENSAJE_ORIGINAL_INICIADO });
+                return turnos.reprogramar(turno.id_turno, datos);
+            },
 
             mensajeExito: `El turno quedó para el ${diaEnTexto(datos.fecha)} a las ${datos.hora}.`,
 
@@ -1633,6 +1706,8 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
         boton.disabled = true;
 
         try {
+
+            if (!originalNoIniciado(turno)) throw new ApiError(400, { detail: MENSAJE_ORIGINAL_INICIADO });
 
             await turnos.cancelar(turno.id_turno);
 
@@ -1811,6 +1886,11 @@ export function prepararTurnos({ usuario, alCambiar, focoTrasCambio = () => null
                 }
 
                 const accion = botonUsado.dataset.accion;
+
+                if (['reprogramar', 'cancelar'].includes(accion) && !originalNoIniciado(turno)) {
+                    notificarError(new ApiError(400, { detail: MENSAJE_ORIGINAL_INICIADO }));
+                    return;
+                }
 
                 if (accion === 'reprogramar') {
 

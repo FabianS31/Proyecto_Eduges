@@ -1,10 +1,23 @@
 
 import unicodedata
+from contextlib import contextmanager
+from django.db import connection, transaction
 
 from pacientes.models.obra_social_model import ObraSocial
 
 
 class ObraSocialService:
+
+    @staticmethod
+    @contextmanager
+    def escritura_serializada():
+        # Clave estable y común a POST/PATCH, también entre procesos/conexiones.
+        # PostgreSQL libera el bloqueo al terminar o revertir la transacción.
+        with transaction.atomic():
+            if connection.vendor == 'postgresql':
+                with connection.cursor() as cursor:
+                    cursor.execute('SELECT pg_advisory_xact_lock(%s, %s)', [1162106183, 5])
+            yield
 
     @staticmethod
     def normalizar_nombre(nombre):

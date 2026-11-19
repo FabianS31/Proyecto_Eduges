@@ -1,5 +1,8 @@
 
-from django.db import IntegrityError, transaction
+import logging
+
+from django.db import IntegrityError
+from APIs.servicios.conflictos_unicidad import campo_duplicado
 from django.shortcuts import get_object_or_404
 
 from rest_framework import status
@@ -20,6 +23,26 @@ from APIs.obras_sociales.services.obra_social_service import (
 )
 
 from pacientes.models.obra_social_model import ObraSocial
+
+
+logger = logging.getLogger(__name__)
+
+
+def respuesta_integridad(error):
+    duplicado = campo_duplicado(error, [
+        (ObraSocial, 'nombre', 'nombre', 'Ya existe una obra social con ese nombre.'),
+    ])
+    if duplicado is not None:
+        return Response(
+            {'codigo': 'obra_social_duplicada', 'detail': duplicado[1]},
+            status=status.HTTP_409_CONFLICT,
+        )
+    logger.exception('Error de integridad al guardar una obra social.')
+    return Response(
+        {'codigo': 'error_integridad',
+         'detail': 'No se pudo guardar la obra social por un problema de integridad del servidor. Contacte a administraci\u00f3n.'},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
 
 
 class ObraSocialListView(APIView):
@@ -71,22 +94,13 @@ class ObraSocialListView(APIView):
             data=request.data
         )
 
-        serializer.is_valid(raise_exception=True)
-
         try:
-            with transaction.atomic():
+            with ObraSocialService.escritura_serializada():
+                serializer.is_valid(raise_exception=True)
                 obra_social = serializer.save()
 
-        except IntegrityError:
-            return Response(
-                {
-                    'codigo': 'obra_social_duplicada',
-                    'detail': (
-                        'Ya existe una obra social con ese nombre.'
-                    )
-                },
-                status=status.HTTP_409_CONFLICT
-            )
+        except IntegrityError as error:
+            return respuesta_integridad(error)
 
         return Response(
             ObraSocialSerializer(obra_social).data,
@@ -125,32 +139,17 @@ class ObraSocialDetailView(APIView):
         )
 
     def patch(self, request, obra_social_id):
-        obra_social = self.get_object(
-            obra_social_id
-        )
-
-        serializer = ObraSocialSerializer(
-            obra_social,
-            data=request.data,
-            partial=True
-        )
-
-        serializer.is_valid(raise_exception=True)
-
         try:
-            with transaction.atomic():
+            with ObraSocialService.escritura_serializada():
+                obra_social = self.get_object(obra_social_id)
+                serializer = ObraSocialSerializer(
+                    obra_social, data=request.data, partial=True
+                )
+                serializer.is_valid(raise_exception=True)
                 obra_social = serializer.save()
 
-        except IntegrityError:
-            return Response(
-                {
-                    'codigo': 'obra_social_duplicada',
-                    'detail': (
-                        'Ya existe una obra social con ese nombre.'
-                    )
-                },
-                status=status.HTTP_409_CONFLICT
-            )
+        except IntegrityError as error:
+            return respuesta_integridad(error)
 
         return Response(
             ObraSocialSerializer(obra_social).data,

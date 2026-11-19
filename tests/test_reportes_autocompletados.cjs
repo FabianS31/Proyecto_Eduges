@@ -583,3 +583,19 @@ test('Trabajo de sesión usa respuesta del servidor y respeta Administrador', as
     await e.c.consultarReporte();
     assert.doesNotMatch(e.nodo('print-criterios').textContent, /Trabajo de Sesión/);
 });
+
+
+test('H15: Trabajo de 199 y 200 se consulta; 201 se bloquea sin truncar', async () => {
+    for (const n of [199,200,201]) {
+        const e=reportesEntorno();let llamadas=0;
+        e.c.estadoPrueba.usuario={rol:{nombre:'SuperAdministrador'}};
+        e.nodo('filtro-turno-trabajo').value='x'.repeat(n);
+        e.c.reportes.turnos=async filtros=>{llamadas++;assert.equal(filtros.trabajo_sesion.length,n);return {total:0,resultados:[]};};
+        await e.c.consultarReporte();
+        assert.equal(llamadas,n<=200?1:0);
+        assert.equal(e.nodo('filtro-turno-trabajo').value.length,n);
+        if(n>200) assert.ok(e.c.avisos.some(x=>String(x).includes('200')));
+    }
+    const html=fs.readFileSync(path.join(base,'../../templates/reportes.html'),'utf8');
+    assert.match(html,/<input[^>]*name="trabajo_sesion"[^>]*maxlength="200"/);
+});

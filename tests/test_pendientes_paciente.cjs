@@ -89,3 +89,32 @@ test('cerrar el modal limpia la selección', () => {
     assert.equal(e.ctx.combo.valor(), null);
     assert.equal(e.nodo('pend-paciente').value, '');
 });
+
+
+test('H15: rangos invalidos bloquean listado y sugerencias; corregir permite consultar', async () => {
+    for (const [desde,hasta] of [['2026-11-20','2026-11-01'],['2026-02-30',''],['malformada','']]) {
+        const e=entorno();
+        e.nodo('pend-fecha-desde').value=desde;
+        e.nodo('pend-fecha-hasta').value=hasta;
+        await e.ctx.opciones.buscar('Ana');
+        e.ctx.modal.abrirPendientes(); await esperar();
+        assert.equal(e.llamadas.length,0);
+        assert.ok(e.nodo('pend-fecha-desde').error || e.nodo('pend-fecha-hasta').error);
+        e.nodo('pend-fecha-desde').value='2026-11-01';
+        e.nodo('pend-fecha-hasta').value='2026-11-01';
+        await e.ctx.opciones.buscar('Ana');
+        assert.equal(e.llamadas.length,1);
+        assert.equal(e.nodo('pend-fecha-hasta').error,'');
+    }
+});
+
+test('H15: fechas ordenadas, iguales y unilaterales conservan filtros', async () => {
+    for (const [desde,hasta] of [['2026-11-01','2026-11-20'],['2026-11-01','2026-11-01'],['2026-11-01',''],['','2026-11-20']]) {
+        const e=entorno();
+        e.nodo('pend-fecha-desde').value=desde;e.nodo('pend-fecha-hasta').value=hasta;
+        e.ctx.modal.abrirPendientes();await esperar();
+        assert.equal(e.llamadas.length,1);
+        assert.equal(e.llamadas[0].fecha_desde,desde || undefined);
+        assert.equal(e.llamadas[0].fecha_hasta,hasta || undefined);
+    }
+});

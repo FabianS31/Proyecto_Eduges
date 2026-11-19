@@ -306,7 +306,7 @@ function prepararEdicion() {
     formulario.addEventListener('submit', (evento) => {
         evento.preventDefault();
         const actual = estado.todos.find((prof) => prof.id_profesional === estado.editandoId);
-        const datos = Object.fromEntries(CAMPOS_EDITABLES.map((campo) => [campo, formulario.elements[campo].value.trim()]));
+        const datos = Object.fromEntries(CAMPOS_EDITABLES.map((campo) => [campo, campo === 'dni' ? formulario.elements[campo].value : formulario.elements[campo].value.trim()]));
         // Solo se envía lo que cambió (vacío = sin dato, para teléfono y mail)
         const cambios = Object.fromEntries(Object.entries(datos)
             .map(([campo, valor]) => [campo, valor === '' && ['contacto', 'mail'].includes(campo) ? null : valor])
@@ -423,6 +423,8 @@ function validarAlta(datos, formulario) {
         errores.password = ['Indicá una contraseña inicial.'];
     } else if (datos.password.length < 8) {
         errores.password = ['La contraseña tiene que tener al menos 8 caracteres.'];
+    } else if (/^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]|[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]$/u.test(datos.password)) {
+        errores.password = ['La contraseña no puede comenzar ni terminar con espacios en blanco.'];
     }
 
     if (!datos.password_confirm) {
@@ -514,7 +516,7 @@ function prepararAlta() {
         const datos = {
             nombre: capitalizar(campo('nombre')),
             apellido: capitalizar(campo('apellido')),
-            dni: campo('dni'),
+            dni: formNuevo.elements.dni.value,
             matricula: campo('matricula'),
             especialidad: Number(campo('especialidad')) || null,
             contacto: campo('contacto') || null,

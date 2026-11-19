@@ -324,6 +324,8 @@ class OperacionesTurnoMixin:
             excluir_turno_id=turno.pk,
         )
 
+        cls.validar_original_no_iniciado(turno)
+
         turno.fecha = fecha
         turno.hora = hora
         turno.paciente = paciente
@@ -363,6 +365,7 @@ class OperacionesTurnoMixin:
         estado_cancelado = cls.obtener_estado_cancelado()
 
         cls.validar_estado_con_sesion(turno, 'Cancelado')
+        cls.validar_original_no_iniciado(turno)
 
         turno.estado = estado_cancelado
         turno.save(update_fields=['estado'])

@@ -89,9 +89,74 @@ export async function guardar({ formulario, contenedorErrores, boton, errores, e
 }
 
 
+export function validarCud(datos, original = null) {
+    const campos = ['cud_numero', 'cud_vencimiento'];
+    if (original && !campos.some(campo => Object.hasOwn(datos, campo))) return {};
+    const valor = campo => String((Object.hasOwn(datos, campo) ? datos[campo] : original?.[campo]) ?? '').trim();
+    const numero = valor('cud_numero'), fecha = valor('cud_vencimiento');
+    return Boolean(numero) === Boolean(fecha) ? {} : {
+        [numero ? 'cud_vencimiento' : 'cud_numero']: ['Completá número y vencimiento del CUD juntos, o dejá ambos vacíos.'],
+    };
+}
+
 export function errorDomicilio(valor) {
     // Solo un correo completo: no restringe el formato de las direcciones reales.
     const correo = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
     return correo.test(String(valor ?? '').trim())
         ? 'Ingresá un domicilio válido, no una dirección de correo electrónico' : null;
+}
+
+// Formatos de Django: dominios internacionales, localhost e IP literales.
+const ETIQUETA_HOST = '[a-z\u00a1-\uffff0-9](?:[a-z\u00a1-\uffff0-9-]{0,61}[a-z\u00a1-\uffff0-9])?';
+const DOMINIO = `${ETIQUETA_HOST}(?:\\.${ETIQUETA_HOST})*\\.(?!-)(?:[a-z\u00a1-\uffff-]{2,63}|xn--[a-z0-9]{1,59})(?<!-)`;
+const IPV4 = '(?:0|25[0-5]|2[0-4][0-9]|1[0-9]?[0-9]?|[1-9][0-9]?)(?:\\.(?:0|25[0-5]|2[0-4][0-9]|1[0-9]?[0-9]?|[1-9][0-9]?)){3}';
+function ipValida(valor) {
+    if (new RegExp(`^${IPV4}$`).test(valor)) return true;
+    if (!valor.includes(':')) return false;
+    try { return new URL(`http://[${valor}]/`).hostname.startsWith('['); } catch { return false; }
+}
+
+// Solo se validan campos enviados; se omiten los valores históricos intactos.
+export function validarCamposPreventivos(datos, reglas) {
+    const errores = {};
+    for (const [campo, valor] of Object.entries(datos)) {
+        const regla = reglas[campo];
+        if (!regla) continue;
+        const texto = String(valor ?? '').trim();
+        let error;
+        if (regla.requerido && (!texto || valor === 0)) error = 'Este campo es obligatorio.';
+        else if (regla.max && [...texto].length > regla.max) error = `Ingresá hasta ${regla.max} caracteres.`;
+        else if (texto && regla.tipo === 'email') {
+            const arroba = texto.lastIndexOf('@');
+            const usuario = texto.slice(0, arroba), dominio = texto.slice(arroba + 1);
+            const usuarioValido = /^(?:[-!#$%&'*+/=?^_`{}|~0-9a-z]+(?:\.[-!#$%&'*+/=?^_`{}|~0-9a-z]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f!#-\[\]-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")$/i.test(usuario);
+            const dominioValido = dominio === 'localhost' || new RegExp(`^${DOMINIO}$`, 'i').test(dominio) ||
+                (dominio.startsWith('[') && dominio.endsWith(']') && ipValida(dominio.slice(1, -1)));
+            if (arroba < 1 || !usuarioValido || !dominioValido) {
+                error = 'Ingresá un correo válido, por ejemplo nombre@dominio.com.';
+            }
+        } else if (texto && regla.tipo === 'url') {
+            const patron = new RegExp(`^(?:https?|ftps?)://(?:[^\\s:@/]+(?::[^\\s:@/]*)?@)?(${IPV4}|\\[[0-9a-f:.]+\\]|${DOMINIO}\\.?|localhost)(?::[0-9]{1,5})?(?:[/?#][^\\s]*)?$`, 'i');
+            const partes = texto.match(patron);
+            if (!partes || partes[1].length > 253 || (partes[1].startsWith('[') && !ipValida(partes[1].slice(1, -1)))) {
+                error = 'Ingresá una URL válida, por ejemplo https://www.dominio.com.';
+            }
+        } else if (texto && ['fecha', 'nacimiento'].includes(regla.tipo)) {
+            const fecha = new Date(`${texto}T00:00:00Z`);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(texto) || texto.startsWith('0000') ||
+                Number.isNaN(fecha.getTime()) || fecha.toISOString().slice(0, 10) !== texto) {
+                error = 'Ingresá una fecha válida.';
+            } else if (regla.tipo === 'nacimiento') {
+                const partes = new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'America/Argentina/Buenos_Aires', calendar: 'gregory',
+                    numberingSystem: 'latn', year: 'numeric', month: '2-digit', day: '2-digit',
+                }).formatToParts(new Date());
+                const valor = tipo => partes.find(parte => parte.type === tipo).value;
+                const hoyEduGes = `${valor('year')}-${valor('month')}-${valor('day')}`;
+                if (texto > hoyEduGes) error = 'La fecha de nacimiento no puede ser futura.';
+            }
+        }
+        if (error) errores[campo] = [error];
+    }
+    return errores;
 }

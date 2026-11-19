@@ -1,5 +1,6 @@
 
 from django.contrib.auth.hashers import make_password
+from APIs.validadores import validar_password_nueva
 from django.db import transaction
 
 from rest_framework import serializers
@@ -128,10 +129,13 @@ class ProfesionalSerializer(ValidarNombreApellidoMixin, serializers.ModelSeriali
         write_only=True,
         required=False,
         min_length=8,
+        trim_whitespace=False,
+        validators=[validar_password_nueva],
     )
 
     class Meta:
         model = Profesional
+        extra_kwargs = {'dni': {'trim_whitespace': False}}
         fields = [
             'id_profesional',
             'nombre',

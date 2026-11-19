@@ -150,6 +150,8 @@ function validarPassword(actual, nueva, confirmacion) {
         errores.password_nueva = ['Ingresá la contraseña nueva.'];
     } else if (nueva.length < LARGO_MINIMO_PASSWORD) {
         errores.password_nueva = [`La nueva contraseña debe tener al menos ${LARGO_MINIMO_PASSWORD} caracteres.`];
+    } else if (/^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]|[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]$/u.test(nueva)) {
+        errores.password_nueva = ['La contraseña no puede comenzar ni terminar con espacios en blanco.'];
     } else if (nueva === actual) {
         errores.password_nueva = ['La nueva contraseña debe ser diferente de la actual.'];
     }
@@ -355,9 +357,12 @@ function prepararModalNuevoUsuario() {
 
         const errores = [];
         if (!usuario) errores.push('Ingresá el nombre de usuario.');
+        else if ([...usuario].length > 100) errores.push('El usuario admite hasta 100 caracteres.');
         else if (/\s/.test(usuario)) errores.push('El usuario no puede contener espacios.');
         if (!password) errores.push('Ingresá la contraseña.');
         else if (password.length < 8) errores.push('La contraseña debe tener al menos 8 caracteres.');
+        else if (password.length > 128) errores.push('La contraseña no puede superar los 128 caracteres.');
+        else if (/^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]|[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]$/u.test(password)) errores.push('La contraseña no puede comenzar ni terminar con espacios en blanco.');
         if (password && password !== confirmacion) errores.push('Las contraseñas no coinciden.');
 
         if (errores.length > 0) {
@@ -404,29 +409,112 @@ function inicializarDesplegablesNav() {
 }
 
 // ------------------------------------------------------------
-// Restricción de campos DNI (solo dígitos numéricos 0-9)
-// Impide el ingreso o pegado de letras o caracteres no numéricos
+// DNI: validar sin borrar ni convertir caracteres ingresados.
+// El pegado se intercepta antes de que maxlength pueda truncar el texto.
 // ------------------------------------------------------------
 function prepararInputsDni() {
-    const esCampoDni = (el) => (
-        el instanceof HTMLInputElement &&
-        (el.name === 'dni' || el.name === 'tutor_dni' || (typeof el.id === 'string' && el.id.includes('-dni')))
-    );
-
-    document.addEventListener('beforeinput', (evento) => {
+    const estados = new WeakMap();
+    const mensaje = 'El DNI debe contener 7 u 8 dígitos del 0 al 9, sin puntos, guiones, letras ni espacios.';
+    const esCampoDni = el => el instanceof HTMLInputElement
+        && (el.name === 'dni' || el.name === 'tutor_dni');
+    const validar = campo => {
+        const estado = estados.get(campo);
+        if (estado?.rechazo) { campo.setCustomValidity(estado.rechazo); return false; }
+        const intacto = estado && estado.original === campo.value;
+        const valido = intacto || /^[0-9]{7,8}$/.test(campo.value);
+        campo.setCustomValidity(valido ? '' : mensaje);
+        if (estado) estado.ultimo = campo.value;
+        return valido;
+    };
+    document.addEventListener('focusin', evento => {
+        const campo = evento.target;
+        if (!esCampoDni(campo)) return;
+        const previo = estados.get(campo);
+        if (!previo || previo.ultimo !== campo.value) {
+            estados.set(campo, {original: campo.value, ultimo: campo.value, modificado: false});
+            campo.setCustomValidity('');
+        }
+    });
+    const insertarCompleto = (evento, texto) => {
+        const campo = evento.target;
+        evento.preventDefault();
+        // Un input de una linea elimina saltos automaticamente: no insertarlos.
+        if (/[\r\n]/.test(texto)) {
+            const estado = estados.get(campo) ?? {original: null};
+            estado.rechazo = mensaje;
+            estado.modificado = true;
+            estado.ultimo = campo.value;
+            estados.set(campo, estado);
+            validar(campo);
+            campo.reportValidity();
+            return;
+        }
+        campo.setRangeText(texto, campo.selectionStart ?? campo.value.length,
+            campo.selectionEnd ?? campo.value.length, 'end');
+        campo.dispatchEvent(new Event('input', {bubbles: true}));
+        if (!validar(campo)) campo.reportValidity();
+    };
+    document.addEventListener('paste', evento => {
         if (!esCampoDni(evento.target)) return;
-        if (evento.data && /\D/.test(evento.data)) {
+        if (!evento.clipboardData) {
             evento.preventDefault();
+            const campo = evento.target;
+            const estado = estados.get(campo) ?? {original: null};
+            estado.rechazo = 'No se pudo leer el pegado. Ingresá el DNI manualmente.';
+            estado.modificado = true;
+            estado.ultimo = campo.value;
+            estados.set(campo, estado);
+            validar(campo);
+            evento.target.reportValidity();
+            return;
+        }
+        insertarCompleto(evento, evento.clipboardData.getData('text/plain'));
+    });
+    document.addEventListener('beforeinput', evento => {
+        const campo = evento.target;
+        if (!esCampoDni(campo) || evento.isComposing || !evento.cancelable) return;
+        const texto = evento.data ?? evento.dataTransfer?.getData('text/plain');
+        if (!evento.inputType?.startsWith('insert') || texto == null) return;
+        const longitud = campo.value.length - ((campo.selectionEnd ?? 0) - (campo.selectionStart ?? 0)) + texto.length;
+        if (/[\r\n]/.test(texto) || (campo.maxLength >= 0 && longitud > campo.maxLength)) insertarCompleto(evento, texto);
+    });
+    document.addEventListener('drop', evento => {
+        if (esCampoDni(evento.target) && evento.dataTransfer) {
+            insertarCompleto(evento, evento.dataTransfer.getData('text/plain'));
         }
     });
-
-    document.addEventListener('input', (evento) => {
-        if (!esCampoDni(evento.target)) return;
-        const limpio = evento.target.value.replace(/\D/g, '');
-        if (evento.target.value !== limpio) {
-            evento.target.value = limpio;
-        }
+    document.addEventListener('input', evento => {
+        const campo = evento.target;
+        if (!esCampoDni(campo)) return;
+        if (!estados.has(campo)) estados.set(campo, {original: null});
+        estados.get(campo).modificado = true;
+        estados.get(campo).rechazo = null;
+        validar(campo);
     });
+    document.addEventListener('focusout', evento => {
+        if (esCampoDni(evento.target) && estados.get(evento.target)?.modificado
+            && !validar(evento.target)) evento.target.reportValidity();
+    });
+    document.addEventListener('submit', evento => {
+        for (const campo of evento.target.elements ?? []) {
+            if (esCampoDni(campo) && estados.get(campo)?.modificado && !validar(campo)) {
+                evento.preventDefault();
+                evento.stopImmediatePropagation();
+                campo.reportValidity();
+                return;
+            }
+        }
+    }, true);
+    document.addEventListener('reset', evento => {
+        for (const campo of evento.target.elements ?? []) {
+            if (esCampoDni(campo)) { estados.delete(campo); campo.setCustomValidity(''); }
+        }
+    }, true);
+    document.addEventListener('show.bs.modal', evento => {
+        for (const campo of evento.target.querySelectorAll?.('input') ?? []) {
+            if (esCampoDni(campo)) { estados.delete(campo); campo.setCustomValidity(''); }
+        }
+    }, true);
 }
 
 async function iniciar() {

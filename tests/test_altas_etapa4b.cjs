@@ -54,6 +54,7 @@ function entorno(rol = 'Profesional') {
         for(const field of fields) form.elements[field].value='Prueba';
         Object.assign(form.elements.dni,{value:'40123456'});
         form.elements.fecha_nacimiento.value='2010-01-01';
+        form.elements.cud_vencimiento.value='2027-01-01';
         form.elements.tutor_dni.value='20123456';
         form.elements.tutor_parentesco_id.value='37';
         form.elements.consentimiento.checked=true;
@@ -193,4 +194,48 @@ test('H02: HTML requiere telefono, correo y domicilio; movil opcional',()=>{
         const input=html.match(new RegExp(`<input[^>]*name="tutor_${campo}"[^>]*>`))[0];
         assert.equal(/\brequired\b/.test(input),campo!=='movil');
     }
+});
+
+test('H20: copia 225, rechaza 226 y permite domicilio independiente sin truncar',async()=>{
+    for(const largo of [225,226]) {
+        const e=entorno();e.form.elements.direccion.value='A'.repeat(largo);e.form.elements.tutor_domicilio.value='';
+        await e.submit();assert.equal(e.calls.length,largo===225?1:0);
+        if(largo===225) assert.equal(e.calls[0].tutor.domicilio.length,225);
+        else {
+            assert.equal(e.form.elements.direccion.value.length,226);
+            e.form.elements.tutor_domicilio.value='B'.repeat(225);await e.submit();
+            assert.equal(e.calls.length,1);assert.equal(e.calls[0].direccion.length,226);
+            assert.equal(e.calls[0].tutor.domicilio,'B'.repeat(225));
+        }
+    }
+});
+
+test('H02 CUD: alta opcional, pareja obligatoria, limites y fechas',async()=>{
+    for(const [numero,fecha,ok] of [['','',true],['   ','',true],['A'.repeat(20),'2027-01-01',true],
+        ['A','',false],['','2027-01-01',false],['A'.repeat(21),'2027-01-01',false],['A','2027-02-30',false]]) {
+        const e=entorno();e.form.elements.cud_numero.value=numero;e.form.elements.cud_vencimiento.value=fecha;
+        await e.submit();assert.equal(e.calls.length,ok?1:0,`${numero} ${fecha}`);
+        if(ok && !numero.trim()) {
+            assert.equal(e.calls[0].cud_numero,null);assert.equal(e.calls[0].cud_vencimiento,null);
+        }
+    }
+    const e=entorno();e.form.elements.cud_numero.value='';e.form.elements.cud_vencimiento.value='';
+    e.form.elements.cud_vencimiento.validity={badInput:true};
+    await e.submit();assert.equal(e.calls.length,0);
+});
+
+
+test('H14 H19: alta integral preserva nombres y rechaza espacios en ambos DNI',async()=>{
+    const e=entorno();await new Promise(r=>setImmediate(r));
+    const ui=leer('ui.js');const start=ui.indexOf('export function capitalizar(');
+    vm.runInContext(ui.slice(start,ui.indexOf('\n}',start)+2).replace('export ',''),e.ctx);
+    e.form.elements.nombre.value='McDonald';e.form.elements.apellido.value="O'Neill";
+    e.form.elements.tutor_nombre.value='DE LA CRUZ';e.form.elements.tutor_apellido.value="D'Angelo";
+    for(const field of ['dni','tutor_dni']) {
+        const previo=e.form.elements[field].value;e.form.elements[field].value=' 1234567';
+        await e.submit();assert.equal(e.calls.length,0);e.form.elements[field].value=previo;
+    }
+    await e.submit();assert.equal(e.calls.length,1);
+    assert.equal(e.calls[0].nombre,'McDonald');assert.equal(e.calls[0].apellido,"O'Neill");
+    assert.equal(e.calls[0].tutor.nombre,'DE LA CRUZ');assert.equal(e.calls[0].tutor.apellido,"D'Angelo");
 });

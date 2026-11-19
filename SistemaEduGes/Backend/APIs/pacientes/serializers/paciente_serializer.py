@@ -9,7 +9,9 @@ from APIs.validadores import validar_dni, ValidarNombreApellidoMixin, ValidarDom
 from pacientes.models import Parentesco
 from APIs.tutores.serializers import TutorEntradaSerializer, RelacionTutorEntradaSerializer
 from APIs.tutores.services import TutorService
+from APIs.tutores.serializers.tutor_entrada_serializer import TutorCreacionOReutilizacionSerializer
 from APIs.servicios.estado_entidad_service import EstadoEntidadService
+from APIs.servicios.errores_catalogo import CatalogoNoDisponible
 
 from pacientes.models.paciente_model import (
     Paciente,
@@ -131,6 +133,43 @@ class PacienteSerializer(ValidarDomicilioMixin, ValidarNombreApellidoMixin, seri
 
     mail = serializers.EmailField(max_length=50, allow_blank=True, allow_null=True, required=False)
 
+    def to_internal_value(self, data):
+        if isinstance(data, Mapping):
+            data = data.copy()
+            for campo in ('cud_numero', 'cud_vencimiento'):
+                if isinstance(data.get(campo), str) and not data[campo].strip():
+                    data[campo] = None
+        return super().to_internal_value(data)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self.instance is None:
+            estado = attrs.get('estado')
+            if estado is not None and estado.estado != EstadoEntidadService.ESTADO_ACTIVO:
+                raise serializers.ValidationError({
+                    'estado': 'El alta del paciente requiere el estado Activo.'
+                })
+            if estado is None:
+                try:
+                    attrs['estado'] = EstadoPaciente.objects.get(
+                        estado=EstadoEntidadService.ESTADO_ACTIVO
+                    )
+                except (EstadoPaciente.DoesNotExist, EstadoPaciente.MultipleObjectsReturned):
+                    raise CatalogoNoDisponible(
+                        'No se puede determinar el estado Activo del paciente. Contacte a administración.',
+                        'configuracion_catalogo',
+                    )
+        # Compatibilidad histórica: PATCH ajeno al CUD no lo revalida ni lo altera.
+        # Si se envía cualquier campo del CUD, el estado final debe ser coherente.
+        if self.instance is not None and not {'cud_numero', 'cud_vencimiento'} & attrs.keys():
+            return attrs
+        numero = attrs.get('cud_numero', getattr(self.instance, 'cud_numero', None))
+        vencimiento = attrs.get('cud_vencimiento', getattr(self.instance, 'cud_vencimiento', None))
+        if bool(numero and numero.strip()) != bool(vencimiento):
+            campo = 'cud_vencimiento' if numero and numero.strip() else 'cud_numero'
+            raise serializers.ValidationError({campo: 'Completá número y vencimiento del CUD juntos, o dejá ambos vacíos.'})
+        return attrs
+
     def validate_fecha_nacimiento(self, value):
         if value > timezone.localdate():
             raise serializers.ValidationError('La fecha de nacimiento no puede ser futura.')
@@ -161,6 +200,7 @@ class PacienteSerializer(ValidarDomicilioMixin, ValidarNombreApellidoMixin, seri
 
     class Meta:
         model = Paciente
+        extra_kwargs = {'dni': {'trim_whitespace': False}}
 
         fields = [
             'id_paciente',
@@ -208,7 +248,12 @@ class PacienteSerializer(ValidarDomicilioMixin, ValidarNombreApellidoMixin, seri
 
     def validate_obra_social(self, value):
 
-        estado_obra_social = value.estado.descripcion
+        estado_obra_social = getattr(getattr(value, 'estado', None), 'descripcion', None)
+
+        if estado_obra_social is None or not estado_obra_social.strip():
+            raise CatalogoNoDisponible(
+                'El estado de la obra social no tiene descripción. Contacte a administración.'
+            )
 
         if estado_obra_social.strip().lower() != 'activa':
             raise serializers.ValidationError(
@@ -315,22 +360,6 @@ class PacienteSerializer(ValidarDomicilioMixin, ValidarNombreApellidoMixin, seri
                 'profesional': 'El profesional responsable debe estar activo.'
             })
 
-        if 'estado' not in validated_data:
-
-            try:
-                estado_activo = EstadoPaciente.objects.get(
-                    estado='Activo'
-                )
-            except EstadoPaciente.DoesNotExist:
-                raise serializers.ValidationError({
-                    'estado': (
-                        'No existe el estado de paciente '
-                        '"Activo" en la base de datos.'
-                    )
-                })
-
-            validated_data['estado'] = estado_activo
-
         paciente = Paciente.objects.create(
             **validated_data
         )
@@ -365,7 +394,7 @@ class PacienteSerializer(ValidarDomicilioMixin, ValidarNombreApellidoMixin, seri
         return value
 
 
-class TutorAltaPacienteSerializer(TutorEntradaSerializer):
+class TutorAltaPacienteSerializer(TutorCreacionOReutilizacionSerializer):
     # Contrato exclusivo del tutor principal en el alta integral.
     telefono = serializers.CharField(max_length=30)
     parentesco_id = serializers.PrimaryKeyRelatedField(queryset=Parentesco.objects.all())

@@ -937,10 +937,9 @@ function prepararGestionTutores() {
                 $('add-tutor-nombre').value = t.nombre || '';
                 $('add-tutor-apellido').value = t.apellido || '';
                 $('add-tutor-dni').value = t.dni || '';
-                if (t.telefono) $('add-tutor-telefono').value = t.telefono;
-                if (t.movil) $('add-tutor-movil').value = t.movil;
-                if (t.mail) $('add-tutor-mail').value = t.mail;
-                if (t.domicilio) $('add-tutor-domicilio').value = t.domicilio;
+                for (const campo of ['telefono', 'movil', 'mail', 'domicilio']) {
+                    $('add-tutor-' + campo).value = t[campo] || '';
+                }
 
                 const selectParentesco = $('add-tutor-parentesco');
                 const primerParentesco = (t.relaciones || [])[0]?.parentesco?.id;
@@ -986,7 +985,7 @@ function prepararGestionTutores() {
         const datos = {
             nombre: capitalizar(campo('nombre')),
             apellido: capitalizar(campo('apellido')),
-            dni: campo('dni'),
+            dni: formAgregar.elements.dni.value,
             parentesco_id: Number(campo('parentesco_id')) || null,
             telefono: campo('telefono'),
             movil: campo('movil') || null,
@@ -1005,7 +1004,6 @@ function prepararGestionTutores() {
             if (datos[campo] && !/\p{L}/u.test(datos[campo])) errores[campo] = ['Debe contener al menos una letra.'];
         }
         if ($('add-tutor-parentesco').disabled || !datos.parentesco_id) errores.parentesco_id = ['Seleccioná el parentesco.'];
-        if (!datos.telefono) errores.telefono = ['Indicá un teléfono.'];
         if (!datos.mail) {
             errores.mail = ['Indicá el mail.'];
         } else if (!formAgregar.elements.mail.checkValidity()) {
@@ -1013,6 +1011,13 @@ function prepararGestionTutores() {
         }
         if (!datos.domicilio) errores.domicilio = ['Indicá el domicilio.'];
         if (errorDomicilio(datos.domicilio)) errores.domicilio = [errorDomicilio(datos.domicilio)];
+
+        if (typeof tutoresDisponibles !== 'undefined' && tutoresDisponibles?.some(t => String(t.dni) === datos.dni)) {
+            for (const campo of ['nombre', 'apellido', 'telefono', 'movil', 'mail', 'domicilio']) {
+                delete errores[campo];
+                delete datos[campo];
+            }
+        }
 
         guardar({
             formulario: formAgregar,
@@ -1038,6 +1043,10 @@ function prepararGestionTutores() {
             mail: campo('mail'),
             domicilio: campo('domicilio'),
         };
+
+        if (campo('telefono') === formEditar.elements.telefono?.dataset?.original) {
+            delete datos.telefono;
+        }
 
         const errores = {};
         if (!datos.nombre) errores.nombre = ['Indicá el nombre.'];
@@ -1130,6 +1139,7 @@ function prepararGestionTutores() {
                 apellido: capitalizar($('edit-tutor-apellido').value.trim()),
             };
             $('edit-tutor-telefono').value = btnEditar.dataset.tutorTelefono;
+            $('edit-tutor-telefono').dataset.original = $('edit-tutor-telefono').value.trim();
             $('edit-tutor-movil').value = btnEditar.dataset.tutorMovil;
             $('edit-tutor-mail').value = btnEditar.dataset.tutorMail;
             mailTutorOriginal = $('edit-tutor-mail').value.trim();

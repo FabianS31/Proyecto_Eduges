@@ -113,14 +113,14 @@ class SeguridadCSRFTests(unittest.TestCase):
         self.otro_parentesco = Parentesco.objects.create(descripcion='Otro parentesco')
         self.tutor = Tutor.objects.create(
             nombre='Tutor', apellido='Ficticio', dni='20999999',
-            mail='ficticio@example.invalid', domicilio='Domicilio ficticio',
+            mail='ficticio@example.invalid', domicilio='Domicilio ficticio', telefono='123',
         )
         self.relacion = PacienteTutor.objects.create(
             tutor=self.tutor, paciente=self.pacientes['B'], parentesco=self.parentesco,
             responsable_principal=False, activo=True,
         )
         self.url = f'/api/tutores/relaciones/{self.relacion.pk}/'
-        principal = Tutor.objects.create(nombre='Principal', apellido='Ficticio', dni='TUT-PRINCIPAL')
+        principal = Tutor.objects.create(nombre='Principal', apellido='Ficticio', dni='TUT-PRINCIPAL', telefono='123')
         self.principal = PacienteTutor.objects.create(
             tutor=principal, paciente=self.pacientes['B'], parentesco=self.parentesco,
             responsable_principal=True, activo=True,

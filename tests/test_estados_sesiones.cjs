@@ -4,7 +4,7 @@ const inicio=src.indexOf('function accionesTurno('), fin=src.indexOf('\n}',inici
 function acciones(diagnostico,pasado=true,estado=2){
  const ctx=vm.createContext({usuarioActual:{},ESTADO_TURNO:{PENDIENTE:1,CONFIRMADO:2,AUSENTE:5,REALIZADO:3},
   idEstado:t=>t.estado,puedeConfirmarTurno:()=>true,puedeMarcarAsistencia:()=>true,
-  yaTermino:()=>pasado,yaEmpezo:()=>pasado,esProfesional:()=>true,esAdministrador:()=>false,
+  yaTermino:()=>pasado,yaEmpezo:()=>pasado,originalNoIniciado:()=>!pasado,esProfesional:()=>true,esAdministrador:()=>false,
   tienePermiso:()=>false,PERMISO:{},puedeEditar:()=>true,estaActivo:()=>true,hoyISO:()=> '2026-11-12',
   boton:accion=>accion});
  vm.runInContext(src.slice(inicio,fin),ctx);

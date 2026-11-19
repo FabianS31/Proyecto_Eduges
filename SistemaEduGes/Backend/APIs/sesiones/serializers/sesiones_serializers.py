@@ -9,6 +9,14 @@ class TurnosPendientesFiltroSerializer(serializers.Serializer):
     fecha_hasta = serializers.DateField(required=False)
     paciente_id = serializers.IntegerField(required=False, min_value=1)
 
+    def validate(self, attrs):
+        desde, hasta = attrs.get('fecha_desde'), attrs.get('fecha_hasta')
+        if desde is not None and hasta is not None and desde > hasta:
+            raise serializers.ValidationError({
+                'fecha_hasta': 'La fecha Desde no puede ser posterior a la fecha Hasta.'
+            })
+        return attrs
+
 
 class HistorialSesionFiltroSerializer(serializers.Serializer):
     paciente_id = serializers.IntegerField(min_value=1)

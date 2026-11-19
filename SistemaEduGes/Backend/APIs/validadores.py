@@ -5,6 +5,28 @@ from django.core.validators import validate_email
 from rest_framework import serializers
 
 
+def validar_password_nueva(value):
+    """Validar sin transformar el secreto; los límites pertenecen a cada flujo."""
+    if not value.strip():
+        raise serializers.ValidationError('La contraseña no puede contener solamente espacios.')
+    if value != value.strip():
+        raise serializers.ValidationError('La contraseña no puede comenzar ni terminar con espacios en blanco.')
+    return value
+
+
+def identificador_positivo(value):
+    """Identificador int4 positivo; no acepta coerciones de bool o float."""
+    if type(value) is int:
+        numero = value
+    elif isinstance(value, str) and value.isdecimal():
+        numero = int(value)
+    else:
+        raise ValueError('Identificador invalido')
+    if not 1 <= numero <= 2147483647:
+        raise ValueError('Identificador fuera de rango')
+    return numero
+
+
 def validar_dni(value):
     if not re.fullmatch(r'[0-9]{7,8}', value):
         raise serializers.ValidationError('El DNI debe contener exactamente 7 u 8 dígitos, sin puntos ni espacios interiores.')

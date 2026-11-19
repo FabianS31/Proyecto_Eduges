@@ -18,7 +18,7 @@ import { catalogos, pacientes, profesionales, tutores } from '../endpoints.js';
 import { obtenerUsuario } from '../layout.js';
 import { hoyISO } from '../fechas.js';
 import { buscarEnLista, crearCombobox } from './combobox.js';
-import { errorDomicilio, guardar, prepararModal, mostrarErroresDelFormulario } from './formularios.js';
+import { validarCud, validarCamposPreventivos, errorDomicilio, guardar, prepararModal, mostrarErroresDelFormulario } from './formularios.js';
 import { capitalizar, notificar } from '../ui.js';
 import { coincideBusqueda } from '../texto.js';
 
@@ -115,7 +115,7 @@ function cargarOpcionesParentescos(select) {
     return cargarParentescos(select, $('tutor-parentesco-aviso'), $('tutor-parentesco-reintentar'));
 }
 
-function validar(datos, formulario) {
+function validar(datos, formulario, reutilizarTutor = false) {
     const errores = {};
     const obligatorio = (nombre, valor, mensaje) => {
         if (!valor) {
@@ -144,8 +144,12 @@ function validar(datos, formulario) {
             : 'Indicá la obra social.'];
     }
     obligatorio('numero_afiliado', datos.numero_afiliado, 'Indicá el número de afiliado.');
-    obligatorio('cud_numero', datos.cud_numero, 'Indicá el número de CUD.');
-    obligatorio('cud_vencimiento', datos.cud_vencimiento, 'Indicá el vencimiento del CUD.');
+    Object.assign(errores, validarCamposPreventivos(datos, {
+        cud_numero: { max: 20 }, cud_vencimiento: { tipo: 'fecha' },
+    }), validarCud(datos));
+    if (formulario.elements.cud_vencimiento.validity?.badInput) {
+        errores.cud_vencimiento = ['Ingresá una fecha válida.'];
+    }
     if (!datos.consentimiento) {
         errores.consentimiento = ['Sin el consentimiento firmado no se puede registrar al paciente.'];
     }
@@ -169,6 +173,10 @@ function validar(datos, formulario) {
     if (errorDomicilio(datos.direccion)) errores.direccion = [errorDomicilio(datos.direccion)];
     if (errorDomicilio(datos.tutor.domicilio)) errores.tutor_domicilio = [errorDomicilio(datos.tutor.domicilio)];
 
+    if ([...datos.tutor.domicilio].length > 225) {
+        errores.tutor_domicilio = ['El domicilio del tutor supera los 225 caracteres. Si se copió la dirección del paciente, ingresá un domicilio de hasta 225 caracteres para el tutor; la dirección del paciente se conservará completa.'];
+    }
+
     if (esAdministrativo) {
         obligatorio('profesional', datos.profesional, 'Seleccioná el profesional responsable.');
     }
@@ -181,6 +189,11 @@ function validar(datos, formulario) {
     for (const campo of ['nombre', 'apellido']) {
         if (datos.tutor[campo] && !/\p{L}/u.test(datos.tutor[campo])) {
             errores['tutor_' + campo] = ['Debe contener al menos una letra.'];
+        }
+    }
+    if (reutilizarTutor) {
+        for (const campo of ['nombre', 'apellido', 'telefono', 'movil', 'mail', 'domicilio']) {
+            delete errores['tutor_' + campo];
         }
     }
     return errores;
@@ -209,10 +222,9 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
                 $('tutor-nombre').value = t.nombre || '';
                 $('tutor-apellido').value = t.apellido || '';
                 $('tutor-dni').value = t.dni || '';
-                if (t.telefono) $('tutor-telefono').value = t.telefono;
-                if (t.movil) $('tutor-movil').value = t.movil;
-                if (t.mail) $('tutor-mail').value = t.mail;
-                if (t.domicilio) $('tutor-domicilio').value = t.domicilio;
+                for (const campo of ['telefono', 'movil', 'mail', 'domicilio']) {
+                    $('tutor-' + campo).value = t[campo] || '';
+                }
 
                 const primerParentesco = (t.relaciones || [])[0]?.parentesco?.id;
                 if (primerParentesco && !selectParentesco.value) {
@@ -304,20 +316,20 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
         const datos = {
             nombre: capitalizar(campo('nombre')),
             apellido: capitalizar(campo('apellido')),
-            dni: campo('dni'),
+            dni: formulario.elements.dni.value,
             fecha_nacimiento: campo('fecha_nacimiento'),
             mail: campo('mail') || null,
             direccion: campo('direccion'),
             obra_social: obraSocial.valor(),
             numero_afiliado: campo('numero_afiliado'),
             cud_numero: campo('cud_numero') || null,
-            cud_vencimiento: campo('cud_vencimiento'),
+            cud_vencimiento: campo('cud_vencimiento') || null,
             consentimiento: formulario.elements.consentimiento.checked,
             profesional: Number(campo('profesional')) || null,
             tutor: {
                 nombre: capitalizar(campo('tutor_nombre')),
                 apellido: capitalizar(campo('tutor_apellido')),
-                dni: campo('tutor_dni'),
+                dni: formulario.elements.tutor_dni.value,
                 parentesco_id: Number(campo('tutor_parentesco_id')) || null,
                 telefono: campo('tutor_telefono'),
                 movil: campo('tutor_movil') || null,
@@ -327,12 +339,22 @@ export function prepararFormularioPaciente({ alGuardar } = {}) {
             },
         };
 
+        const reutilizarTutor = tutoresDisponibles?.some(t => String(t.dni) === datos.tutor.dni) === true;
+        const errores = validar(datos, formulario, reutilizarTutor);
+        if (reutilizarTutor) {
+            const tutor = tutoresDisponibles.find(t => String(t.dni) === datos.tutor.dni);
+            if (!String(tutor.telefono || '').trim()) {
+                errores.tutor_telefono = ['El tutor seleccionado no tiene teléfono. Completalo mediante una edición autorizada antes de designarlo principal.'];
+            }
+            const { dni, parentesco_id, responsable_principal } = datos.tutor;
+            datos.tutor = { dni, parentesco_id, responsable_principal };
+        }
         try {
             await guardar({
                 formulario,
                 contenedorErrores,
                 boton: $('btn-guardar-paciente'),
-                errores: validar(datos, formulario),
+                errores,
                 enviar: async () => {
                     const { profesional, ...alta } = datos;
                     try {

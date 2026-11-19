@@ -176,6 +176,11 @@ class IntegridadClinicaTests(unittest.TestCase):
         r=self.enviar('B','patch',self.url+'estado/',{'ID_EstadoTurno':ausente.pk})
         self.assertEqual(r.status_code,200,r.content)
         self.f.turno.estado=self.f.estados_turno['Pendiente']; self.f.turno.save()
+        antes=self.f.snapshot()
+        self.assertEqual(self.enviar('admin','delete',self.url,{}).status_code,400)
+        self.assertEqual(self.f.snapshot(),antes)
+        self.f.turno.fecha=s.timezone.localdate()+timedelta(days=1)
+        self.f.turno.save(update_fields=['fecha'])
         self.assertEqual(self.enviar('admin','delete',self.url,{}).status_code,200)
 
     def test_inhabilitacion_con_sesion_futura_revierte_todo(self):

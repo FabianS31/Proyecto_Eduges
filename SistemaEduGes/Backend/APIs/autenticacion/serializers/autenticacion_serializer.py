@@ -1,5 +1,6 @@
 from django.contrib.auth.hashers import check_password
 from rest_framework import serializers
+from APIs.validadores import validar_password_nueva
 
 from usuarios.models.usuario_model import Usuario
 
@@ -8,7 +9,9 @@ class LoginSerializer(serializers.Serializer):
 
     usuario = serializers.CharField()
 
-    password = serializers.CharField()
+    # Compatibilidad: el login siempre comprobó el valor recortado.
+    # No agregar un segundo intento con otra representación de la credencial.
+    password = serializers.CharField(trim_whitespace=True, write_only=True)
 
     recordar = serializers.BooleanField(default=False)
 
@@ -16,11 +19,11 @@ class LoginSerializer(serializers.Serializer):
 class CambiarPasswordSerializer(serializers.Serializer):
 
     password_actual = serializers.CharField(
-        write_only=True
+        write_only=True, trim_whitespace=True
     )
 
     password_nueva = serializers.CharField(
-        write_only=True
+        write_only=True, trim_whitespace=False, validators=[validar_password_nueva]
     )
 
     def validate_password_actual(self, value):

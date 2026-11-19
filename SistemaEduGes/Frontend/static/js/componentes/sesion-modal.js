@@ -79,11 +79,42 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
     let listaPendientesActual = [];
     let peticionCargaActual = 0;
 
+    function validarFechasPendientes() {
+        const desde = $('pend-fecha-desde');
+        const hasta = $('pend-fecha-hasta');
+        for (const campo of [desde, hasta]) {
+            if (!campo) continue;
+            campo.setCustomValidity('');
+            const valor = campo.value;
+            if (campo.validity?.badInput || (valor &&
+                (!/^\d{4}-\d{2}-\d{2}$/.test(valor) ||
+                 !Number.isFinite(Date.parse(valor)) ||
+                 new Date(valor).toISOString().slice(0, 10) !== valor))) {
+                campo.setCustomValidity('Ingresá una fecha válida.');
+                campo.reportValidity();
+                return false;
+            }
+        }
+        if (desde?.value && hasta?.value && desde.value > hasta.value) {
+            hasta.setCustomValidity('La fecha Desde no puede ser posterior a la fecha Hasta.');
+            hasta.reportValidity();
+            return false;
+        }
+        return true;
+    }
+    for (const id of ['pend-fecha-desde', 'pend-fecha-hasta']) {
+        $(id)?.addEventListener('input', () => {
+            $('pend-fecha-desde')?.setCustomValidity('');
+            $('pend-fecha-hasta')?.setCustomValidity('');
+        });
+    }
+
     const pacientePendienteInput = $('pend-paciente');
     // Consultar el mismo alcance autorizado, incluidos los turnos históricos
     // propios. No usar un padrón general ni mantener un catálogo en caché.
     const pacientePendiente = pacientePendienteInput ? crearCombobox(pacientePendienteInput, {
         buscar: async (texto) => {
+            if (!validarFechasPendientes()) return [];
             const turnos = await sesiones.pendientes({
                 fecha_desde: $('pend-fecha-desde')?.value || undefined,
                 fecha_hasta: $('pend-fecha-hasta')?.value || undefined,
@@ -350,7 +381,7 @@ export function prepararModalSesion({ usuario, alGuardar } = {}) {
     // Gestión de Turnos Pendientes de Registro (/api/sesiones/pendientes/)
     // ------------------------------------------------------------
     async function cargarPendientes() {
-        if (!modalPendientesElemento) return;
+        if (!modalPendientesElemento || !validarFechasPendientes()) return;
         const spinner = $('pendientes-cargando');
         const tablaWrap = $('pendientes-tabla-wrap');
         const vacio = $('pendientes-vacio');

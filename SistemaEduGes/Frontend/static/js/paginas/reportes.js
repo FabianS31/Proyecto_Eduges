@@ -510,6 +510,14 @@ async function consultarReporte() {
         return;
     }
 
+    if (estado.tipo === 'turnos' && estado.usuario?.rol?.nombre !== 'Administrador'
+        && [...($('filtro-turno-trabajo')?.value.trim() ?? '')].length > 200) {
+        const mensaje = 'El filtro Trabajo admite hasta 200 caracteres.';
+        notificar(mensaje, 'error');
+        renderizar($('reporte-estado'), bloqueError(mensaje));
+        return;
+    }
+
     estado.cargando = true;
     const btnSubmit = $('btn-aplicar-filtros');
     botonCargando(btnSubmit, true, 'Consultando…');

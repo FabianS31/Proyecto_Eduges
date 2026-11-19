@@ -26,7 +26,10 @@ class ConsultasTurnoMixin:
             Turno.objects
             .filter(
                 profesional_id=turno.profesional_id,
-                fecha=turno.fecha,
+                fecha__range=(
+                    (inicio - timedelta(minutes=cls.DURACION_MINUTOS)).date(),
+                    fin.date(),
+                ),
                 estado__estado__in=cls.ESTADOS_EDITABLES,
             )
             .exclude(pk=turno.pk)

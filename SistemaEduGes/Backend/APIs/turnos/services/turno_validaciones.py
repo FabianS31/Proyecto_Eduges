@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from django.db.models import Q
 from django.utils import timezone
@@ -11,6 +12,25 @@ from profesionales.models.asignacion_model import AsignacionProfesional
 
 
 class ValidacionesTurnoMixin:
+    @staticmethod
+    def inicio_institucional(turno):
+        return datetime.combine(turno.fecha, turno.hora.replace(tzinfo=None),
+                                tzinfo=ZoneInfo('America/Argentina/Buenos_Aires'))
+
+    @staticmethod
+    def ahora_institucional():
+        ahora = timezone.now()
+        if timezone.is_naive(ahora):
+            ahora = timezone.make_aware(ahora, timezone.get_default_timezone())
+        return ahora
+
+    @classmethod
+    def validar_original_no_iniciado(cls, turno):
+        if cls.ahora_institucional() >= cls.inicio_institucional(turno):
+            raise serializers.ValidationError({
+                'detail': 'No se puede cancelar ni reprogramar el turno porque ya llegó su hora de inicio.'
+            })
+
     @staticmethod
     def obtener_profesional_usuario(usuario):
         try:
@@ -179,7 +199,10 @@ class ValidacionesTurnoMixin:
 
         turnos_existentes = (
             Turno.objects
-            .filter(fecha=fecha)
+            .filter(fecha__range=(
+                (inicio - timedelta(minutes=cls.DURACION_MINUTOS)).date(),
+                fin.date(),
+            ))
             .filter(
                 Q(profesional=profesional)
                 | Q(paciente=paciente)
@@ -233,9 +256,6 @@ class ValidacionesTurnoMixin:
         for indice in range(len(turnos_ordenados) - 1):
             turno_actual = turnos_ordenados[indice]
             siguiente_turno = turnos_ordenados[indice + 1]
-
-            if turno_actual['fecha'] != siguiente_turno['fecha']:
-                continue
 
             inicio_actual = datetime.combine(
                 turno_actual['fecha'],

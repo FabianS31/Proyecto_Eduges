@@ -122,6 +122,13 @@ class TurnoSerializer(serializers.ModelSerializer):
     tiene_conflicto_horario = serializers.SerializerMethodField()
 
     conflictos_horario = serializers.SerializerMethodField()
+    ventana_modificacion = serializers.SerializerMethodField()
+
+    def get_ventana_modificacion(self, obj):
+        return {
+            'inicio': TurnoService.inicio_institucional(obj).isoformat(),
+            'ahora': TurnoService.ahora_institucional().isoformat(),
+        }
 
     class Meta:
         model = Turno
@@ -136,6 +143,7 @@ class TurnoSerializer(serializers.ModelSerializer):
             'diagnostico',
             'tiene_conflicto_horario',
             'conflictos_horario',
+            'ventana_modificacion',
             'turnos',
         ]
 

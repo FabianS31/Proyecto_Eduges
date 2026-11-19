@@ -14,6 +14,10 @@ class TienePermiso(BasePermission):
         if not request.user:
             return False
 
+        nombre_rol = getattr(getattr(request.user, 'rol', None), 'rol', None)
+        if not nombre_rol or not nombre_rol.strip():
+            return False
+
         # El SuperAdministrador tiene acceso total.
         if (
             request.user.rol

@@ -1,5 +1,5 @@
 import { catalogos, pacientes } from '../endpoints.js';
-import { errorDomicilio, prepararModal, guardar } from './formularios.js';
+import { validarCud, validarCamposPreventivos, errorDomicilio, prepararModal, guardar } from './formularios.js';
 import { notificarError } from '../ui.js';
 
 const CAMPOS = ['nombre', 'apellido', 'dni', 'fecha_nacimiento', 'direccion', 'mail',
@@ -32,18 +32,32 @@ export function prepararEdicionPaciente({ alGuardar, alCerrar }) {
         const actual = paciente;
         const cambios = {};
         for (const campo of CAMPOS) {
-            const texto = formulario.elements[campo].value.trim();
+            const entrada = formulario.elements[campo].value;
+            const previo = campo === 'obra_social' ? String(actual.obra_social.id) : String(actual[campo] ?? '');
+            if (entrada === previo) continue;
+            const texto = campo === 'dni' ? entrada : entrada.trim();
             const valor = campo === 'obra_social' ? Number(texto) : texto || (
                 ['mail', 'cud_numero', 'cud_vencimiento'].includes(campo) ? null : '');
             const original = campo === 'obra_social' ? actual.obra_social.id : actual[campo] ?? null;
             if (valor !== original) cambios[campo] = valor;
         }
         guardando = true;
-        const validaciones = {};
+        const validaciones = validarCamposPreventivos(cambios, {
+            nombre: { requerido: true, max: 100 }, apellido: { requerido: true, max: 100 },
+            dni: { requerido: true, max: 20 }, direccion: { requerido: true, max: 255 },
+            numero_afiliado: { requerido: true, max: 20 }, mail: { max: 50, tipo: 'email' },
+            cud_numero: { max: 20 }, cud_vencimiento: { tipo: 'fecha' },
+            fecha_nacimiento: { requerido: true, tipo: 'nacimiento' },
+            obra_social: { requerido: true },
+        });
         for (const campo of ['nombre', 'apellido']) {
             if (Object.hasOwn(cambios, campo) && !/\p{L}/u.test(cambios[campo])) {
                 validaciones[campo] = ['Debe contener al menos una letra; no puede ser solo números o símbolos.'];
             }
+        }
+        Object.assign(validaciones, validarCud(cambios, actual));
+        if (formulario.elements.cud_vencimiento.validity?.badInput) {
+            validaciones.cud_vencimiento = ['Ingresá una fecha válida.'];
         }
         if (Object.hasOwn(cambios, 'dni') && !/^[0-9]{7,8}$/.test(cambios.dni)) {
             validaciones.dni = ['El DNI debe tener 7 u 8 números, sin puntos.'];

@@ -61,7 +61,7 @@ class CorreccionesTests(base.AltaTests):
                 self.assertEqual(self.f.snapshot(), antes)
 
     def test_reutilizacion_historica_autorizada_no_sobrescribe_contactos(self):
-        s.Tutor.objects.filter(pk=self.f.tutor.pk).update(telefono=None, mail=None, domicilio=None)
+        s.Tutor.objects.filter(pk=self.f.tutor.pk).update(telefono='123', mail=None, domicilio=None)
         original = s.Tutor.objects.get(pk=self.f.tutor.pk).__dict__.copy()
         for indice, actor in enumerate(('B', 'admin', 'super')):
             datos = self.datos()

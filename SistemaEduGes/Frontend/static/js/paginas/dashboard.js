@@ -22,11 +22,13 @@ import {
     estaActivo,
     estaCancelado,
     fechaMaximaTurno,
+    hoyAgendamiento,
     formatearHora,
     listaTurnos,
     mensajeSinPacientes,
     nombrePaciente,
     obtenerTurnos,
+    originalNoIniciado,
     prepararTurnos,
     proximaDeHoy,
     sugerirPacientes,
@@ -247,7 +249,7 @@ function mostrarCentro() {
 // Dashboard del profesional: bloques
 // ------------------------------------------------------------
 function botonAgendar(fecha) {
-    const sePuede = fecha >= hoyISO() && fecha <= fechaMaximaTurno();
+    const sePuede = fecha >= hoyAgendamiento() && fecha <= fechaMaximaTurno();
     return sePuede && tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR)
         ? html`<button type="button" class="eg-btn" data-accion="agendar">${icono('add_circle')}Agendar un turno</button>`
         : null;
@@ -276,7 +278,7 @@ function mostrarProxima(turno) {
         return;
     }
     const paciente = nombrePaciente(turno);
-    const puedeReprogramar = tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR) && estaActivo(turno);
+    const puedeReprogramar = tienePermiso(estado.usuario, PERMISO.TURNOS_EDITAR) && estaActivo(turno) && originalNoIniciado(turno);
     renderizar($('proxima-cuando'), html`<span class="eg-chip eg-chip--dark">${textoFalta(turno)}</span>`);
     renderizar($('proxima-cuerpo'), html`
         <div class="eg-next__who">

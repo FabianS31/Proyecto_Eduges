@@ -104,17 +104,10 @@ export function enlaceTelefono(telefono) {
     return html`<a href="tel:${telefono.replace(/[^\d+]/g, '')}" class="link-secondary">${telefono}</a>`;
 }
 
-// Capitaliza texto a Title Case (ej.: "juan pablo pérez" → "Juan Pablo Pérez")
+// Compatibilidad con los formularios: conserva la escritura de nombres personales.
+// No adivinar mayusculas ni separar/aplanar palabras o signos del nombre.
 export function capitalizar(texto) {
-    if (!texto) {
-        return '';
-    }
-    return String(texto)
-        .trim()
-        .toLowerCase()
-        .split(/\s+/)
-        .map((palabra) => palabra.charAt(0).toUpperCase() + palabra.slice(1))
-        .join(' ');
+    return String(texto ?? '').trim();
 }
 
 // { nombre: 'Lucas', apellido: 'Pérez' } → "Lucas Pérez" o "Pérez, Lucas"

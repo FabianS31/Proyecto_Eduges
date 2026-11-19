@@ -139,6 +139,80 @@ class EdicionesTests(unittest.TestCase):
                 self.assertEqual(r.status_code, 403)
                 self.assertEqual(self.f.snapshot(), antes)
 
+    def test_h08_campos_invalidos_no_escriben(self):
+        c = self.f.login('A')
+        for campo, valores in {
+            'nombre': ['', '   ', 'A'*101], 'apellido': ['', '   ', 'A'*101],
+            'direccion': ['', '   ', 'A'*256], 'numero_afiliado': ['', '   ', 'A'*21],
+            'mail': ['incorrecto', 'a@dominio', 'a'*39+'@example.com'],
+            'fecha_nacimiento': ['', '2099-01-01', '2025-02-30'],
+            'cud_vencimiento': ['2025-02-30'], 'cud_numero': ['A'*21],
+        }.items():
+            for valor in valores:
+                antes = self.f.snapshot()
+                r = self.patch(c, self.url, {campo: valor})
+                self.assertEqual(r.status_code, 400, (campo, r.content))
+                self.assertEqual(self.f.snapshot(), antes)
+        for campo, valor in dict(nombre='A'*100, apellido='A'*100, direccion='A'*255,
+                numero_afiliado='A'*20, cud_numero='A'*20, mail='a'*38+'@example.com',
+                fecha_nacimiento='2012-02-29').items():
+            datos = {campo: valor}
+            if campo == 'cud_numero':
+                datos['cud_vencimiento'] = '2027-01-01'
+            self.assertEqual(self.patch(c, self.url, datos).status_code, 200, campo)
+
+    def test_h08_h09_obra_limites_y_formatos(self):
+        c = self.f.login('admin')
+        for campo, valido, invalido in [
+            ('nombre', 'A'*150, 'A'*151), ('contacto', 'A'*150, 'A'*151),
+            ('mail', 'a'*138+'@example.com', 'a'*139+'@example.com'),
+            ('web', 'https://example.com/'+'a'*235, 'https://example.com/'+'a'*236),
+        ]:
+            self.assertEqual(self.patch(c, self.os_url, {campo: valido}).status_code, 200, campo)
+            antes = self.f.snapshot()
+            self.assertEqual(self.patch(c, self.os_url, {campo: invalido}).status_code, 400, campo)
+            self.assertEqual(self.f.snapshot(), antes)
+        for campo, valor in [('nombre','   '), ('mail','invalido'), ('web','https://')]:
+            antes = self.f.snapshot()
+            self.assertEqual(self.patch(c, self.os_url, {campo: valor}).status_code, 400)
+            self.assertEqual(self.f.snapshot(), antes)
+
+    def test_h08_historicos_sin_cambios_problematicos(self):
+        soporte.Paciente.objects.filter(pk=self.paciente.pk).update(
+            mail='invalido', fecha_nacimiento=date(2099,1,1), direccion='A'*256)
+        self.assertEqual(self.patch(self.f.login('A'), self.url, {'nombre':'Nuevo'}).status_code, 200)
+        self.paciente.refresh_from_db()
+        self.assertEqual(self.paciente.mail, 'invalido')
+        self.assertEqual(self.paciente.direccion, 'A'*256)
+        soporte.ObraSocial.objects.filter(pk=self.obra.pk).update(mail='invalido',web='invalido')
+        self.assertEqual(self.patch(self.f.login('admin'), self.os_url, {'nombre':'Nueva'}).status_code, 200)
+
+
+    def test_h02_cud_patch_final_e_historicos(self):
+        c = self.f.login('A')
+        for numero, fecha, cambios, esperado in [
+            (None, None, {'cud_numero': 'N'}, 400),
+            (None, None, {'cud_vencimiento': '2027-01-01'}, 400),
+            ('N', date(2027,1,1), {'cud_numero': None}, 400),
+            ('N', date(2027,1,1), {'cud_vencimiento': None}, 400),
+            ('N', date(2027,1,1), {'cud_numero': None, 'cud_vencimiento': None}, 200),
+            ('N', date(2027,1,1), {'cud_numero': 'Nuevo'}, 200),
+            ('N', None, {'nombre': 'Otro'}, 200),
+            (None, date(2027,1,1), {'nombre': 'Otro'}, 200),
+            ('N', None, {'cud_numero': 'Nuevo'}, 400),
+            ('N', None, {'cud_vencimiento': '2027-01-01'}, 200),
+            ('N', None, {'cud_numero': ''}, 200),
+        ]:
+            soporte.Paciente.objects.filter(pk=self.paciente.pk).update(cud_numero=numero,cud_vencimiento=fecha)
+            antes = self.f.snapshot()
+            r = self.patch(c, self.url, cambios)
+            self.assertEqual(r.status_code, esperado, r.content)
+            if esperado == 400:
+                self.assertEqual(self.f.snapshot(), antes)
+                self.assertTrue({'cud_numero','cud_vencimiento'} & r.json().keys())
+            elif 'nombre' in cambios:
+                self.paciente.refresh_from_db()
+                self.assertEqual((self.paciente.cud_numero,self.paciente.cud_vencimiento),(numero,fecha))
 
 if __name__ == '__main__':
     unittest.main()

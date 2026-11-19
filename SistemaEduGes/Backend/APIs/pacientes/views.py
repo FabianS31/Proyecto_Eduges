@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from pacientes.models.paciente_model import Paciente
+from pacientes.models.paciente_model import Paciente, EstadoPaciente
 from pacientes.models import PacienteTutor
 from profesionales.models.profesional_model import Profesional
 from profesionales.models.asignacion_model import (
@@ -20,6 +20,19 @@ from APIs.servicios.estado_entidad_service import (
 )
 
 from .serializers.paciente_serializer import PacienteSerializer, PacienteEdicionSerializer, PacienteAltaSerializer
+
+
+def _id_filtro(valor):
+    """ID positivo de AutoField; nunca convertir Unicode no decimal ni desbordar."""
+    if not isinstance(valor, str) or not valor.isdigit():
+        return None
+    try:
+        numero = int(valor)
+    except ValueError:
+        # isdigit también admite caracteres como ²; int no los convierte.
+        # Incluye el límite de seguridad de Python para cadenas enormes.
+        return None
+    return numero if 0 < numero <= 2147483647 else None
 
 
 class PacienteDetailView(APIView):
@@ -201,17 +214,25 @@ class PacienteListView(APIView):
             )
 
         if estado:
-            if estado.isdigit():
+            if estado.isnumeric() or estado.startswith(('-', '+')):
+                estado_id = _id_filtro(estado)
+                if estado_id is None:
+                    return Response({'detail': 'El filtro estado debe contener un ID positivo válido o un nombre de estado.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
                 pacientes = pacientes.filter(
-                    estado_id=int(estado)
+                    estado_id=estado_id
                 )
             else:
+                if not EstadoPaciente.objects.filter(estado__iexact=estado).exists():
+                    return Response({'detail': 'El filtro estado debe contener un ID positivo válido o un nombre de estado existente.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
                 pacientes = pacientes.filter(
                     estado__estado__iexact=estado
                 )
 
         if obra_social:
-            if not obra_social.isdigit():
+            obra_social_id = _id_filtro(obra_social)
+            if obra_social_id is None:
                 return Response(
                     {
                         'detail': (
@@ -223,7 +244,7 @@ class PacienteListView(APIView):
                 )
 
             pacientes = pacientes.filter(
-                obra_social_id=int(obra_social)
+                obra_social_id=obra_social_id
             )
 
         pacientes = pacientes.order_by(

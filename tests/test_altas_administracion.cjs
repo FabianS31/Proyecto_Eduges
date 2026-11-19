@@ -119,3 +119,31 @@ test('profesional: catálogo vacío o fallido nunca vuelve al ID fijo ni conserv
         assert.equal(e.node('nuevo-prof-especialidad').value, '');
     }
 });
+
+test('H09: administrador admite 100 caracteres y rechaza 101',async()=>{
+    for(const largo of [100,101]) {
+        const e=entorno();
+        e.node('nuevo-usuario-nombre').value='a'.repeat(largo);
+        e.node('nuevo-usuario-password').value='ClaveFicticia123';
+        e.node('nuevo-usuario-password-confirm').value='ClaveFicticia123';
+        vm.runInContext('prepararModalNuevoUsuario()',e.ctx);
+        await e.node('form-nuevo-usuario').handlers.submit({preventDefault(){}});
+        assert.equal(e.calls.length,largo===100?1:0);
+    }
+});
+
+
+test('H14 H19: alta profesional conserva escritura y rechaza DNI sin recortar', async()=>{
+    const ui=leer('ui.js');const start=ui.indexOf('export function capitalizar(');
+    for(const apellido of ['McDonald',"O'Neill",'DE LA CRUZ']) {
+        const e=profesional();
+        vm.runInContext(ui.slice(start,ui.indexOf('\n}',start)+2).replace('export ',''),e.ctx);
+        e.ctx.catalog=async()=>[{id:47,nombre:'Ficticia'}];await e.ctx.modal.alAbrir();
+        const form=e.node('form-nuevo-profesional');form.elements.apellido.value=apellido;
+        e.submit();assert.deepEqual(plain(e.ctx.save.errores),{});await e.ctx.save.enviar();
+        assert.equal(e.calls.at(-1).data.apellido,apellido);
+        for(const dni of [' 1234567','1234567 ','12.345.678','1234567\u00b2']) {
+            form.elements.dni.value=dni;e.submit();assert.ok(e.ctx.save.errores.dni);
+        }
+    }
+});
