@@ -652,7 +652,10 @@ function prepararInputsDni() {
             sincronizarCampo(campo);
         }
     };
-    document.addEventListener('reset', evento => reiniciarContenedor(evento.target), true);
+    document.addEventListener('reset', evento => {
+        reiniciarContenedor(evento.target);
+        queueMicrotask(() => reiniciarContenedor(evento.target));
+    }, true);
     document.addEventListener('show.bs.modal', evento => {
         reiniciarContenedor(evento.target);
         queueMicrotask(() => reiniciarContenedor(evento.target));
@@ -672,12 +675,12 @@ function obtenerPiePreventivo(campo, { conContador = false } = {}) {
     if (typeof document?.createElement !== 'function') return null;
 
     const contenedor = document.createElement('div');
-    contenedor.className = 'form-text d-flex justify-content-between align-items-start gap-2 mt-1';
+    contenedor.className = 'form-text d-flex flex-wrap justify-content-between align-items-start gap-1 mt-1';
     contenedor.dataset.piePreventivo = '';
     contenedor.hidden = !conContador;
 
     const aviso = document.createElement('span');
-    aviso.className = 'text-danger fw-semibold';
+    aviso.className = 'text-danger fw-semibold text-break';
     aviso.dataset.avisoPreventivo = '';
     aviso.setAttribute('role', 'status');
     aviso.setAttribute('aria-live', 'polite');
@@ -687,7 +690,7 @@ function obtenerPiePreventivo(campo, { conContador = false } = {}) {
     let contador = null;
     if (conContador) {
         contador = document.createElement('span');
-        contador.className = 'ms-auto flex-shrink-0 text-muted';
+        contador.className = 'ms-auto text-end text-wrap mw-100 text-muted';
         contador.dataset.contadorCampo = '';
         contenedor.appendChild(contador);
     }
@@ -767,10 +770,10 @@ function prepararInputsNombreApellido() {
             ? `${longitud}/${MAX_NOMBRE} — Límite alcanzado`
             : `${longitud}/${MAX_NOMBRE}`;
         pie.contador.className = longitud > MAX_NOMBRE
-            ? 'ms-auto flex-shrink-0 text-danger fw-semibold'
+            ? 'ms-auto text-end text-wrap mw-100 text-danger fw-semibold'
             : enTope
-                ? 'ms-auto flex-shrink-0 text-warning-emphasis fw-semibold'
-                : 'ms-auto flex-shrink-0 text-muted';
+                ? 'ms-auto text-end text-wrap mw-100 text-warning-emphasis fw-semibold'
+                : 'ms-auto text-end text-wrap mw-100 text-muted';
     };
 
     const validarContenidoNombre = (campo, { alSalir = false } = {}) => {
@@ -941,7 +944,10 @@ function prepararInputsNombreApellido() {
             sincronizarCampo(campo);
         }
     }
-    document.addEventListener('reset', evento => reiniciarContenedor(evento.target), true);
+    document.addEventListener('reset', evento => {
+        reiniciarContenedor(evento.target);
+        queueMicrotask(() => reiniciarContenedor(evento.target));
+    }, true);
     document.addEventListener('show.bs.modal', evento => {
         reiniciarContenedor(evento.target);
         queueMicrotask(() => reiniciarContenedor(evento.target));
@@ -1035,10 +1041,10 @@ function prepararInputsEtapa2() {
             ? `${longitud}/${regla.max} \u2014 L\u00edmite alcanzado`
             : `${longitud}/${regla.max}`;
         pie.contador.className = longitud > regla.max
-            ? 'ms-auto flex-shrink-0 text-danger fw-semibold'
+            ? 'ms-auto text-end text-wrap mw-100 text-danger fw-semibold'
             : enTope
-                ? 'ms-auto flex-shrink-0 text-warning-emphasis fw-semibold'
-                : 'ms-auto flex-shrink-0 text-muted';
+                ? 'ms-auto text-end text-wrap mw-100 text-warning-emphasis fw-semibold'
+                : 'ms-auto text-end text-wrap mw-100 text-muted';
         pie.contenedor.hidden = false;
     };
 
@@ -1221,7 +1227,10 @@ function prepararInputsEtapa2() {
             sincronizarCampo(campo);
         }
     }
-    document.addEventListener('reset', evento => reiniciarContenedor(evento.target), true);
+    document.addEventListener('reset', evento => {
+        reiniciarContenedor(evento.target);
+        queueMicrotask(() => reiniciarContenedor(evento.target));
+    }, true);
     document.addEventListener('show.bs.modal', evento => {
         reiniciarContenedor(evento.target);
         queueMicrotask(() => reiniciarContenedor(evento.target));

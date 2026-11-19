@@ -83,6 +83,7 @@ export function inicializarModalObrasSociales() {
             $('os-form-titulo').textContent = 'Editar Obra Social / Cobertura';
             $('btn-guardar-os').textContent = 'Guardar cambios';
             $('btn-cancelar-edicion-os').hidden = false;
+            sincronizarCamposObraSocial($('form-crear-obra-social'));
             $('os-nombre').focus();
             return;
         }
@@ -339,6 +340,12 @@ async function cambiarEstadoObraSocial(id, nuevoEstado) {
 // ============================================================
 // Limpieza del formulario
 // ============================================================
+function sincronizarCamposObraSocial(form) {
+    if (typeof form?.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+        form.dispatchEvent(new CustomEvent('eduges:sincronizar-campos', { bubbles: true }));
+    }
+}
+
 function limpiarFormularioAlta() {
     editandoObra = null;
     $('os-form-titulo').textContent = 'Nueva Obra Social / Cobertura';
@@ -348,5 +355,6 @@ function limpiarFormularioAlta() {
     const contenedorErrores = $('form-os-errores');
     if (form) form.reset();
     if (form) limpiarErroresFormulario(form);
+    sincronizarCamposObraSocial(form);
     if (contenedorErrores) renderizar(contenedorErrores, '');
 }

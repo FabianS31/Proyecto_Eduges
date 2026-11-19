@@ -128,7 +128,7 @@ function entorno(inputsIniciales = []) {
     return { emit, Input, DOMNode, ctx, creados, handlers };
 }
 
-function entornoIniciarReal() {
+function entornoIniciarReal({ nodosPorId = null } = {}) {
     const handlers = {};
     const registroElementos = [];
 
@@ -233,7 +233,7 @@ function entornoIniciarReal() {
         document: {
             addEventListener: (event, fn) => (handlers[event] ??= []).push(fn),
             createElement: tag => new DOMNode(tag),
-            getElementById: () => null,
+            getElementById: id => nodosPorId?.get(id) ?? null,
             querySelectorAll: sel => (sel === 'input' ? [...registroElementos] : []),
         },
     });
@@ -921,4 +921,258 @@ test('Etapa2 iniciar() real: credenciales admin 128 sin contador, profesionales,
     assert.equal(formOS.web.classList.contains('is-invalid'), false);
     e.emit('focusout', formOS.web);
     assert.equal(formOS.web.classList.contains('is-invalid'), true);
+});
+
+
+// ------------------------------------------------------------
+// 7. Corrección visual de contadores (Defecto A) y reinicio/reset
+//    en orden real del navegador y ciclo Obras Sociales (Defecto B)
+//    Nota: las aserciones de clases DOM no sustituyen la revisión visual en navegador real.
+// ------------------------------------------------------------
+test('Defecto A: pie y contadores permiten ajuste de linea sin flex-shrink-0 en Etapa 1 y Etapa 2', async () => {
+    const e = entornoIniciarReal();
+    await new Promise(r => setImmediate(r));
+
+    const formPac = crearFormCon(e, 'form-paciente', [
+        { name: 'nombre', id: 'pac-nombre', maxLength: 60 },
+        { name: 'mail', id: 'pac-mail', maxLength: 50 },
+        { name: 'direccion', id: 'pac-direccion', maxLength: 255 },
+        { name: 'tutor_domicilio', id: 'tutor-domicilio', maxLength: 225 },
+    ]);
+    const formEsp = crearFormCon(e, 'form-nueva-especialidad', [
+        { name: 'nombre', id: 'especialidad-nombre', maxLength: 100 },
+    ]);
+    const formOS = crearFormCon(e, 'form-crear-obra-social', [
+        { name: 'nombre', id: 'os-nombre', maxLength: 150 },
+    ]);
+
+    for (const f of [formPac, formEsp, formOS]) {
+        e.emit('show.bs.modal', f);
+    }
+    await new Promise(r => queueMicrotask(r));
+
+    const casos = [
+        [formPac.nombre, 60],
+        [formEsp.nombre, 100],
+        [formOS.nombre, 150],
+        [formPac.tutor_domicilio, 225],
+        [formPac.direccion, 255],
+    ];
+    for (const [campo, max] of casos) {
+        e.emit('focusin', campo);
+        campo.value = 'A'.repeat(max);
+        e.emit('input', campo);
+
+        const pie = campo.siguienteHermano;
+        const aviso = avisoDe(campo);
+        const contador = contadorDe(campo);
+
+        assert.match(pie.className, /\bflex-wrap\b/);
+        assert.match(aviso.className, /\btext-break\b/);
+        assert.doesNotMatch(contador.className, /\bflex-shrink-0\b/);
+        assert.match(contador.className, /\btext-wrap\b/);
+        assert.match(contador.className, /\bmw-100\b/);
+        assert.match(contador.textContent, new RegExp(`^${max}/${max} .* Límite alcanzado$`));
+    }
+});
+
+test('Defecto B: evento reset real (disparo antes de limpiar valores) reinicia DNI, Etapa 1 y Etapa 2', async () => {
+    const e = entornoIniciarReal();
+    await new Promise(r => setImmediate(r));
+
+    const formPac = crearFormCon(e, 'form-paciente', [
+        { name: 'dni', id: 'pac-dni', maxLength: 8 },
+        { name: 'nombre', id: 'pac-nombre', maxLength: 60 },
+        { name: 'mail', id: 'pac-mail', maxLength: 50 },
+        { name: 'tutor_domicilio', id: 'tutor-domicilio', maxLength: 225 },
+    ]);
+    e.emit('show.bs.modal', formPac);
+    await new Promise(r => queueMicrotask(r));
+
+    // Ensuciar todos los campos hasta tope / invalidez
+    e.emit('focusin', formPac.dni);
+    formPac.dni.value = '123';
+    e.emit('input', formPac.dni);
+    e.emit('focusout', formPac.dni);
+    assert.ok(formPac.dni.error);
+
+    e.emit('focusin', formPac.nombre);
+    formPac.nombre.value = 'A'.repeat(60);
+    e.emit('input', formPac.nombre);
+    assert.match(contadorDe(formPac.nombre).textContent, /^60\/60/);
+
+    e.emit('focusin', formPac.mail);
+    formPac.mail.value = 'correo-invalido';
+    e.emit('input', formPac.mail);
+    e.emit('focusout', formPac.mail);
+    assert.equal(formPac.mail.classList.contains('is-invalid'), true);
+
+    e.emit('focusin', formPac.tutor_domicilio);
+    formPac.tutor_domicilio.value = 'D'.repeat(225);
+    e.emit('input', formPac.tutor_domicilio);
+    assert.match(contadorDe(formPac.tutor_domicilio).textContent, /^225\/225/);
+
+    // Orden real del navegador: 1) evento reset (valores todavía presentes), 2) limpieza de .value, 3) microtask
+    e.emit('reset', formPac);
+    for (const c of formPac.elements) c.value = '';
+    await new Promise(r => queueMicrotask(r));
+
+    assert.equal(formPac.dni.error, '');
+    assert.equal(avisoDe(formPac.dni).hidden, true);
+    assert.equal(contadorDe(formPac.nombre).textContent, '0/60');
+    assert.equal(avisoDe(formPac.nombre).hidden, true);
+    assert.equal(formPac.mail.classList.contains('is-invalid'), false);
+    assert.equal(avisoDe(formPac.mail).hidden, true);
+    assert.equal(contadorDe(formPac.tutor_domicilio).textContent, '');
+    assert.equal(formPac.tutor_domicilio.siguienteHermano.hidden, true);
+});
+
+test('Defecto B: Obras Sociales ciclo completo Alta -> tope -> Editar -> Cancelar edición -> Alta vacía repetido', async () => {
+    const nodos = new Map();
+    const calls = [];
+    const e = entornoIniciarReal({ nodosPorId: nodos });
+
+    // Confirmar registro único de listeners globales tras iniciar()
+    await new Promise(r => setImmediate(r));
+    assert.equal(e.handlers.paste.length, 3);
+    assert.equal(e.handlers.beforeinput.length, 3);
+    assert.equal(e.handlers.drop.length, 3);
+
+    const makeNode = (id, tag = 'div', extra = {}) => {
+        const n = new e.DOMNode(tag, {
+            id,
+            disabled: false,
+            value: '',
+            handlers: {},
+            addEventListener(ev, fn) { (this.handlers[ev] ??= []).push(fn); },
+            removeEventListener() {},
+            dispatchEvent(ev) { e.emit(ev.type, this, ev); },
+            focus() {},
+            ...extra,
+        });
+        nodos.set(id, n);
+        return n;
+    };
+
+    const modalEl = makeNode('modal-obras-sociales');
+    const formOS = new e.DOMNode('form', {
+        id: 'form-crear-obra-social',
+        elements: [],
+        handlers: {},
+        addEventListener(ev, fn) { (this.handlers[ev] ??= []).push(fn); },
+        dispatchEvent(ev) { e.emit(ev.type, this, ev); },
+        reset() {
+            // Orden exacto del navegador: dispara 'reset' antes de vaciar los inputs
+            e.emit('reset', this);
+            for (const c of this.elements) c.value = '';
+        },
+    });
+    nodos.set('form-crear-obra-social', formOS);
+
+    for (const [id, name, maxLength] of [
+        ['os-nombre', 'nombre', 150],
+        ['os-contacto', 'contacto', 150],
+        ['os-mail', 'mail', 150],
+        ['os-web', 'web', 255],
+    ]) {
+        const inp = new e.Input({ id, name, maxLength, form: formOS });
+        inp.focus = () => { e.emit('focusin', inp); };
+        formOS.elements.push(inp);
+        formOS[name] = inp;
+        nodos.set(id, inp);
+    }
+
+    const btnCancelar = makeNode('btn-cancelar-edicion-os', 'button', { hidden: true });
+    const btnGuardar = makeNode('btn-guardar-os', 'button');
+    makeNode('os-form-titulo', 'span');
+    makeNode('form-os-errores');
+    makeNode('os-cargando');
+    makeNode('os-tabla-contenedor');
+    makeNode('os-vacio');
+    makeNode('os-contador-total');
+    makeNode('os-filtro-busqueda', 'input');
+    makeNode('os-filtro-estado', 'select');
+    const tbody = makeNode('os-tabla-cuerpo', 'tbody');
+
+    // Cargar obras-sociales-modal.js dentro del mismo contexto real de layout.js
+    const osSrc = leer('componentes/obras-sociales-modal.js')
+        .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\s*$/gm, '')
+        .replace(/\bexport\s+/g, '');
+    e.ctx.window.dispatchEvent = () => {};
+    Object.assign(e.ctx, {
+        mostrarErroresDelFormulario: (f, c, err) => { throw err; },
+        document: {
+            addEventListener: (event, fn) => (e.handlers[event] ??= []).push(fn),
+            createElement: tag => new e.DOMNode(tag),
+            getElementById: id => nodos.get(id) ?? null,
+            querySelectorAll: () => [],
+        },
+        obrasSociales: {
+            listar: async () => [{ id: 9, nombre: 'OSDE', contacto: '0810', mail: 'historico-sin-arroba', web: 'https://osde.com.ar', estado: { id: 1, descripcion: 'Activa' } }],
+            crear: async d => { calls.push({ method: 'post', data: d }); return { id: 10, ...d }; },
+            actualizar: async (id, d) => { calls.push({ method: 'patch', id, data: d }); return { id, ...d }; },
+        },
+        bloqueError: () => '',
+        icono: () => '',
+        normalizarTexto: s => String(s ?? '').toLowerCase(),
+    });
+    vm.runInContext(osSrc, e.ctx);
+    vm.runInContext('inicializarModalObrasSociales();', e.ctx);
+
+    await modalEl.handlers['show.bs.modal'][0]({ target: modalEl });
+    await new Promise(r => queueMicrotask(r));
+
+    for (let ciclo = 0; ciclo < 2; ciclo++) {
+        // 1. Completar hasta límite máximo en alta
+        e.emit('focusin', formOS.nombre);
+        formOS.nombre.value = 'O'.repeat(150);
+        e.emit('input', formOS.nombre);
+        assert.match(contadorDe(formOS.nombre).textContent, /^150\/150/);
+
+        e.emit('focusin', formOS.web);
+        formOS.web.value = 'https://ejemplo.com/' + 'a'.repeat(235);
+        e.emit('input', formOS.web);
+        assert.match(contadorDe(formOS.web).textContent, /^255\/255/);
+
+        // 2. Pasar a Editar una obra social existente con mail histórico inválido
+        await tbody.handlers.click[0]({
+            target: { closest: sel => (sel === '[data-accion="editar-os"]' ? { dataset: { osId: '9' } } : null) },
+        });
+        await new Promise(r => queueMicrotask(r));
+
+        assert.equal(formOS.nombre.value, 'OSDE');
+        assert.equal(formOS.web.value, 'https://osde.com.ar');
+        assert.equal(contadorDe(formOS.nombre).textContent, '');
+        assert.equal(formOS.nombre.siguienteHermano.hidden, true);
+        assert.equal(contadorDe(formOS.web).textContent, '');
+        assert.equal(formOS.web.siguienteHermano.hidden, true);
+
+        // El mail histórico sin editar queda sincronizado como original sin error al salir
+        e.emit('focusin', formOS.mail);
+        e.emit('focusout', formOS.mail);
+        assert.equal(formOS.mail.classList.contains('is-invalid'), false);
+
+        // 3. Presionar Cancelar edición
+        btnCancelar.handlers.click[0]();
+        await new Promise(r => queueMicrotask(r));
+
+        for (const campo of [formOS.nombre, formOS.contacto, formOS.mail, formOS.web]) {
+            assert.equal(campo.value, '');
+            assert.equal(campo.classList.contains('is-invalid'), false);
+            assert.equal(avisoDe(campo)?.hidden ?? true, true);
+            assert.equal(contadorDe(campo)?.textContent ?? '', '');
+            assert.equal(campo.siguienteHermano?.hidden ?? true, true);
+        }
+    }
+
+    // 4. Alta posterior conserva comportamiento normal sin duplicar envíos
+    e.emit('focusin', formOS.nombre);
+    formOS.nombre.value = 'Swiss Medical';
+    e.emit('input', formOS.nombre);
+    await formOS.handlers.submit[0]({ preventDefault() {} });
+    assert.equal(calls.length, 1);
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), {
+        method: 'post',
+        data: { nombre: 'Swiss Medical', contacto: null, mail: null, web: null },
+    });
 });
