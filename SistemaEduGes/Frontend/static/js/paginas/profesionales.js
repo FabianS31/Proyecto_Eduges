@@ -250,6 +250,7 @@ function abrirFicha(id) {
 // terminar: con los dos abiertos a la vez, el foco del teclado queda atrapado mal.
 // ------------------------------------------------------------
 const CAMPOS_EDITABLES = ['nombre', 'apellido', 'dni', 'matricula', 'contacto', 'mail'];
+const CAMPOS_CAPITALIZABLES = ['nombre', 'apellido'];
 let modalEdicion = null;
 
 function validarEdicion(datos, formulario) {
@@ -274,21 +275,46 @@ function validarEdicion(datos, formulario) {
 
 function prepararEdicion() {
     const formulario = $('form-profesional');
+    const editados = new Set();
+    let originales = {};
     modalEdicion = prepararModal({
         modal: $('modal-profesional'),
         formulario,
         contenedorErrores: $('form-profesional-errores'),
         alAbrir: () => {
+            editados.clear();
+            originales = {};
             const p = estado.todos.find((prof) => prof.id_profesional === estado.editandoId);
             $('modal-profesional-nombre').textContent = nombreCompleto(p);
             CAMPOS_EDITABLES.forEach((campo) => {
-                formulario.elements[campo].value = p[campo] ?? '';
+                const valor = p[campo] ?? '';
+                formulario.elements[campo].value = valor;
+                originales[campo] = String(valor);
             });
         },
     });
 
     // Al cerrar (guardando o no) se vuelve a la ficha, ya con los datos actualizados
+    for (const campo of CAMPOS_CAPITALIZABLES) {
+        const input = formulario.elements[campo];
+        input?.addEventListener?.('input', () => {
+            if (input.value === (originales[campo] ?? '')) {
+                editados.delete(campo);
+            } else {
+                editados.add(campo);
+            }
+        });
+        input?.addEventListener?.('blur', () => {
+            if (!editados.has(campo)) return;
+            if (input.value !== (originales[campo] ?? '') && input.value.trim()) {
+                input.value = capitalizar(input.value);
+            }
+        });
+    }
+
     $('modal-profesional').addEventListener('hidden.bs.modal', () => {
+        editados.clear();
+        originales = {};
         const id = estado.editandoId;
         estado.editandoId = null;
         if (id !== null) {
@@ -299,7 +325,19 @@ function prepararEdicion() {
     formulario.addEventListener('submit', (evento) => {
         evento.preventDefault();
         const actual = estado.todos.find((prof) => prof.id_profesional === estado.editandoId);
-        const datos = Object.fromEntries(CAMPOS_EDITABLES.map((campo) => [campo, campo === 'dni' ? formulario.elements[campo].value : formulario.elements[campo].value.trim()]));
+        const datos = Object.fromEntries(CAMPOS_EDITABLES.map((campo) => {
+            const entrada = formulario.elements[campo].value;
+            if (campo === 'dni') return [campo, entrada];
+            if (CAMPOS_CAPITALIZABLES.includes(campo) && editados.has(campo) && entrada !== (originales[campo] ?? '')) {
+                const normalizado = typeof capitalizar === 'function' ? capitalizar(entrada) : entrada.trim();
+                formulario.elements[campo].value = normalizado;
+                return [campo, normalizado];
+            }
+            if (!editados.has(campo) && entrada === (originales[campo] ?? '')) {
+                return [campo, entrada];
+            }
+            return [campo, entrada.trim()];
+        }));
         // Solo se envía lo que cambió (vacío = sin dato, para teléfono y mail)
         const cambios = Object.fromEntries(Object.entries(datos)
             .map(([campo, valor]) => [campo, valor === '' && ['contacto', 'mail'].includes(campo) ? null : valor])

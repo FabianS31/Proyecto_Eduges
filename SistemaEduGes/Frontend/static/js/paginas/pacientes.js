@@ -1117,7 +1117,7 @@ function prepararGestionTutores() {
         const btnAgregar = evento.target.closest('[data-accion="agregar-tutor"]');
         if (btnAgregar) {
             $('agregar-tutor-informacion').textContent = esAdministrador(estado.usuario)
-                ? 'Podés vincular un tutor existente sin modificar sus datos originales. Para modificar sus datos, usá Editar.'
+                ? 'Podés vincular un tutor existente conservando sus datos registrados; este formulario no los sobrescribe.'
                 : 'Si el DNI ya está registrado, se vincula al tutor autorizado sin cambiar sus datos. Para modificarlos, usá Editar. Si pertenece a otro profesional y todavía no está vinculado a tus pacientes, solicitá la vinculación a Administración.';
             formAgregar.reset();
             comboboxAddTutor.limpiar();

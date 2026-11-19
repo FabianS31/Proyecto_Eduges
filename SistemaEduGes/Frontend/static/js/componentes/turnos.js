@@ -383,7 +383,12 @@ function accionesTurno(turno, descripcion) {
 
     }
 
-    const puedeManejarNotasClinicas = esProfesional(usuarioActual) || esAdministrador(usuarioActual) || tienePermiso(usuarioActual, PERMISO.SESIONES_REGISTRAR);
+    const rolNombre = usuarioActual.rol?.nombre ?? usuarioActual.rol?.rol ?? usuarioActual.rol ?? '';
+    const esSuperAdmin = Boolean(usuarioActual.is_superuser || rolNombre === 'SuperAdministrador');
+    const esAdminSoloLectura = esAdministrador(usuarioActual) && !esSuperAdmin;
+    const puedeManejarNotasClinicas = !esAdminSoloLectura && (
+        esProfesional(usuarioActual) || esSuperAdmin || tienePermiso(usuarioActual, PERMISO.SESIONES_REGISTRAR)
+    );
 
     if (estadoId === ESTADO_TURNO.REALIZADO) {
 
@@ -391,9 +396,9 @@ function accionesTurno(turno, descripcion) {
 
         principales.push(boton('sesion', turno, { texto: textoSesion, nombreIcono: 'clinical_notes', clase: 'eg-btn--secondary', descripcion }));
 
-    } else if (estadoId === ESTADO_TURNO.CONFIRMADO && yaEmpezo(turno) && puedeManejarNotasClinicas) {
+    } else if (estadoId === ESTADO_TURNO.CONFIRMADO && yaEmpezo(turno) && (puedeManejarNotasClinicas || (esAdminSoloLectura && tieneSesion))) {
 
-        principales.push(boton('sesion', turno, { texto: 'Tomar notas', nombreIcono: 'edit_note', clase: 'eg-btn--primary', descripcion }));
+        principales.push(boton('sesion', turno, puedeManejarNotasClinicas ? { texto: 'Tomar notas', nombreIcono: 'edit_note', clase: 'eg-btn--primary', descripcion } : { texto: 'Ver resumen', nombreIcono: 'clinical_notes', clase: 'eg-btn--secondary', descripcion }));
 
     }
 

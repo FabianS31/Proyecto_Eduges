@@ -1,6 +1,8 @@
 import { catalogos, pacientes } from '../endpoints.js';
 import { validarCud, validarCamposPreventivos, validarNombrePersonal, errorDomicilio, prepararModal, guardar } from './formularios.js';
-import { notificarError } from '../ui.js';
+import { capitalizar, notificarError } from '../ui.js';
+
+const CAMPOS_CAPITALIZABLES = ['nombre', 'apellido'];
 
 const CAMPOS = ['nombre', 'apellido', 'dni', 'fecha_nacimiento', 'direccion', 'mail',
     'cud_numero', 'cud_vencimiento', 'obra_social', 'numero_afiliado'];
@@ -14,7 +16,26 @@ export function prepararEdicionPaciente({ alGuardar, alCerrar }) {
     let peticion = 0;
     let cargado = false;
     let guardando = false;
+    const editados = new Set();
     const modal = prepararModal({ modal: modalEl, formulario, contenedorErrores: errores });
+
+    for (const campo of CAMPOS_CAPITALIZABLES) {
+        const input = formulario.elements[campo];
+        input?.addEventListener?.('input', () => {
+            if (!cargado || !paciente) return;
+            if (input.value === String(paciente[campo] ?? '')) {
+                editados.delete(campo);
+            } else {
+                editados.add(campo);
+            }
+        });
+        input?.addEventListener?.('blur', () => {
+            if (!cargado || !paciente || !editados.has(campo)) return;
+            if (input.value !== String(paciente[campo] ?? '') && input.value.trim()) {
+                input.value = capitalizar(input.value);
+            }
+        });
+    }
 
     modalEl.addEventListener('hide.bs.modal', (evento) => {
         if (guardando) evento.preventDefault();
@@ -22,6 +43,7 @@ export function prepararEdicionPaciente({ alGuardar, alCerrar }) {
     modalEl.addEventListener('hidden.bs.modal', () => {
         peticion++;
         cargado = false;
+        editados.clear();
         const id = paciente?.id_paciente;
         paciente = null;
         alCerrar(id);
@@ -35,7 +57,15 @@ export function prepararEdicionPaciente({ alGuardar, alCerrar }) {
             const entrada = formulario.elements[campo].value;
             const previo = campo === 'obra_social' ? String(actual.obra_social.id) : String(actual[campo] ?? '');
             if (entrada === previo) continue;
-            const texto = campo === 'dni' ? entrada : entrada.trim();
+            let texto;
+            if (campo === 'dni') {
+                texto = entrada;
+            } else if (CAMPOS_CAPITALIZABLES.includes(campo) && editados.has(campo) && typeof capitalizar === 'function') {
+                texto = capitalizar(entrada);
+                formulario.elements[campo].value = texto;
+            } else {
+                texto = entrada.trim();
+            }
             const valor = campo === 'obra_social' ? Number(texto) : texto || (
                 ['mail', 'cud_numero', 'cud_vencimiento'].includes(campo) ? null : '');
             const original = campo === 'obra_social' ? actual.obra_social.id : actual[campo] ?? null;
@@ -81,6 +111,7 @@ export function prepararEdicionPaciente({ alGuardar, alCerrar }) {
         const solicitud = ++peticion;
         paciente = actual;
         cargado = false;
+        editados.clear();
         boton.disabled = true;
         modal().show();
         CAMPOS.filter(c => c !== 'obra_social').forEach(c => {
